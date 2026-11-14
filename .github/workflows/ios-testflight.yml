@@ -128,7 +128,7 @@ jobs:
           xcodebuild -quiet -workspace ios/App/App.xcworkspace -scheme App \
             -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/TuTap.xcarchive" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
+            MARKETING_VERSION=1.0.2 CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
           app="$RUNNER_TEMP/TuTap.xcarchive/Products/Applications/App.app"
           codesign --verify --deep --strict "$app"
           test -d "$app/PlugIns/CalendarWidget.appex"
@@ -153,9 +153,10 @@ jobs:
           export API_PRIVATE_KEYS_DIR="$signing/keys"
           xcrun altool --validate-app -f "$ipa" -t ios --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER" --output-format json
           xcrun altool --upload-package "$ipa" -t ios --apple-id 6829182305 \
-            --bundle-id vn.quangtu.tutam --bundle-short-version-string 1.0 \
-            --bundle-version "$BUILD_NUMBER" --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER" --output-format json
-          echo "Uploaded TuTap 1.0 ($BUILD_NUMBER) to App Store Connect; Apple processing is separate."
+            --bundle-id vn.quangtu.tutam --bundle-short-version-string 1.0.2 \
+            --bundle-version "$BUILD_NUMBER" --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER" --output-format json | tee "$RUNNER_TEMP/apple-upload.json"
+          python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(1 if r.get("product-errors") or r.get("errors") else 0)' "$RUNNER_TEMP/apple-upload.json"
+          echo "Uploaded TuTap 1.0.2 ($BUILD_NUMBER) to App Store Connect; Apple processing is separate."
       - name: Remove ephemeral signing credentials
         if: always()
         run: |
