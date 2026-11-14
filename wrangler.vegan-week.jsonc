@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "account_id": "ec98af014ed5d40aa1c939d19c18aaf1",
+  "name": "quangtu-vegan-week",
+  "main": "src/jobs/vegan-week.ts",
+  "compatibility_date": "2026-07-31",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  },
+  "triggers": {
+    "crons": ["0 8 * * *", "0 9,10 * * SUN"]
+  },
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "quangtu" }
+  ]
+}
