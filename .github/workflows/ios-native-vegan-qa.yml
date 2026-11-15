@@ -3,7 +3,7 @@ name: Build signed iOS QA IPA
 on:
   workflow_dispatch:
   push:
-    branches: [codex/ios-native-vegan-qa-20261115]
+    branches: [codex/ios-routine-qa-20261115]
 
 permissions:
   contents: read
@@ -95,6 +95,28 @@ jobs:
           npx vitest run --config tests/unit/vitest.config.ts tests/unit/facebook-limited-token.test.ts tests/unit/facebook-limited-identity.test.ts tests/unit/native-auth-security.test.ts tests/unit/native-login-transport.test.ts
       - name: Build iOS web assets and install native dependencies
         run: npm run build:mobile -- --platform ios
+      - name: Install the verified web bundle
+        run: |
+          rsync -a --delete qa-ios-web/ ios/App/App/public/
+          node --input-type=module <<'JS'
+          import { createHash } from 'node:crypto';
+          import { readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const root = 'ios/App/App/public';
+          const manifest = JSON.parse(readFileSync(join(root, 'mobile-assets-manifest.json'), 'utf8'));
+          if (manifest.files.length !== 991) throw new Error('Wrong web manifest');
+          for (const entry of manifest.files) {
+            const bytes = readFileSync(join(root, entry.path));
+            if (bytes.length !== entry.bytes || createHash('sha256').update(bytes).digest('hex') !== entry.sha256) {
+              throw new Error('Asset mismatch: ' + entry.path);
+            }
+          }
+          const chapter = readFileSync(join(root, 'offline-data/chapters/tt_1780910773084.json'), 'utf8');
+          if (!chapter.includes('LỜI NGUYỆN TRƯỚC KHI TỤNG KINH') || !chapter.includes('SÁM OAN GIA TRÁI CHỦ')) {
+            throw new Error('Missing repentance vow source');
+          }
+          console.log('Verified exact QA web bundle and Kinh Địa Tạng source');
+          JS
       - name: Archive signed iOS release once
         run: |
           set -euo pipefail
