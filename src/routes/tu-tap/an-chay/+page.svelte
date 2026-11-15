@@ -247,7 +247,7 @@
     <p>{c.missing}</p>
     <button type="button" onclick={refresh}>{c.retry}</button>
   {:else if tab === 0}
-    <div class="toolbar">
+    <div class="meal-tools">
       <strong>{formatDay(todayDate, true)}{lunar.day === 1 ? ' · ' + c.first : lunar.day === 15 ? ' · ' + c.full : ''}</strong>
       {@render servingPicker()}
     </div>
@@ -280,7 +280,7 @@
     {@render meals(day)}
     <details class="card meal-disclosure">
       <summary><h2><ShoppingCart size={21} aria-hidden="true" />{c.shopping}</h2><ChevronDown size={20} aria-hidden="true" /></summary>
-      <div class="toolbar">
+      <div class="meal-tools">
         <select aria-label={c.scope} bind:value={wholeWeek}><option value={false}>{c.day}</option><option value={true}>{c.week}</option></select>
       </div>
       {#each shopping as item (item.key)}
@@ -368,7 +368,7 @@
       radial-gradient(ellipse at 0% 56%,color-mix(in srgb,var(--gold) 23%,transparent),transparent 57%),
       var(--bg);
   }
-  .heading,.toolbar,.row,.picker,.search{display:flex;align-items:center;gap:var(--radius-sm)}
+  .heading,.meal-tools,.row,.picker,.search{display:flex;align-items:center;gap:var(--radius-sm)}
   .heading{margin-bottom:var(--space-page)}
   h1,h2,h3,p{margin:0}
   h1{font-size:clamp(1.3rem,5vw,1.85rem)}
@@ -407,7 +407,7 @@
   .days button{display:grid;place-content:center;gap:.15rem}
   .days button:not([aria-pressed=true]){background:var(--dialog-glass-background)}
   .days button strong{font-size:1.1rem}
-  .toolbar{justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--radius-sm)}
+  .meal-tools{justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--radius-sm)}
   .nutrition-note{display:flex;align-items:flex-start;gap:var(--radius-sm);padding:var(--radius-sm) calc(var(--radius-sm) * 1.5);margin-bottom:var(--radius-sm);border:1px solid var(--dialog-glass-border);border-radius:var(--radius-control);background:var(--dialog-glass-background);-webkit-backdrop-filter:var(--dialog-glass-filter);backdrop-filter:var(--dialog-glass-filter);box-shadow:var(--glass-button-shadow);color:var(--text2);font-size:.825rem;line-height:1.45}
   .nutrition-note :global(.nutrition-note-icon){flex:none;margin-top:.15rem;color:var(--green-ok)}
   .picker{border:1px solid var(--border2);border-radius:var(--radius-control);background:var(--dialog-glass-background);box-shadow:var(--glass-button-shadow)}
