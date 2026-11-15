@@ -126,8 +126,11 @@
         if (recipe) recipe = current.recipes.find(r => r.id === recipe?.id) ?? recipe;
       }
       reconcileChecks();
-      if (next.preload && needsVeganWeekUpdate(next.next)) await downloadVeganWeek(next.next);
       if (mounted) failed = false;
+      if (next.preload && needsVeganWeekUpdate(next.next)) {
+        // Lỗi tải trước tuần sau không làm tuần đang xem bị báo lỗi.
+        await downloadVeganWeek(next.next).catch(() => undefined);
+      }
     } catch {
       if (mounted) failed = true;
     } finally {
@@ -350,9 +353,14 @@
 
 <style>
   .vegan {
+    --vegan-page-gutter: clamp(var(--radius-sm),3vw,var(--space-page));
+    --vegan-header-height: var(--practice-topbar-height,calc(64px + var(--app-safe-top,env(safe-area-inset-top,0px))));
     max-width:52rem;
     margin:auto;
-    padding:var(--space-page) clamp(var(--radius-sm),3vw,var(--space-page));
+    padding-block:var(--space-page);
+    padding-top:calc(var(--vegan-header-height) + var(--space-page));
+    padding-left:max(var(--vegan-page-gutter),env(safe-area-inset-left,0px));
+    padding-right:max(var(--vegan-page-gutter),env(safe-area-inset-right,0px));
     color:var(--text);
     border-radius:var(--radius-card);
     background:
@@ -380,12 +388,16 @@
   }
   nav,.days{display:grid;gap:.25rem}
   nav {
+    position:sticky;
+    top:var(--vegan-header-height);
+    z-index:2;
     grid-template-columns:minmax(44px,1fr) minmax(44px,1.65fr) minmax(44px,1fr);
     margin-bottom:var(--space-page);
     border-radius:var(--radius-card);
     padding:.25rem;
   }
   nav button,.days button{min-width:44px;padding-inline:.25rem;font-size:.85rem}
+  nav button{white-space:normal;overflow-wrap:anywhere}
   nav button:not([aria-pressed=true]){background:transparent;border-color:transparent}
   .week-calendar{display:grid;gap:var(--radius-sm);text-align:center}
   .week-calendar .picker{justify-self:center}
@@ -443,7 +455,7 @@
   input[type=search]{border:0;background:transparent;width:100%;min-width:0}
   .message{color:var(--danger-text);margin-bottom:var(--radius-sm)}
   .recipe-screen[open]{position:fixed;inset:0;display:block;box-sizing:border-box;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:auto;overscroll-behavior:contain;border:0;border-radius:0;background:var(--bg);color:var(--text)}
-  .recipe-header{position:sticky;top:0;z-index:1;padding-top:env(safe-area-inset-top);background:var(--dialog-surface-background,var(--card));border-bottom:1px solid var(--dialog-surface-border,var(--border))}
+  .recipe-header{position:sticky;top:0;z-index:1;padding-top:var(--app-safe-top,env(safe-area-inset-top,0px));background:var(--dialog-surface-background,var(--card));border-bottom:1px solid var(--dialog-surface-border,var(--border))}
   .recipe-header-inner,.recipe-content{box-sizing:border-box;width:100%;max-width:52rem;margin-inline:auto;padding-inline:max(var(--space-page),env(safe-area-inset-left)) max(var(--space-page),env(safe-area-inset-right))}
   .recipe-header-inner{display:flex;align-items:center;gap:var(--radius-sm);padding-block:var(--radius-sm)}
   .recipe-header h2{min-width:0;overflow-wrap:anywhere}
