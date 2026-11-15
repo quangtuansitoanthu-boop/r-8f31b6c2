@@ -232,7 +232,7 @@
 
 <main class="vegan">
   <header class="heading">
-    <a href="/tu-tap"><ArrowLeft size={20} aria-hidden="true" />{c.recipeBack}</a>
+    <a class="tt-back-btn" href="/tu-tap"><ArrowLeft size={20} aria-hidden="true" />{c.recipeBack}</a>
     <h1>{c.title}</h1>
   </header>
   <nav class="glass" aria-label={c.title}>
@@ -373,9 +373,9 @@
   h1,h2,h3,p{margin:0}
   h1{font-size:clamp(1.3rem,5vw,1.85rem)}
   h2{font-size:1.15rem}
-  .heading a,button,select,input[type=search]{min-height:44px;font:inherit;color:inherit}
+  button,select,input[type=search]{min-height:44px;font:inherit;color:inherit}
   .heading a,button{min-width:44px}
-  .heading a{display:flex;align-items:center;gap:.25rem;text-decoration:none;flex:none}
+  .heading a{min-height:44px}
   button,select,.search{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius-control)}
   button,select{padding:var(--radius-sm);cursor:pointer}
   button:disabled{opacity:.55;cursor:default}
