@@ -1289,3 +1289,71 @@ final class NativePersonalReminderTests: NativeGuestUITestCase {
         evidence("personal-reminder-cleanup", app: app)
     }
 }
+
+final class NativeSimulatorSnapshotTests: NativeGuestUITestCase {
+    @MainActor
+    func testRosaryManualAndAutomaticAudioProgress() {
+        let app = launchGuest()
+        navigate("Tu tập", app: app)
+        openRosaryFromCatalog(app)
+        let baseline = rosaryCount(app)
+        tap(app.buttons["Niệm một hạt"].firstMatch, app: app)
+        XCTAssertEqual(rosaryCount(app), baseline + 1)
+        let options = app.buttons["Tùy chọn"].firstMatch
+        if !app.buttons["Tự động gõ mõ"].firstMatch.isHittable {
+            tap(options, app: app)
+        }
+        tap(app.buttons["Tự động gõ mõ"].firstMatch, app: app)
+        tap(app.buttons["Bắt đầu gõ mõ"].firstMatch, app: app)
+        let pause = app.buttons["Tạm dừng"].firstMatch
+        XCTAssertTrue(pause.waitForExistence(timeout: 30), "The native audio transport must start")
+        waitUntil("Native playback must advance the bead counter", timeout: 20) {
+            self.rosaryCount(app) >= baseline + 4
+        }
+        evidence("rosary-auto-playing", app: app)
+        tap(pause, app: app)
+        let resume = app.buttons["Tiếp tục"].firstMatch
+        XCTAssertTrue(resume.waitForExistence(timeout: 12))
+        let pausedCount = rosaryCount(app)
+        let unexpectedlyAdvanced = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in self.rosaryCount(app) != pausedCount },
+            object: NSObject()
+        )
+        unexpectedlyAdvanced.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [unexpectedlyAdvanced], timeout: 4), .completed)
+        tap(resume, app: app)
+        waitUntil("Playback must advance again after resume", timeout: 20) {
+            self.rosaryCount(app) >= pausedCount + 2
+        }
+        tap(app.buttons["Dừng nhịp"].firstMatch, app: app)
+        XCTAssertTrue(app.buttons["Bắt đầu gõ mõ"].firstMatch.waitForExistence(timeout: 10))
+    }
+
+    @MainActor
+    func testVegetarianMenuTabsAndRecipeRemainReachable() {
+        let app = launchGuest()
+        navigate("Tu tập", app: app)
+        let label = NSPredicate(format: "label BEGINSWITH[c] %@", "Ăn Chay Thanh Tịnh")
+        let card = app.links.matching(label).firstMatch
+        if card.exists {
+            revealContentControl(card, app: app)
+            tap(card, app: app)
+        } else {
+            let button = app.buttons.matching(label).firstMatch
+            revealContentControl(button, app: app)
+            tap(button, app: app)
+        }
+        let today = app.buttons["Hôm nay"].firstMatch
+        let week = app.buttons["Lịch tuần & Đi chợ"].firstMatch
+        let menu = app.buttons["Menu món"].firstMatch
+        tap(week, app: app)
+        tap(menu, app: app)
+        XCTAssertTrue(insideViewport(menu, app: app))
+        evidence("vegetarian-menu-tabs", app: app)
+        tap(today, app: app)
+        let recipe = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Xem")).firstMatch
+        tap(recipe, app: app)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Nguyên liệu")).firstMatch.waitForExistence(timeout: 15))
+        evidence("vegetarian-offline-recipe", app: app)
+    }
+}
