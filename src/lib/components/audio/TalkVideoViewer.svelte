@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { ArrowLeft, Expand, ListVideo, Smartphone } from '@lucide/svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { talkVideoText } from '$lib/i18n/talk-video';
@@ -25,6 +25,31 @@
   let immersiveOwned = $state(false);
   let loading = $state(true);
   let retryCount = $state(0);
+  let hudVisible = $state(true);
+  let hudActivity = $state(0);
+  let pointerHeld = $state(false);
+  let keyboardFocus = $state(false);
+  let transportError = $state(false);
+  let keyboardInput = false;
+  const playing = $derived($audioPlayer.playing);
+  const playerError = $derived(Boolean($audioPlayer.error));
+  const hudHidden = $derived(expanded && !hudVisible);
+
+  function showHud(): void { hudVisible = true; untrack(() => { hudActivity += 1; }); }
+  function hudPointerDown(): void { pointerHeld = true; showHud(); }
+  function hudFocusIn(): void { keyboardFocus = keyboardInput; showHud(); }
+  function hudFocusOut(event: FocusEvent): void {
+    if (!(event.relatedTarget instanceof Node) || !figure?.contains(event.relatedTarget)) keyboardFocus = false;
+  }
+  $effect(() => {
+    void hudActivity;
+    if (!mounted || !expanded || !playing || loading || unavailable || playerError || transportError || pointerHeld || keyboardFocus) {
+      hudVisible = true;
+      return;
+    }
+    const timer = setTimeout(() => { hudVisible = false; }, 3_000);
+    return () => clearTimeout(timer);
+  });
 
   async function enterFullscreen(): Promise<void> {
     expanded = true;
@@ -51,6 +76,16 @@
       if (landscape && immersiveOwned && !document.fullscreenElement) { immersiveOwned = false; expanded = false; }
     };
     document.addEventListener('fullscreenchange', fullscreenChanged);
+    const keyboardActivity = () => {
+      keyboardInput = true;
+      if (figure?.contains(document.activeElement)) { keyboardFocus = true; showHud(); }
+    };
+    const pointerActivity = () => { keyboardInput = false; keyboardFocus = false; };
+    const pointerReleased = () => { if (pointerHeld) { pointerHeld = false; showHud(); } };
+    document.addEventListener('keydown', keyboardActivity, true);
+    document.addEventListener('pointerdown', pointerActivity, true);
+    document.addEventListener('pointerup', pointerReleased);
+    document.addEventListener('pointercancel', pointerReleased);
     async function loadSource(): Promise<void> {
       const saved = await getOfflineTrack(url, { album: $audioPlayer.album ?? undefined }).catch(() => null);
       if (cancelled) return;
@@ -62,6 +97,10 @@
       mounted = false;
       cancelled = true;
       document.removeEventListener('fullscreenchange', fullscreenChanged);
+      document.removeEventListener('keydown', keyboardActivity, true);
+      document.removeEventListener('pointerdown', pointerActivity, true);
+      document.removeEventListener('pointerup', pointerReleased);
+      document.removeEventListener('pointercancel', pointerReleased);
       if (immersiveOwned) void setImmersiveFullscreen(false);
       if (localUrl) URL.revokeObjectURL(localUrl);
     };
@@ -108,7 +147,7 @@
 </script>
 
 <figure bind:this={figure} class="talk-video" class:expanded class:landscape>
-  <div class="video-stage">
+  <div class="video-stage" role="group" aria-label={title} onpointerdown={hudPointerDown} onfocusin={hudFocusIn} onfocusout={hudFocusOut}>
   <div class="video-media">
   <video bind:this={video} src={videoSource || undefined} muted playsinline preload="metadata" aria-label={title}
     onloadeddata={() => { loading = false; }} onwaiting={() => { loading = true; }} onplaying={() => { loading = false; }}
@@ -120,7 +159,8 @@
   {#if landscape && !expanded}<button class="video-expand" bind:this={expandButton} type="button" onclick={() => void enterFullscreen()} aria-label={text.enterFullscreen} title={text.enterFullscreen}><Expand size={20} aria-hidden="true" /></button>{/if}
   </div>
   {#if expanded}
-    <div class="video-topbar">
+    <button class="video-hud-reveal" type="button" aria-label={text.showControls} aria-expanded={!hudHidden} onclick={showHud}></button>
+    <div class="video-topbar" class:hud-hidden={hudHidden} inert={hudHidden} aria-hidden={hudHidden}>
       <button type="button" onclick={landscape ? shrink : onBack}><ArrowLeft size={20} aria-hidden="true" />{text.back}</button>
       <button bind:this={listButton} type="button" onclick={shrink}><ListVideo size={20} aria-hidden="true" />{landscape ? text.exitFullscreen : text.list}</button>
     </div>
@@ -132,14 +172,14 @@
     {/if}
     {#if unavailable && !landscape}<p class="video-error" role="status">{text.unavailable}</p>{/if}
   {/if}
-  <div class="video-caption">
+  <div class="video-caption" class:hud-hidden={hudHidden} inert={hudHidden} aria-hidden={hudHidden}>
     {#if landscape}
       {#if unavailable}
         <p role="status">{text.videoUnavailable}</p><button type="button" onclick={retryVideo}>{text.retry}</button>
       {:else if loading}<p role="status">{text.loading}</p>{/if}
-      <VideoTransport {title} compact={!expanded} />
+      <VideoTransport {title} compact={!expanded} onErrorChange={(value) => { transportError = value; }} />
     {:else if expanded}
-      <VideoTransport {title} />
+      <VideoTransport {title} onErrorChange={(value) => { transportError = value; }} />
     {:else}
       <button bind:this={expandButton} type="button" onclick={() => { expanded = true; }}><Expand size={18} aria-hidden="true" />{text.fullscreen}</button>
       <span class="playing-label">{text.playing} · {text.track} {$audioPlayer.trackIndex + 1}</span>
@@ -179,6 +219,9 @@
   p { margin: 0; font-size:var(--font-size-body); color: var(--muted); }
   .expanded { position: fixed; inset: 0; z-index: 10; display: block; margin: 0; border: 0; border-radius: 0; background: var(--video-surface); color: var(--video-ink); }
   .expanded video { inline-size: 100%; block-size: 100%; }
+  .expanded:not(.landscape) .video-stage { display: block; position: relative; block-size: 100%; }
+  .video-hud-reveal { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; }
+  .hud-hidden { visibility: hidden; pointer-events: none; }
   .video-topbar { position: absolute; top: max(.75em, var(--app-safe-top, env(safe-area-inset-top, 0px))); right: max(.75em, env(safe-area-inset-right, 0px)); left: max(.75em, env(safe-area-inset-left, 0px)); display: flex; justify-content: space-between; gap: .5em; }
   .video-topbar button { border-color: color-mix(in srgb, var(--video-ink) 50%, transparent); color: var(--video-ink); background: color-mix(in srgb, var(--video-surface) 70%, transparent); }
   .expanded .video-caption { position: absolute; inset-inline: 0; bottom: 0; display: block; padding: 0; }

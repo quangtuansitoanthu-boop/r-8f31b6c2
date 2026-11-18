@@ -1,7 +1,22 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 const media = readFileSync(new URL('./fixtures/talk-video.mp4', import.meta.url));
+
+async function expectDecodedFrame(viewer: Locator): Promise<void> {
+  // Mirror synchronization writes currentTime, so clock movement alone cannot prove a decoded image.
+  await expect.poll(() => viewer.locator('video').evaluate(element => {
+    const video = element as HTMLVideoElement;
+    const quality = typeof video.getVideoPlaybackQuality === 'function' ? video.getVideoPlaybackQuality() : null;
+    return video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0
+      && (!quality || quality.totalVideoFrames > 0);
+  })).toBe(true);
+}
+
+async function revealHud(viewer: Locator): Promise<void> {
+  await viewer.getByRole('button', { name: 'Hiện điều khiển video', exact: true }).click({ position: { x: 4, y: 4 } });
+  await expect(viewer.locator('.video-topbar')).toHaveAttribute('aria-hidden', 'false');
+}
 
 test('mobile talk video follows one player and keeps the original audio album controls', async ({ page }, testInfo) => {
   let catalogs = 0;
@@ -36,14 +51,23 @@ test('mobile talk video follows one player and keeps the original audio album co
   const viewer = album.locator('figure.talk-video');
   await expect(viewer).toHaveClass(/expanded/);
   await expect.poll(() => viewer.locator('video').evaluate(v => (v as HTMLVideoElement).currentTime)).toBeGreaterThan(.1);
-  await expect(viewer.getByRole('button')).toHaveCount(7);
+  await expectDecodedFrame(viewer);
+  await revealHud(viewer);
+  await expect(viewer.getByRole('button')).toHaveCount(8);
   await expect(viewer.getByRole('button', { name: 'Quay lại', exact: true })).toBeVisible();
   await expect(viewer.getByRole('status').filter({ hasText: 'Bạn có thể khóa màn hình' })).toBeVisible();
   await expect(viewer.getByRole('status').filter({ hasText: 'Bạn có thể khóa màn hình' })).toHaveCount(0, { timeout: 6_000 });
+  await expect(viewer.locator('.video-topbar')).toHaveAttribute('aria-hidden', 'true');
+  await expect(viewer.locator('.video-topbar')).toHaveJSProperty('inert', true);
+  await expect(viewer.getByRole('button', { name: 'Tạm dừng', exact: true })).toHaveCount(0);
+  await revealHud(viewer);
   await viewer.getByRole('button', { name: 'Bài tiếp theo', exact: true }).click();
   await expect(viewer.locator('.video-transport strong')).toHaveText('Video hai');
+  await expectDecodedFrame(viewer);
+  await revealHud(viewer);
   await viewer.getByRole('button', { name: 'Bài trước', exact: true }).click();
   await expect(viewer.locator('.video-transport strong')).toHaveText('Video một');
+  await revealHud(viewer);
   await viewer.getByRole('button', { name: 'Danh sách bài', exact: true }).click();
   await expect(viewer).not.toHaveClass(/expanded/);
   await page.screenshot({ path: testInfo.outputPath('mobile-video-list.png') });
@@ -59,7 +83,9 @@ test('mobile talk video follows one player and keeps the original audio album co
   await expect(viewer).toHaveClass(/expanded/);
   await expect(viewer.locator('.video-transport strong')).toHaveText('Video một');
   await expect.poll(() => viewer.locator('video').evaluate(v => (v as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(7);
+  await expectDecodedFrame(viewer);
   await expect(page.locator('.pt-fp-sheet')).toHaveCount(0);
+  await revealHud(viewer);
   await viewer.getByRole('button', { name: 'Quay lại', exact: true }).click();
   await page.getByRole('button', { name: 'Mở album SỨ MỆNH ĐỘ VONG FULL TIKTOK', exact: true }).click();
   const audio = page.getByRole('dialog', { name: 'SỨ MỆNH ĐỘ VONG FULL TIKTOK', exact: true });
@@ -114,6 +140,7 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   await expect(viewer).toHaveClass(/landscape/);
   await expect(viewer).not.toHaveClass(/expanded/);
   await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThan(.1);
+  await expectDecodedFrame(viewer);
   await expect(viewer.locator('video')).toBeInViewport({ ratio: .9 });
   const frame = await viewer.locator('video').boundingBox();
   expect(frame).not.toBeNull();
@@ -132,6 +159,11 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   }
   await expect(viewer.getByRole('button', { name: 'Thu nhỏ', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('landscape-video-fullscreen.png') });
+  await viewer.getByRole('button', { name: 'Phát', exact: true }).click();
+  await expectDecodedFrame(viewer);
+  await expect(viewer.locator('.video-topbar')).toHaveAttribute('aria-hidden', 'true', { timeout: 6_000 });
+  await expect(viewer.locator('.video-caption')).toHaveJSProperty('inert', true);
+  await revealHud(viewer);
   await viewer.getByRole('button', { name: 'Quay lại', exact: true }).click();
   await expect(viewer).not.toHaveClass(/expanded/);
   await expect(album.locator('.pt-as-track-list')).toBeVisible();

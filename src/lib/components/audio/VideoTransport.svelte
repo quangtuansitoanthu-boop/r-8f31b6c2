@@ -1,13 +1,17 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from '@lucide/svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { talkVideoText } from '$lib/i18n/talk-video';
   import { audioPlayer, getAudioPlayer } from '$lib/stores/audio-player.svelte';
 
-  let { title, compact = false }: { title: string; compact?: boolean } = $props();
+  let { title, compact = false, onErrorChange = () => {} }: { title: string; compact?: boolean; onErrorChange?: (hasError: boolean) => void } = $props();
   const localeStore = getLocaleContext();
   const text = $derived(talkVideoText[localeStore.current === 'en' ? 'en' : 'vi']);
   let commandError = $state('');
+  let disposed = false;
+  let commandVersion = 0;
+  onDestroy(() => { disposed = true; onErrorChange(false); });
   const duration = $derived(Math.max(0, $audioPlayer.duration));
   const position = $derived(Math.min(duration, Math.max(0, $audioPlayer.currentTime)));
   const trackCount = $derived($audioPlayer.album?.tracks.length ?? 0);
@@ -18,7 +22,9 @@
   }
 
   async function control(action: 'previous' | 'next' | 'toggle' | 'rewind' | 'forward' | 'seek', seconds = 0): Promise<void> {
+    const version = ++commandVersion;
     commandError = '';
+    onErrorChange(false);
     try {
       const player = await getAudioPlayer();
       if (action === 'previous') {
@@ -30,7 +36,9 @@
         else await player.play();
       } else if (action === 'seek') player.seek(seconds);
       else player.seekBy(action === 'rewind' ? -10 : 30);
-    } catch { commandError = text.controlError; }
+    } catch {
+      if (!disposed && version === commandVersion) { commandError = text.controlError; onErrorChange(true); }
+    }
   }
 </script>
 

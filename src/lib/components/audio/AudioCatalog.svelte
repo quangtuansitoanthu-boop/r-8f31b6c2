@@ -27,6 +27,7 @@
   import { audioPlayer, getAudioPlayer } from '$lib/stores/audio-player.svelte';
   import { formatVietnamDate } from '$lib/utils/vietnam-date-format';
   import AudioResumePrompt from './AudioResumePrompt.svelte';
+  import ContentExperienceNotice from '$lib/components/shared/ContentExperienceNotice.svelte';
   import TalkVideoViewer from './TalkVideoViewer.svelte';
   import { localizeTalkTopic, talkVideoText } from '$lib/i18n/talk-video';
   import {
@@ -40,11 +41,6 @@
   const localeStore = getLocaleContext();
   const t = $derived(localeStore.t);
   const mediaText = $derived(talkVideoText[localeStore.current]);
-  const dreamStoryAlbumIds = new Set([
-    'pt_drive_69bc37dd604011a70e5c4e38337865a8',
-    'pt_drive_c435791b562e6f6e9d345b414df4a273',
-    'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4',
-  ]);
 
   export interface TalkTrack {
     title: string;
@@ -1001,19 +997,15 @@
         </div>
       </header>
 
-      {#if offlineNoticeVisible && dreamStoryAlbumIds.has(selected.id)}
-        <aside class="album-story-notice" aria-label={mediaText.storyNoticeTitle}>
-          <strong>{mediaText.storyNoticeTitle}</strong>
-          <p>{mediaText.storyNotice}</p>
-          <small>{mediaText.storyNoticeTimeout}</small>
-        </aside>
-      {/if}
-
       {#if offlineNoticeVisible && offlineStateReady && !isSelectedOnlineOnly && albumStatuses[selected.id] !== 'downloaded' && !offlineLookup.has(selected.id) && !busyModes[selected.id]}
         <aside class="album-offline-notice" aria-label={t.talks.offlineRecommendationTitle}>
           <span class="album-offline-hand" aria-hidden="true">👆</span>
           <p>{t.talks.offlineRecommendation}</p>
         </aside>
+      {/if}
+
+      {#if offlineNoticeVisible}
+        <ContentExperienceNotice contentId={selected.id} class="album-story-notice" />
       {/if}
 
       <div class="pt-as-album-banner" inert={videoIsFull}>
@@ -1173,11 +1165,7 @@
 {/if}
 
 <style>
-  .album-offline-notice,.album-story-notice{position:relative;margin:calc(var(--space-page) / 2) var(--space-page);padding:calc(var(--space-page) / 2);background:var(--gold-light);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow);color:var(--text2);flex-shrink:0}
-  .album-story-notice{padding:var(--notice-padding);font-family:var(--font-reader)}
-  .album-story-notice strong{color:var(--text);font-size:var(--font-size-label)}
-  .album-story-notice p{margin:var(--notice-gap) 0;font-family:var(--font-reader);font-size:var(--font-size-body);line-height:1.6;text-align:justify;overflow-wrap:anywhere}
-  .album-story-notice small{font-size:var(--font-size-meta);line-height:1.5}
+  .album-offline-notice{position:relative;margin:calc(var(--space-page) / 2) var(--space-page);padding:calc(var(--space-page) / 2);background:var(--gold-light);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow);color:var(--text2);flex-shrink:0}
   .album-offline-notice p{margin:0;font-size:small;line-height:1.5;text-align:center}
   .album-offline-hand{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:large;pointer-events:none}
   .audio-offline-confirm{margin:auto;width:min(100% - var(--space-page) * 2, var(--practice-dialog-width));max-height:calc(100dvh - var(--space-page) * 2 - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;padding:var(--space-page);border:1px solid var(--dialog-surface-border,var(--border));border-radius:var(--radius-card);background:var(--dialog-surface-background,var(--card));color:var(--text);box-shadow:var(--dialog-surface-shadow,var(--shadow-xl));font:inherit}

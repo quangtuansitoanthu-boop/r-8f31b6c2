@@ -16,8 +16,68 @@ vi.mock('$lib/browser/reading-activity-client', () => ({
 }));
 let component: ReturnType<typeof Harness> | undefined;
 const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); flushSync(); };
+beforeEach(() => { vi.stubGlobal('caches', { open: async () => ({ keys: async () => [], match: async () => undefined }) }); });
 beforeEach(() => { window.history.replaceState({}, '', '/'); Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) }); vi.clearAllMocks(); localStorage.clear(); io.preserved.mockResolvedValue(true); io.progress.mockResolvedValue(null); io.fetch.mockImplementation(async (url: string) => Response.json(url.includes('/chapters') ? [{ id: 'c1', so_thu_tu: 0, tieu_de: 'First', noi_dung: 'FIRST' }, { id: 'c2', so_thu_tu: 1, tieu_de: 'Second', noi_dung: 'SECOND' }] : { count: 1 })); Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() }); vi.stubGlobal('fetch', vi.fn(async () => new Response('missing', { status: 404 }))); });
-afterEach(async () => { if (component) await unmount(component); component = undefined; document.body.replaceChildren(); localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(async () => { if (component) await unmount(component); component = undefined; document.body.replaceChildren(); localStorage.clear(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+const journeyNotice = 'Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí';
+const spiritNotice = 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ';
+const buddhistNotice = 'Các câu chuyện được kể trong sách này đều từ những giấc mơ của phật tử, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ';
+
+it.each([
+ ['tt_1781452671270', journeyNotice],
+ ['tt_1781517395283', journeyNotice],
+ ['tt_1781081372340_1_xqcxo', spiritNotice],
+ ['phat-tu-thien-dia-du-ky-quyen-1', buddhistNotice],
+ ['phat-tu-thien-dia-du-ky-quyen-2', buddhistNotice],
+])('hides only the notice after ten seconds for book %s and shows it on reopening', async (id, copy) => {
+ component = mount(Harness, { target: document.body }); await settle(); await settle();
+ expect(document.querySelector('.content-experience-notice')).toBeNull();
+ component.showBook(id); await settle(); await settle();
+ vi.useFakeTimers();
+ // Start a fresh opening with the clock controlled before the notice timer starts.
+ component.showBook(null); flushSync(); component.showBook(id); flushSync();
+ await vi.advanceTimersByTimeAsync(0); flushSync();
+ expect(document.querySelector('.content-experience-notice em')?.textContent).toBe(copy);
+ expect(document.querySelector('.content-experience-notice strong')?.textContent).toBe('Lưu ý về nội dung:');
+ await vi.advanceTimersByTimeAsync(9999); flushSync();
+ expect(document.querySelector('.content-experience-notice')).not.toBeNull();
+ const requests = io.fetch.mock.calls.length;
+ await vi.advanceTimersByTimeAsync(1); flushSync();
+ expect(document.querySelector('.content-experience-notice')).toBeNull();
+ expect(document.querySelector('.reader-modal')).not.toBeNull();
+ expect(io.fetch.mock.calls.length).toBe(requests);
+ component.showBook(null); flushSync(); component.showBook(id); flushSync();
+ await vi.advanceTimersByTimeAsync(0); flushSync();
+ expect(document.querySelector('.content-experience-notice em')?.textContent).toBe(copy);
+});
+
+it('does not write reading progress for notice-collapse clamping, while retaining a later real scroll', async () => {
+ io.preserved.mockResolvedValue(false);
+ component = mount(Harness, { target: document.body }); await settle(); await settle();
+ vi.useFakeTimers();
+ component.showBook('tt_1781452671270'); flushSync();
+ await vi.advanceTimersByTimeAsync(0); flushSync();
+ (document.querySelector('.toc-item') as HTMLButtonElement).click();
+ await vi.advanceTimersByTimeAsync(0); flushSync();
+ const area = document.querySelector('.reader-scroll') as HTMLElement;
+ let position = 2563;
+ Object.defineProperties(area, {
+   scrollHeight: { configurable: true, get: () => 3000 },
+   clientHeight: { configurable: true, get: () => document.querySelector('.content-experience-notice') ? 387 : 567 },
+   scrollTop: { configurable: true, get: () => Math.min(position, 3000 - area.clientHeight), set: value => { position = Number(value); } },
+ });
+ io.schedule.mockClear();
+ await vi.advanceTimersByTimeAsync(10_000); flushSync();
+ expect(area.scrollTop).toBe(2433);
+ area.dispatchEvent(new Event('scroll'));
+ await vi.advanceTimersByTimeAsync(32); flushSync();
+ expect(io.schedule).not.toHaveBeenCalled();
+ position = 2400;
+ area.dispatchEvent(new Event('scroll'));
+ await vi.advanceTimersByTimeAsync(32); flushSync();
+ expect(io.schedule).toHaveBeenCalledTimes(1);
+});
 it('opens the retained current-owner document without a chapter or text-progress fetch', async () => {
  component = mount(Harness, { target: document.body }); await settle(); await settle();
  expect(document.querySelector('[data-legacy-pdf]')).not.toBeNull(); expect(io.fetch.mock.calls.filter(([url]) => url.includes('/chapters'))).toHaveLength(0); expect(io.progress).not.toHaveBeenCalled();

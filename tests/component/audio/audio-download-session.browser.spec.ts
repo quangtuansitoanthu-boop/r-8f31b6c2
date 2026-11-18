@@ -107,6 +107,32 @@ const dreamStoryAlbumIds = [
 ];
 const dreamStoryNotice = 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ';
 
+it('uses the exact Huệ Hiền dream wording and hides only the notice after ten seconds', async () => {
+  vi.useFakeTimers();
+  component = mount(Harness, { target: document.body });
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  component.showAlbum('pt_1781961851755');
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice em')?.textContent).toBe('Các câu chuyện được kể trong album này đều từ những giấc mơ của cư sĩ Thích Nữ Huệ Hiền, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ');
+  await vi.advanceTimersByTimeAsync(9999); flushSync();
+  expect(document.querySelector('.album-story-notice')).not.toBeNull();
+  await vi.advanceTimersByTimeAsync(1); flushSync();
+  expect(document.querySelector('.album-story-notice')).toBeNull();
+  expect(document.querySelector('.album-dialog')).not.toBeNull();
+});
+
+it.each(['pt_drive_74959767068eaae1db4846f62b62eda8', 'pt_drive_d22e45028d45ede832a28bc87237d5d3'])('uses the separate Dương Sinh wording for journey album %s', async id => {
+  vi.useFakeTimers();
+  component = mount(Harness, { target: document.body });
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  component.showAlbum(id);
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice em')?.textContent).toBe('Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí');
+  await vi.advanceTimersByTimeAsync(10_000); flushSync();
+  expect(document.querySelector('.album-story-notice')).toBeNull();
+  expect(document.querySelector('.album-dialog')).not.toBeNull();
+});
+
 it.each(dreamStoryAlbumIds)('shows the exact story notice for ten seconds, including downloaded album %s', async id => {
   vi.useFakeTimers();
   mocks.albums.set(id, { id });
@@ -116,7 +142,7 @@ it.each(dreamStoryAlbumIds)('shows the exact story notice for ten seconds, inclu
   const requestsBefore = vi.mocked(fetch).mock.calls.length;
   component.showAlbum(id);
   await vi.advanceTimersByTimeAsync(0); flushSync();
-  expect(document.querySelector('.album-story-notice p')?.textContent).toBe(dreamStoryNotice);
+  expect(document.querySelector('.album-story-notice em')?.textContent).toBe(dreamStoryNotice);
   await vi.advanceTimersByTimeAsync(9999); flushSync();
   expect(document.querySelector('.album-story-notice')).not.toBeNull();
   await vi.advanceTimersByTimeAsync(1); flushSync();
@@ -125,7 +151,7 @@ it.each(dreamStoryAlbumIds)('shows the exact story notice for ten seconds, inclu
   (document.querySelector('.pt-as-back') as HTMLButtonElement).click(); flushSync();
   (document.querySelectorAll('.pt-card-thumb')[1] as HTMLElement).click();
   await vi.advanceTimersByTimeAsync(0); flushSync();
-  expect(document.querySelector('.album-story-notice p')?.textContent).toBe(dreamStoryNotice);
+  expect(document.querySelector('.album-story-notice em')?.textContent).toBe(dreamStoryNotice);
 });
 
 it('cancels the previous story notice timeout when switching albums and excludes unrelated albums', async () => {

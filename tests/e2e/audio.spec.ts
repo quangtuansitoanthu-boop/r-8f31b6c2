@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { principalStorageKey } from '../../src/lib/browser/principal-storage';
 import { readFileSync } from 'node:fs';
-import { loginAsMember, loginAsAdmin, settleClient, logoutThroughAccount } from './runtime-helpers';
+import { loginAsMember, loginAsAdmin, settleClient, logoutThroughAccount, useNativeApiWithLocalBackend } from './runtime-helpers';
 
 const memberStorageKey = (key: string) => principalStorageKey('e2e-member', key);
 const offlineTalks = JSON.parse(readFileSync('src/lib/data/offline-talks.json', 'utf8')) as Array<{ id: string; tieu_de: string }>;
@@ -14,10 +14,52 @@ const audioPrincipalSessions = new Map([
 ]);
 
 test.describe('Pháp Thoại public and download contracts', () => {
-  test('shows the approved justified Bookerly story notice without adding API requests', async ({ page }) => {
+  for (const [bookId, title, message] of [
+    ['tt_1781452671270', 'ĐỊA NGỤC DU KÝ', 'Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí'],
+    ['tt_1781517395283', 'LUÂN HỒI DU KÝ', 'Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí'],
+    ['tt_1781081372340_1_xqcxo', 'SỨ MỆNH ĐỘ VONG', 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ'],
+  ]) {
+    test(`approved book notice keeps the reader open after ten seconds: ${title}`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await loginAsMember(page);
+      await useNativeApiWithLocalBackend(page);
+      await page.addInitScript(id => localStorage.setItem(`tutam_media_prompt_seen_${id}`, '1'), bookId);
+      await page.goto('/kinh-sach');
+      await settleClient(page);
+      const card = page.locator('.art-card').filter({ hasText: title });
+      await expect(card).toHaveCount(1);
+      await page.clock.install({ time: new Date('2026-11-18T08:00:00Z') });
+      await page.clock.pauseAt(new Date('2026-11-18T08:00:01Z'));
+      await card.locator('.art-card__open').click();
+      const reader = page.locator('.reader-modal');
+      const notice = reader.getByRole('complementary', { name: 'Lưu ý về nội dung' });
+      await expect(notice.locator('em')).toHaveText(message);
+      expect(await reader.locator('.reader-scroll .content-experience-notice').count()).toBe(0);
+      await expect(notice.locator('p')).toHaveCSS('text-align', 'justify');
+      const dimensions = await notice.boundingBox();
+      expect(dimensions!.x).toBeGreaterThanOrEqual(0);
+      expect(dimensions!.x + dimensions!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+      await page.screenshot({ path: test.info().outputPath('approved-book-experience-notice.png') });
+      await page.clock.fastForward(9000);
+      const chapters = reader.locator('.toc-item');
+      if (await chapters.count()) await chapters.first().click();
+      await page.clock.fastForward(999);
+      await expect(notice).toBeVisible();
+      await page.clock.fastForward(1);
+      await expect(notice).toHaveCount(0);
+      await expect(reader).toBeVisible();
+    });
+  }
+
+  for (const [albumId, noticeText] of [
+    ['pt_drive_c435791b562e6f6e9d345b414df4a273', 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ'],
+    ['pt_drive_74959767068eaae1db4846f62b62eda8', 'Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí'],
+    ['pt_1781961851755', 'Các câu chuyện được kể trong album này đều từ những giấc mơ của cư sĩ Thích Nữ Huệ Hiền, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ'],
+  ]) {
+  test(`shows the approved justified Bookerly story notice without adding API requests: ${albumId}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await loginAsMember(page);
-    const album = offlineTalks.find(item => item.id === 'pt_drive_c435791b562e6f6e9d345b414df4a273')!;
+    const album = offlineTalks.find(item => item.id === albumId)!;
     await page.route(/\/api\/talks(?:\?|$)/u, route => route.fulfill({ json: [album] }));
     await page.goto('/phap-thoai');
     await settleClient(page);
@@ -28,12 +70,12 @@ test.describe('Pháp Thoại public and download contracts', () => {
     await page.locator('.pt-card').filter({ hasText: album.tieu_de }).locator('.pt-card-thumb').click();
     const notice = page.getByRole('complementary', { name: 'Lưu ý về nội dung' });
     await expect(notice).toBeVisible();
-    await expect(notice.locator('p')).toHaveText('Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ');
+    await expect(notice.locator('em')).toHaveText(noticeText);
     const geometry = await notice.locator('p').evaluate(async element => {
-      await document.fonts.load('14px Bookerly');
+      await document.fonts.load('italic 14px Bookerly');
       const style = getComputedStyle(element);
       const bounds = element.getBoundingClientRect();
-      return { font: style.fontFamily, align: style.textAlign, left: bounds.left, right: bounds.right, bottom: bounds.bottom, viewportHeight: innerHeight, fontLoaded: document.fonts.check('14px Bookerly') };
+      return { font: style.fontFamily, align: style.textAlign, left: bounds.left, right: bounds.right, bottom: bounds.bottom, viewportHeight: innerHeight, fontLoaded: document.fonts.check('italic 14px Bookerly') };
     });
     expect(geometry.font).toContain('Bookerly');
     expect(geometry.fontLoaded).toBe(true);
@@ -41,6 +83,10 @@ test.describe('Pháp Thoại public and download contracts', () => {
     expect(geometry.left).toBeGreaterThanOrEqual(0);
     expect(geometry.right).toBeLessThanOrEqual(page.viewportSize()!.width);
     expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
+    const offlineBounds = await page.locator('.album-offline-notice').boundingBox();
+    const storyBounds = await notice.boundingBox();
+    expect(offlineBounds).not.toBeNull();
+    expect(storyBounds!.y).toBeGreaterThanOrEqual(offlineBounds!.y + offlineBounds!.height);
     await page.screenshot({ path: test.info().outputPath('approved-album-story-notice.png') });
     await page.clock.fastForward(9999);
     await expect(notice).toBeVisible();
@@ -48,6 +94,7 @@ test.describe('Pháp Thoại public and download contracts', () => {
     await expect(notice).toHaveCount(0);
     expect(extraApiRequests).toEqual([]);
   });
+  }
 
   test('guides listeners to offline download without starting a download', async ({ page }) => {
     await loginAsMember(page);

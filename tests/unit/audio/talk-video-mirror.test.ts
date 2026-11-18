@@ -7,6 +7,7 @@ class Media extends EventTarget {
   paused = true;
   ended = false;
   readyState = 1;
+  seeking = false;
   muted = false;
   play = vi.fn(async () => { this.paused = false; });
   pause = vi.fn(() => { this.paused = true; });
@@ -14,6 +15,25 @@ class Media extends EventTarget {
 class Visibility extends EventTarget { hidden = false; }
 
 describe('silent talk video follows the persistent audio owner', () => {
+  it('lets a slow video seek complete before following the advancing audio clock', async () => {
+    const audio = new Media();
+    const video = new Media();
+    audio.paused = false;
+    audio.currentTime = 30;
+    const dispose = attachTalkVideoMirror(audio, video, new Visibility(), vi.fn());
+    video.seeking = true;
+    for (const position of [31, 32, 33]) {
+      audio.currentTime = position;
+      audio.dispatchEvent(new Event('timeupdate'));
+    }
+    expect(video.currentTime).toBe(30);
+    video.seeking = false;
+    video.readyState = 2;
+    video.dispatchEvent(new Event('seeked'));
+    expect(video.currentTime).toBe(33);
+    dispose();
+  });
+
   it.each(['pause', 'hidden'])('recovers from an interrupted pending video play after %s', async (reason) => {
     const audio = new Media();
     const video = new Media();

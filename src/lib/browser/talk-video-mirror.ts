@@ -7,6 +7,7 @@ export interface TalkMediaClock extends EventTarget {
 
 export interface TalkVideoSurface extends TalkMediaClock {
   readyState: number;
+  seeking: boolean;
   muted: boolean;
   play(): Promise<void>;
   pause(): void;
@@ -42,7 +43,8 @@ export function attachTalkVideoMirror(
   };
   const sync = () => {
     if (disposed) return;
-    if (video.readyState >= 1 && Math.abs(video.currentTime - audio.currentTime) > 0.35) {
+    // Đợi lần tua hiện tại hoàn tất để decoder không phải nạp lại liên tục.
+    if (!video.seeking && video.readyState >= 1 && Math.abs(video.currentTime - audio.currentTime) > 0.35) {
       video.currentTime = audio.currentTime;
     }
     video.playbackRate = audio.playbackRate;
@@ -56,12 +58,14 @@ export function attachTalkVideoMirror(
   const events = ['play', 'pause', 'ended', 'seeking', 'seeked', 'timeupdate', 'ratechange'];
   for (const event of events) audio.addEventListener(event, sync);
   video.addEventListener('loadedmetadata', sync);
+  video.addEventListener('seeked', sync);
   visibility.addEventListener('visibilitychange', sync);
   sync();
   return () => {
     disposed = true;
     for (const event of events) audio.removeEventListener(event, sync);
     video.removeEventListener('loadedmetadata', sync);
+    video.removeEventListener('seeked', sync);
     visibility.removeEventListener('visibilitychange', sync);
     video.pause();
   };

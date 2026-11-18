@@ -42,6 +42,8 @@
   import type { ReaderMediaInfo } from '$lib/components/reader/ReaderToolbar.svelte';
   import PdfCanvasReader from '$lib/components/reader/PdfCanvasReader.svelte';
   import ReaderToast from '$lib/components/reader/ReaderToast.svelte';
+  import ContentExperienceNotice from '$lib/components/shared/ContentExperienceNotice.svelte';
+  import { hasContentExperienceNotice } from '$lib/i18n/content-experience-notice';
   import MostViewedArticles from '$lib/components/reader/MostViewedArticles.svelte';
   import ReadingAnnotations from '$lib/components/reader/ReadingAnnotations.svelte';
   import { createReaderTextToSpeech } from '$lib/components/reader/reader-text-to-speech';
@@ -158,6 +160,30 @@
 
   const localeStore = getLocaleContext();
   const t = $derived(localeStore.t);
+  let experienceNoticeVisible = $state(false);
+  let noticeCollapseScroll: { generation: number; top: number } | null = null;
+  const experienceNoticeId = $derived(article?.id ?? null);
+  $effect(() => {
+    const id = experienceNoticeId;
+    noticeCollapseScroll = null;
+    let cancelled = false;
+    const showNotice = Boolean(id && hasContentExperienceNotice(id));
+    experienceNoticeVisible = showNotice;
+    if (!showNotice) return;
+    const timer = setTimeout(async () => {
+      const generation = articleGeneration;
+      const target = scrollArea;
+      const previousTop = target?.scrollTop ?? 0;
+      const pendingScroll = readerScrollTicking;
+      experienceNoticeVisible = false;
+      await tick();
+      if (cancelled || generation !== articleGeneration || article?.id !== id || target !== scrollArea || !target) return;
+      const top = target.scrollTop;
+      // Enlarging the viewport can clamp its scroll position without a reading gesture.
+      if (!pendingScroll && top < previousTop) noticeCollapseScroll = { generation, top };
+    }, 10_000);
+    return () => { cancelled = true; noticeCollapseScroll = null; clearTimeout(timer); };
+  });
 
   function getLocalizedCategory(cat: string | undefined): string {
     if (!cat) return '';
@@ -548,6 +574,12 @@
     readerScrollTicking = true;
     requestAnimationFrame(() => {
       readerScrollTicking = false;
+      const collapseScroll = noticeCollapseScroll;
+      noticeCollapseScroll = null;
+      if (collapseScroll?.generation === articleGeneration && scrollArea?.scrollTop === collapseScroll.top) {
+        zenScrollLastY = collapseScroll.top;
+        return;
+      }
       scheduleTextProgress();
       if(scrollArea){
         const st = scrollArea.scrollTop;
@@ -1273,6 +1305,7 @@
   }
 
   function resetPrivateReadingState():void{
+    noticeCollapseScroll = null;
     quoteTargetId = null;
     quoteNavigationState = 'idle';
     progressWriter.cancel();
@@ -1542,6 +1575,9 @@
         {/if}
       </header>
       {#if !showPdf}<ReaderToolbar scrollElement={scrollArea} mediaInfo={currentReaderMediaInfo} {fontSize} {bold} background={themeStore?.mode === 'auto' ? 'auto' : background} {fontFamily} {lineHeight} {textAlign} {ttsSpeed} {ttsVoice} {bookmarked} {ttsActive} ttsLoading={ttsLoading || preparingSpeech} {autoScrollActive} {autoScrollSpeed} onFont={font} onBold={()=>{bold=!bold;persistSettings()}} onBackground={(value)=>{if(value==='auto'){themeStore?.apply('auto');return;}background=value;if(value==='dark')themeStore?.apply('dark');else if(value==='white'||value==='cream'||value==='gray'||value==='purple')themeStore?.apply('light',value);persistSettings(true)}} onFontFamily={(value)=>{fontFamily=value;persistSettings()}} onLineHeight={(value)=>{lineHeight=value;persistSettings()}} onTextAlign={(value)=>{textAlign=value;persistSettings()}} onTtsSpeed={(value)=>{ttsSpeed=value;ttsController.setRate(value);persistSettings()}} onTtsVoice={(value)=>{ttsVoice=value;ttsController.setVoice(value);persistSettings()}} onBookmark={toggleBookmark} onSpeak={speak} onShare={share} onAutoScroll={autoScroll} onAutoScrollSpeed={changeAutoScrollSpeed} onNotify={notify} onClose={close}/>{/if}
+      {#if experienceNoticeVisible}
+        <ContentExperienceNotice contentId={article.id} />
+      {/if}
       <div class={`reader-scroll bg-${background}`} role="region" aria-label={localeStore.current === 'en' ? 'Reading content' : 'Nội dung bài đọc'} bind:this={scrollArea} onscroll={()=>onReaderScroll()} onwheel={()=>{if(autoScrollActive)stopAutoScroll()}} ontouchstart={()=>{if(autoScrollActive)stopAutoScroll()}}>
         {#if showPdf}
           {#key article.id}
