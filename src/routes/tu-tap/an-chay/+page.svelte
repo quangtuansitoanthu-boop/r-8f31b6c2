@@ -4,7 +4,7 @@
   import { downloadVeganWeek, latestVeganWeek, needsVeganWeekUpdate, readVeganWeek } from '$lib/browser/vegan-week';
   import { modalDialog } from '$lib/browser/modal-dialog';
   import { solarToLunar } from '$lib/components/lunar/lunar-calendar';
-  import { ingredientMeasureHint, matchesVeganRegion, quantityText, recipeStep, shoppingItems, veganMealPlan, ROTATING_VEGAN_VERSION, VEGAN_GROUPS, VEGAN_MEAL_REGIONS, VEGAN_REGIONS, vietnamWeek, weekDate, type OfflineRecipe, type VeganMealRegion, type VeganWeek } from '$lib/contracts/vegan-week';
+  import { ingredientMeasureHint, matchesVeganRegion, quantityText, recipeStep, sameVeganDish, shoppingItems, veganMealPlan, ROTATING_VEGAN_VERSION, VEGAN_GROUPS, VEGAN_MEAL_REGIONS, VEGAN_REGIONS, vietnamWeek, weekDate, type OfflineRecipe, type VeganMealRegion, type VeganWeek } from '$lib/contracts/vegan-week';
   import { veganUi } from '$lib/i18n/vegan-ui';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
 
@@ -115,6 +115,12 @@
     save();
   }
 
+  function showWeek(current: VeganWeek) {
+    menu = current;
+    const open = recipe;
+    if (open) recipe = current.recipes.find(item => sameVeganDish(item, open)) ?? open;
+  }
+
   async function refresh() {
     if (active) return;
     active = true;
@@ -122,13 +128,14 @@
     const next = vietnamWeek(now);
     if (next.today !== calendar.today) day = next.day;
     calendar = next;
-    menu = readVeganWeek(next.current) ?? latestVeganWeek(next.current);
+    const saved = readVeganWeek(next.current) ?? latestVeganWeek(next.current);
+    if (saved) showWeek(saved);
+    else menu = null;
     try {
       if (needsVeganWeekUpdate(next.current, menu?.week === next.current ? menu : null)) {
         const current = await downloadVeganWeek(next.current);
         if (!mounted) return;
-        menu = current;
-        if (recipe) recipe = current.recipes.find(r => r.id === recipe?.id) ?? recipe;
+        showWeek(current);
       }
       reconcileChecks();
       if (mounted) failed = false;
@@ -137,7 +144,13 @@
         await downloadVeganWeek(next.next).catch(() => undefined);
       }
     } catch {
-      if (mounted) failed = true;
+      if (!mounted) return;
+      failed = true;
+      // The saved week remains readable when this week's download is offline.
+      if (menu && menu.week !== next.current && menu.version === ROTATING_VEGAN_VERSION && needsVeganWeekUpdate(menu.week, menu)) {
+        const fallback = await downloadVeganWeek(menu.week).catch(() => null);
+        if (mounted && fallback) showWeek(fallback);
+      }
     } finally {
       active = false;
       if (mounted) {

@@ -1,5 +1,5 @@
 import { fetchPublicMedia } from './public-media-fallback';
-import { isVeganWeek, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_ROTATION_REVISION, VEGAN_PACKAGE_MAX_BYTES, vietnamWeek, type VeganWeek } from '$lib/contracts/vegan-week';
+import { isVeganWeek, sameVeganDish, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_RECIPE_REVISION, VEGAN_ROTATION_REVISION, VEGAN_PACKAGE_MAX_BYTES, vietnamWeek, type VeganWeek } from '$lib/contracts/vegan-week';
 
 const prefix = 'tutam:vegan-week:v1:';
 const bundledRotationWeeks = new Set(['2026-11-09', '2026-11-16', '2026-11-23']);
@@ -9,10 +9,14 @@ function needsBundledRotation(week: string, saved: VeganWeek): boolean {
     && (saved.rotationRevision ?? 0) < VEGAN_ROTATION_REVISION;
 }
 
+function needsRecipeRevision(pack: VeganWeek): boolean {
+  return pack.version === ROTATING_VEGAN_VERSION && (pack.recipeRevision ?? 0) < VEGAN_RECIPE_REVISION;
+}
+
 export function needsVeganWeekUpdate(week: string, saved = readVeganWeek(week)): boolean {
   if (!saved) return true;
   if (week >= REGIONAL_VEGAN_FIRST_WEEK && saved.version !== ROTATING_VEGAN_VERSION) return true;
-  if (needsBundledRotation(week, saved)) return true;
+  if (saved.version === ROTATING_VEGAN_VERSION) return needsRecipeRevision(saved) || needsBundledRotation(week, saved);
   if (saved.recipes?.some(r => r.steps?.some(s => /\{\d+\}/u.test(s)))) {
     return true;
   }
@@ -48,6 +52,49 @@ export function readVeganWeek(week: string): VeganWeek | null {
   }
 }
 
+async function readPack(response: Response, week: string, version: VeganWeek['version']): Promise<VeganWeek> {
+  if (!response.ok) throw new Error('vegan-week-unavailable');
+  const body = await response.text();
+  if (new TextEncoder().encode(body).length > VEGAN_PACKAGE_MAX_BYTES) throw new Error('vegan-week-too-large');
+  const pack: unknown = JSON.parse(body);
+  if (!isVeganWeek(pack, week) || pack.version !== version) throw new Error('vegan-week-invalid');
+  return pack;
+}
+
+async function bundledPack(week: string, version: VeganWeek['version'], signal: AbortSignal): Promise<VeganWeek | null> {
+  if (typeof location === 'undefined') return null;
+  try {
+    const revision = version === ROTATING_VEGAN_VERSION ? '?recipes=' + VEGAN_RECIPE_REVISION : '';
+    const response = await fetch('/vegan/weeks/v' + version + '/' + encodeURIComponent(week) + '.json' + revision, { signal });
+    const pack = await readPack(response, week, version);
+    return needsVeganWeekUpdate(week, pack) ? null : pack;
+  } catch {
+    return null;
+  }
+}
+
+function revisePack(pack: VeganWeek, catalog: VeganWeek): VeganWeek {
+  // The bundled weeks share one catalog. Published schedules and new dish IDs
+  // still belong to the requested week, even when its immutable R2 file is older.
+  let revised = pack;
+  if (needsRecipeRevision(pack)) {
+    const byId = new Map(catalog.recipes.map(recipe => [recipe.id, recipe]));
+    const recipes = pack.recipes.map(recipe => {
+      const correction = byId.get(recipe.id);
+      if (!correction || !sameVeganDish(correction, recipe)) return recipe;
+      const { minutes, ingredients, steps } = correction;
+      return { ...recipe, minutes, ingredients, steps };
+    });
+    revised = { ...pack, recipes, recipeRevision: VEGAN_RECIPE_REVISION };
+  }
+  if (needsBundledRotation(pack.week, pack) && catalog.week === pack.week) {
+    const ids = new Set(pack.recipes.map(recipe => recipe.id));
+    const days = catalog.days.every(day => day.every(id => ids.has(id))) ? catalog.days : pack.days;
+    revised = { ...revised, days, rotationRevision: catalog.rotationRevision };
+  }
+  return revised;
+}
+
 export function downloadVeganWeek(week: string): Promise<VeganWeek> {
   const saved = readVeganWeek(week);
   if (saved && !needsVeganWeekUpdate(week, saved)) return Promise.resolve(saved);
@@ -59,43 +106,31 @@ export function downloadVeganWeek(week: string): Promise<VeganWeek> {
     const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
       const version = week >= REGIONAL_VEGAN_FIRST_WEEK ? ROTATING_VEGAN_VERSION : 1;
-      let data: unknown = null;
-      if (typeof location !== 'undefined') {
-        try {
-          const localRes = await fetch('/vegan/weeks/v' + version + '/' + encodeURIComponent(week) + '.json', {
-            signal: controller.signal,
-          });
-          if (localRes.ok) {
-            const body = await localRes.text();
-            const parsed: unknown = JSON.parse(body);
-            if (isVeganWeek(parsed, week) && parsed.version === version && !needsVeganWeekUpdate(week, parsed as VeganWeek)) {
-              data = parsed;
-            }
-          }
-        } catch {
-          // Fall back to remote media host
-        }
-      }
-
-      // The revision for these weeks is bundled in the app. Keep an older
-      // usable pack if the local file is unavailable without polling the CDN.
-      if (!data && saved && needsBundledRotation(week, saved)) return saved;
+      const hasLocalFile = version !== ROTATING_VEGAN_VERSION || bundledRotationWeeks.has(week);
+      const local = hasLocalFile ? await bundledPack(week, version, controller.signal) : null;
+      let data = saved?.version === ROTATING_VEGAN_VERSION ? saved : local;
       if (!data) {
         const response = await fetchPublicMedia('https://media.quangtu.vn/vegan/weeks/v' + version + '/' + encodeURIComponent(week) + '.json', {
           credentials: 'omit',
           cache: 'no-store',
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error('vegan-week-unavailable');
-        const body = await response.text();
-        if (new TextEncoder().encode(body).length > VEGAN_PACKAGE_MAX_BYTES) throw new Error('vegan-week-too-large');
-        const parsed: unknown = JSON.parse(body);
-        if (!isVeganWeek(parsed, week) || parsed.version !== version) throw new Error('vegan-week-invalid');
-        data = parsed;
+        data = await readPack(response, week, version);
       }
-      pruneVeganWeeks(week);
-      localStorage.setItem(prefix + week, JSON.stringify(data));
-      return data as VeganWeek;
+      if (data.version === ROTATING_VEGAN_VERSION && needsVeganWeekUpdate(week, data)) {
+        const catalog = hasLocalFile ? local : await bundledPack(REGIONAL_VEGAN_FIRST_WEEK, version, controller.signal);
+        if (catalog) data = revisePack(data, catalog);
+      }
+      if (data === saved) return data;
+      try {
+        if (!saved) pruneVeganWeeks(week);
+        localStorage.setItem(prefix + week, JSON.stringify(data));
+        if (saved) pruneVeganWeeks(week);
+      } catch {
+        // A larger revision can exceed the storage quota. The old entry stays
+        // readable and the validated revision is available to this view.
+      }
+      return data;
     } finally {
       clearTimeout(timeout);
     }

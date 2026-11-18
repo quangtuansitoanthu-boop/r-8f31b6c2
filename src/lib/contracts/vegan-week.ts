@@ -13,6 +13,7 @@ export const VEGAN_PACKAGE_MAX_BYTES = 512 * 1024;
 export const REGIONAL_VEGAN_FIRST_WEEK = '2026-11-09';
 export const ROTATING_VEGAN_VERSION = 5;
 export const VEGAN_ROTATION_REVISION = 1;
+export const VEGAN_RECIPE_REVISION = 1;
 
 export interface RecipeIngredient {
   name: string;
@@ -32,6 +33,10 @@ export interface OfflineRecipe {
   steps: string[];
 }
 
+export function sameVeganDish(a: OfflineRecipe, b: OfflineRecipe): boolean {
+  return a.id === b.id && a.name === b.name && a.group === b.group && a.servings === b.servings;
+}
+
 export interface VeganWeek {
   version: 1 | 2 | typeof ROTATING_VEGAN_VERSION;
   week: string;
@@ -39,6 +44,7 @@ export interface VeganWeek {
   days: string[][];
   metric?: true;
   rotationRevision?: number;
+  recipeRevision?: number;
   measured?: OfflineRecipe[][][];
 }
 
@@ -107,6 +113,8 @@ export function isVeganWeek(value: unknown, week: string): value is VeganWeek {
   if (rotating && value.metric !== true) return false;
   if (value.rotationRevision !== undefined && (!rotating || typeof value.rotationRevision !== 'number'
     || !Number.isInteger(value.rotationRevision) || value.rotationRevision < 1)) return false;
+  if (value.recipeRevision !== undefined && (!rotating || typeof value.recipeRevision !== 'number'
+    || !Number.isInteger(value.recipeRevision) || value.recipeRevision < 1)) return false;
   if (value.metric !== undefined && (value.metric !== true || value.version === 1
     || value.recipes.some(item => item.ingredients.some(i => i.quantity === null || (i.unit !== 'g' && i.unit !== 'ml'))))) return false;
   if (value.measured !== undefined && (value.version !== 2 || !hasMeasuredVeganWeek(week)
@@ -227,8 +235,6 @@ export function rotatingVeganDays(catalog: OfflineRecipe[], week: string, region
     breakfast[day] = weekendDishes[idx * 2];
     breakfastSecond[day] = weekendDishes[idx * 2 + 1];
   });
-  const lunch = take(['noodles']);
-  const dinner = take(['rice']);
   const breakfastSideRaw = take(['steamed']);
   breakfastSideRaw.sort(byPreparationTime);
   const breakfastSide = Array<OfflineRecipe>(cycleDays);
@@ -240,6 +246,24 @@ export function rotatingVeganDays(catalog: OfflineRecipe[], week: string, region
   weekendIndices.forEach((day, idx) => {
     breakfastSide[day] = weekendBreakfastSides[idx];
   });
+  // Scratch-made bánh and giò can take over an hour. Offer quick noodle
+  // and rice dishes in their place on weekdays, keeping every dish in the cycle.
+  for (const day of weekdayIndices) {
+    const slots = [breakfast, breakfastSecond, breakfastSide].sort((a, b) => a[day].minutes - b[day].minutes);
+    for (const [index, slot] of slots.entries()) {
+      const limit = index < 2 ? quickBreakfastMinutes : 45;
+      if (slot[day].minutes <= limit) continue;
+      const candidates = pool.filter(item => (item.group === 'noodles' || item.group === 'rice') && item.minutes <= limit);
+      // Keep the fastest substitutes for days that still need a 20-minute option.
+      const replacement = candidates.sort(byPreparationTime).at(-1);
+      if (replacement) {
+        pool[pool.indexOf(replacement)] = slot[day];
+        slot[day] = replacement;
+      }
+    }
+  }
+  const lunch = take(['noodles']);
+  const dinner = take(['rice']);
   const lunchSide = take(['sides'], isDessert);
   const dinnerSide = take(['sides', 'steamed'], isDessert);
   const lunchSecond = take(['rice', 'noodles']);
