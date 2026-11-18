@@ -170,6 +170,18 @@ describe('talk catalog session visibility', () => {
     await saveCachedTalkAlbums([rows[0], { ...rows[0], id: 'bundle-addition' }], scope);
     expect(localStorage.getItem('quangtu_cached_talk_catalog_v1')).toContain('private-talk');
   });
+
+  it('adds Báo Ứng Hiện Đời from the updated native bundle when the previous catalog is cached', async () => {
+    adminCatalogSession().set(GUEST_SESSION);
+    const scope = captureTalkCatalogScope(null, 'guest');
+    await saveCachedTalkAlbums([rows[0]], scope);
+    vi.stubGlobal('Capacitor', { isNativePlatform: () => true, getPlatform: () => 'android' });
+    const offlineFetcher = vi.fn(async () => { throw new Error('offline'); });
+    const albums = await fetchTalkAlbums(offlineFetcher as typeof fetch);
+    expect(albums.find(album => album.id === 'pt_bao_ung_hien_doi')?.tracks).toHaveLength(106);
+    expect(albums.some(album => album.id === rows[0].id)).toBe(true);
+    expect(offlineFetcher).not.toHaveBeenCalled();
+  });
 });
 
 describe('client content catalogs', () => {

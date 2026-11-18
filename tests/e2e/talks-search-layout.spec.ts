@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test';
 
+test('a Pháp thoại search link can be cleared and searched again', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tutam_locale', 'vi'));
+  await page.route(/\/api\/talks(?:\?|$)/u, route => route.fulfill({ json: [
+    { id: 'qa-nhan-qua', tieu_de: 'Chuyện nhân quả', visibility: 'public', tracks: [{ title: 'Lời mở đầu', url: '/assets/audio/tieng-mo.m4a' }] },
+    { id: 'qa-tinh-do', tieu_de: 'Tịnh độ', visibility: 'public', tracks: [{ title: 'Bản nguyện A Di Đà', url: '/assets/audio/tieng-mo.m4a' }] },
+  ] }));
+  await page.goto('/phap-thoai?q=nhan%20qua');
+
+  const search = page.getByRole('searchbox');
+  const cards = page.locator('.pt-card-title');
+  await expect(search).toHaveValue('nhan qua');
+  await expect(cards).toHaveText(['Chuyện nhân quả']);
+
+  await page.getByRole('button', { name: 'Xóa tìm kiếm', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(cards).toHaveCount(2);
+  await search.fill('A Di Đà');
+  await expect(cards).toHaveText(['Tịnh độ']);
+  await search.fill('a di da');
+  await expect(cards).toHaveText(['Tịnh độ']);
+});
+
 for (const width of [360, 390, 768]) {
   for (const locale of ['vi', 'en']) {
     test(`talk search has its own row and no header gap: ${width}px ${locale}`, async ({ page }, testInfo) => {

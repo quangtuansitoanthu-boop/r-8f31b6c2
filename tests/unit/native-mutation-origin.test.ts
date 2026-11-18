@@ -27,6 +27,23 @@ it.each(['/api/notifications/read-state', '/api/practice/sessions', '/api/practi
 });
 
 describe('native community mutation transport', () => {
+  it.each([
+    ['POST', '/api/practice/mindful-posts'],
+    ['POST', '/api/practice/mindful-posts/post-id/reactions'],
+    ['DELETE', '/api/practice/mindful-posts/post-id'],
+  ])('uses the signed-in backend origin for %s %s', async (method, path) => {
+    for (const origin of ['https://quangtu-web.quangtu-ansitoanthu.workers.dev', 'https://quangtu.vn']) {
+      vi.stubGlobal('localStorage', { getItem: () => origin });
+      await fetchNativeJsonMutation(path, {
+        method, headers: { 'x-csrf-token': 'server-token', 'content-type': 'application/json' },
+        ...(method === 'POST' ? { body: '{"content":"fixture"}' } : {}),
+      });
+      expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
+        url: origin + path, headers: expect.objectContaining({ origin, 'x-csrf-token': 'server-token' }),
+      }));
+    }
+  });
+
   it('never sends a write when the caller already cancelled it', async () => {
     const controller = new AbortController();
     controller.abort();

@@ -18,6 +18,36 @@ beforeAll(async () => {
 });
 
 describe('Google Drive talk scan', () => {
+  it.each(['mp4', 'm4v'])('preserves a registered %s video catalog during previews and repeated audio scans', async (extension) => {
+    const folderId = `registered-video-folder-${extension}`;
+    const albumId = `registered-video-album-${extension}`;
+    const fileId = `registered-video-file-${extension}`;
+    const tracks = JSON.stringify([{ title: 'Phẩm 1', url: `/api/audio/drive/${fileId}`, media_type: 'video', aspect_ratio: '16:9' }]);
+    await env.DB.prepare(`INSERT INTO phap_thoai (id, tieu_de, dien_gia, tracks, visibility)
+      VALUES (?, 'KINH ĐỊA TẠNG', 'Vũ Tiến Dũng', ?, 'public')`).bind(albumId, tracks).run();
+    await env.DB.prepare(`INSERT INTO phap_thoai_drive_sources
+      (drive_folder_id, album_id, drive_root_folder_id, folder_name, fingerprint, last_scanned_at)
+      VALUES (?, ?, ?, 'KINH ĐỊA TẠNG', 'manual-video-fingerprint', '2026-11-18T00:00:00Z')`)
+      .bind(folderId, albumId, ROOT_ID).run();
+    await env.DB.prepare(`INSERT INTO phap_thoai_drive_files
+      (drive_file_id, drive_folder_id, album_id, file_name, mime_type, byte_size, sort_order)
+      VALUES (?, ?, ?, ?, 'video/mp4', 1234, 0)`)
+      .bind(fileId, folderId, albumId, `01-pham-01.${extension}`).run();
+    const video = driveFile(fileId, `01-pham-01.${extension}`, '2026-11-18T00:00:00Z', 'video/mp4');
+    const drive = createDriveMock({ folders: [{ id: folderId, name: 'Tên thư mục mới - Tác giả khác' }], files: { [folderId]: [video] } });
+    const workerEnv = { ...env, GOOGLE_DRIVE_ROOT_FOLDER_ID: ROOT_ID };
+    for (const dryRun of [true, false, false]) {
+      const result = await scanGoogleDriveTalks(scanRequest(dryRun), workerEnv, { accessToken: 'test-token', fetchImpl: drive.fetch });
+      expect(result.counts).toEqual({ created: 0, updated: 0, skipped: 1, error: 0 });
+      expect(result.folders[0]).toMatchObject({ albumId, status: 'skipped', reason: 'video_catalog_managed', trackCount: 1 });
+      expect(await env.DB.prepare('SELECT tieu_de, dien_gia, tracks FROM phap_thoai WHERE id = ?').bind(albumId).first())
+        .toEqual({ tieu_de: 'KINH ĐỊA TẠNG', dien_gia: 'Vũ Tiến Dũng', tracks });
+      expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM phap_thoai_drive_files WHERE album_id = ?').bind(albumId).first())
+        .toEqual({ count: 1 });
+      drive.files[folderId] = [video, driveFile('new-audio-file-123', '02-audio.mp3')];
+    }
+  });
+
   it.each([
     ['Tên album - Tên tác giả', 'Tên tác giả'],
     ['Tên - album – Thầy A', 'Thầy A'],

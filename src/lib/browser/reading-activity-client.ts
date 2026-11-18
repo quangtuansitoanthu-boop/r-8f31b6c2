@@ -805,7 +805,7 @@ export function createReadingActivityClient(
       return null;
     },
 
-    async flush(): Promise<number> {
+    async flush({ retryRebasedProgress = false } = {}): Promise<number> {
       if (!session.authenticated || !session.user?.id || !session.csrfToken) return 0;
       const requestedGeneration = generation;
       // Đọc lại outbox sau ACK thay vì gửi trùng mutation của lượt đang chạy.
@@ -891,6 +891,8 @@ export function createReadingActivityClient(
                     epoch: rebased.payload.epoch,
                     revision: rebased.payload.baseRevision,
                   }, capturedPrincipal);
+                  // Try a known revision conflict once within the bounded drain.
+                  if (retryRebasedProgress && rebased.kind === 'progress' && !queued?.predecessor) continue;
                 }
               }
               break;

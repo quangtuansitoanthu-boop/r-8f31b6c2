@@ -100,6 +100,50 @@ it('does not recommend downloading an album already saved offline', async () => 
   expect(document.querySelector('.album-offline-notice')).toBeNull();
 });
 
+const dreamStoryAlbumIds = [
+  'pt_drive_69bc37dd604011a70e5c4e38337865a8',
+  'pt_drive_c435791b562e6f6e9d345b414df4a273',
+  'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4',
+];
+const dreamStoryNotice = 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ';
+
+it.each(dreamStoryAlbumIds)('shows the exact story notice for ten seconds, including downloaded album %s', async id => {
+  vi.useFakeTimers();
+  mocks.albums.set(id, { id });
+  component = mount(Harness, { target: document.body });
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice')).toBeNull();
+  const requestsBefore = vi.mocked(fetch).mock.calls.length;
+  component.showAlbum(id);
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice p')?.textContent).toBe(dreamStoryNotice);
+  await vi.advanceTimersByTimeAsync(9999); flushSync();
+  expect(document.querySelector('.album-story-notice')).not.toBeNull();
+  await vi.advanceTimersByTimeAsync(1); flushSync();
+  expect(document.querySelector('.album-story-notice')).toBeNull();
+  expect(vi.mocked(fetch).mock.calls.length).toBe(requestsBefore);
+  (document.querySelector('.pt-as-back') as HTMLButtonElement).click(); flushSync();
+  (document.querySelectorAll('.pt-card-thumb')[1] as HTMLElement).click();
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice p')?.textContent).toBe(dreamStoryNotice);
+});
+
+it('cancels the previous story notice timeout when switching albums and excludes unrelated albums', async () => {
+  vi.useFakeTimers();
+  component = mount(Harness, { target: document.body });
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  component.showAlbum(dreamStoryAlbumIds[0]);
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  await vi.advanceTimersByTimeAsync(9000); flushSync();
+  component.showAlbum(dreamStoryAlbumIds[1]);
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  await vi.advanceTimersByTimeAsync(1000); flushSync();
+  expect(document.querySelector('.album-story-notice')).not.toBeNull();
+  component.showAdditionalAlbum();
+  await vi.advanceTimersByTimeAsync(0); flushSync();
+  expect(document.querySelector('.album-story-notice')).toBeNull();
+});
+
 it.each([false, true])('keeps offline recommendation correct when filtering reveals an album (saved: %s)', async saved => {
   if (saved) mocks.albums.set('new-album', { id: 'new-album' });
   component = mount(Harness, { target: document.body });

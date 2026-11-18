@@ -5,31 +5,106 @@ test.afterEach(async ({ page }, info) => {
   if (info.title.startsWith('bowing principal settlement')) await page.unrouteAll({ behavior: 'ignoreErrors' });
 });
 
-test('personal routine starts bowing with controls and portrait in separate rows', async ({ page }) => {
+test('personal routine saves and starts bowing with the standalone fullscreen layout', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 844 });
   await page.addInitScript(() => localStorage.setItem('tutam_locale', 'vi'));
   await page.route('**/api/**', route => route.fulfill({ json: new URL(route.request().url()).pathname === '/api/session' ? { authenticated: false, user: null, csrfToken: null, expiresAt: null } : [] }));
   await page.goto('/tu-tap');
   await page.waitForSelector('[data-mounted="1"]');
   await page.getByRole('button', { name: 'Thời khóa tu tập', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Thời khóa tu tập', exact: true });
-  await expect(dialog.getByText('Buổi tối', { exact: true })).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Tạo thời khóa mới', exact: true }).click();
+  const list = page.getByRole('region', { name: 'Thời khóa tu tập', exact: true });
+  await expect(list.getByText('Buổi tối', { exact: true })).toHaveCount(0);
+  await list.getByRole('button', { name: 'Tạo thời khóa mới', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tạo thời khóa mới', exact: true });
   await expect(dialog.locator('.step-card')).toHaveCount(0);
   await dialog.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Thêm bước', exact: true }).getByRole('button', { name: 'Lễ Phật', exact: true }).click();
-  await expect(dialog.locator('.step-card')).toHaveCount(1);
-  await dialog.getByRole('button', { name: 'Bắt đầu thời khóa', exact: true }).click();
+  const steps = page.getByRole('dialog', { name: 'Thêm bước', exact: true });
+  await expect(steps.getByRole('button', { name: 'Lần tràng hạt', exact: true })).toBeVisible();
+  await steps.getByRole('button', { name: 'Lễ Phật & Sám Hối', exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
+  await steps.getByRole('button', { name: 'Thiền định', exact: true }).click();
+  await expect(dialog.locator('.step-card')).toHaveCount(2);
+  await dialog.getByRole('textbox', { name: 'Tên thời khóa' }).fill('Kiểm tra Lễ Phật');
+  await dialog.getByRole('button', { name: 'Lưu thời khóa', exact: true }).click();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu thời khóa trên thiết bị.');
+  await expect(page).toHaveURL(/action=thoi-khoa/u);
+  await page.reload();
+  await expect(list).toBeVisible();
+  const editButton = list.getByRole('button', { name: 'Sửa Kiểm tra Lễ Phật', exact: true });
+  await editButton.click();
+  const edit = page.getByRole('dialog', { name: 'Sửa thời khoá' });
+  await edit.getByRole('textbox', { name: 'Tên thời khóa' }).fill('Bản nháp chưa lưu');
+  await edit.locator('summary').first().click();
+  await page.setViewportSize({ width: 375, height: 360 });
+  const footer = edit.locator('footer');
+  const initialFooter = await footer.boundingBox();
+  expect(initialFooter).not.toBeNull();
+  expect(initialFooter!.y + initialFooter!.height).toBeLessThanOrEqual(360);
+  const scrollTop = await edit.locator('.routine-dialog-body').evaluate(body => {
+    body.scrollTop = body.scrollHeight;
+    return body.scrollTop;
+  });
+  expect(scrollTop).toBeGreaterThan(0);
+  expect(await footer.boundingBox()).toEqual(initialFooter);
+  await edit.getByRole('button', { name: 'Hủy', exact: true }).click();
+  await expect(editButton).toBeFocused();
+  await expect(list.getByText('Bản nháp chưa lưu')).toHaveCount(0);
+  await page.setViewportSize({ width: 375, height: 844 });
+  await editButton.click();
+  await expect(edit.getByRole('textbox', { name: 'Tên thời khóa' })).toHaveValue('Kiểm tra Lễ Phật');
+  await edit.getByRole('textbox', { name: 'Tên thời khóa' }).fill('Lễ Phật buổi sáng');
+  await edit.getByRole('button', { name: 'Lưu thời khóa', exact: true }).click();
+  await expect(edit).toHaveCount(0);
+  await list.getByRole('button', { name: 'Bắt đầu Lễ Phật buổi sáng', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Bắt đầu thời khoá tu tập?' }).getByRole('button', { name: 'Bắt đầu', exact: true }).click();
   const portrait = page.locator('.lp-fullscreen-img');
   await expect(portrait).toBeVisible();
   for (const viewport of [{ width: 375, height: 844 }, { width: 1100, height: 800 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
     const picture = (await portrait.boundingBox())!;
-    const banner = (await page.locator('.lp-routine-controls').boundingBox())!;
-    expect(picture.height).toBeGreaterThan(0);
-    expect(picture.y).toBeGreaterThanOrEqual(banner.y + banner.height - 1);
-    await expect(portrait).toHaveCSS('object-fit', 'contain');
+    expect(picture.width).toBeCloseTo(viewport.width, 0);
+    expect(picture.height).toBeCloseTo(viewport.height, 0);
+    expect(picture.y).toBeCloseTo(0, 0);
+    await expect(portrait).toHaveCSS('object-fit', viewport.width > viewport.height ? 'contain' : 'cover');
+    await expect(page.locator('.lp-fullscreen-screen .routine-session')).toHaveCount(0);
   }
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.locator('.lp-fullscreen-counter').click();
+  await expect(page.locator('.lp-fullscreen-counter')).toContainText('1 lạy');
+  await page.getByRole('button', { name: 'Quay về màn hình chuẩn bị', exact: true }).click();
+  await expect(page.locator('.lp .routine-session').getByText('Lễ Phật buổi sáng', { exact: true })).toBeVisible();
+  await page.locator('.lp__action-btn--start').click();
+  await expect(page.locator('.lp-fullscreen-counter')).toContainText('1 lạy');
+});
+
+test('personal routine can save a dedication added before its bundled template finishes loading', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tutam_locale', 'vi'));
+  await page.route('**/api/**', route => route.fulfill({ status: 503 }));
+  let releaseTemplate!: () => void;
+  const templateGate = new Promise<void>(resolve => { releaseTemplate = resolve; });
+  await page.route('**/offline-data/chapters/tt_1781274943336.json', async route => {
+    await templateGate;
+    await route.continue();
+  });
+  await page.goto('/tu-tap');
+  await page.waitForSelector('[data-mounted="1"]');
+  await page.getByRole('button', { name: 'Thời khóa tu tập', exact: true }).click();
+  const list = page.getByRole('region', { name: 'Thời khóa tu tập', exact: true });
+  await list.getByRole('button', { name: 'Tạo thời khóa mới', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tạo thời khóa mới', exact: true });
+  await dialog.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Thêm bước' }).getByRole('button', { name: 'HỒI HƯỚNG', exact: true }).click();
+  releaseTemplate();
+  await expect(dialog.locator('.step-card')).toHaveCount(1);
+  await dialog.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Thêm bước' }).getByRole('button', { name: 'Thiền định', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Lưu thời khóa', exact: true }).click();
+  await expect(list.getByRole('status')).toHaveText('Đã lưu thời khóa trên thiết bị.');
+  await list.getByRole('button', { name: 'Sửa Thời khoá sáng', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Sửa thời khoá' });
+  await edit.locator('.step-card summary').filter({ hasText: 'HỒI HƯỚNG' }).click();
+  const text = await edit.getByRole('textbox', { name: 'Lời hồi hướng riêng' }).inputValue();
+  expect(text).toContain('HỒI HƯỚNG');
 });
 
 test('Back from standalone bowing retains the count when local saving fails and allows one successful retry', async ({ page }) => {

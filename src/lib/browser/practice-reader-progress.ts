@@ -3,6 +3,7 @@ import { fetchNativeJsonMutation } from './native-api';
 import { LEGACY_LOCAL_STORAGE_KEYS } from './storage-contract';
 import { findReaderBookmark, parseReaderBookmark, type ReaderBookmark, type ReaderBookmarkInput } from './reader-bookmarks';
 import { createPrincipalStorage } from './principal-storage';
+import { createReaderProgressSync } from './reader-progress-sync';
 import {
   createReadingActivityClient,
   createThrottledReadingProgressWriter,
@@ -51,6 +52,7 @@ export function createPracticeReaderProgressClient(
   let flushing: Promise<number> | null = null;
   let flushRequested = false;
   const requestFlush = (): Promise<number> => {
+    if (globalThis.navigator?.onLine === false) return Promise.resolve(0);
     flushRequested = true;
     if (flushing) return flushing;
     const capturedClient = client;
@@ -59,7 +61,7 @@ export function createPracticeReaderProgressClient(
       let applied = 0;
       while (flushRequested && capturedGeneration === generation) {
         flushRequested = false;
-        applied += await capturedClient.flush();
+        applied += await capturedClient.flush({ retryRebasedProgress: true });
       }
       return applied;
     })();
@@ -99,10 +101,11 @@ export function createPracticeReaderProgressClient(
       scoped.setItem(LEGACY_LOCAL_STORAGE_KEYS.bookmarks, JSON.stringify(remaining));
     }
   };
+  const progressSync = createReaderProgressSync();
   const writer = createThrottledReadingProgressWriter((draft) => {
     try {
       save(draft);
-      void requestFlush().catch(() => undefined);
+      progressSync.schedule(() => { void requestFlush().catch(() => undefined); });
     } catch (cause) { onError(cause); }
   });
 
@@ -112,7 +115,14 @@ export function createPracticeReaderProgressClient(
       const capturedClient = client;
       let progress = client.cachedProgress().find((row) => (row.contentKind === 'practice' || row.contentKind === 'book' || row.contentKind === 'article') && row.contentId === articleId) ?? null;
       try {
-        if (!progress) progress = await capturedClient.getProgress('practice', articleId);
+        let checkedPractice = false;
+        if (progress?.contentKind === 'practice' && globalThis.navigator?.onLine !== false
+          && !capturedClient.pending().some(({ id }) => id === `progress:practice:${articleId}`)) {
+          checkedPractice = true;
+          progress = await capturedClient.getProgress('practice', articleId);
+        }
+        if (capturedGeneration !== generation) return null;
+        if (!progress && !checkedPractice) progress = await capturedClient.getProgress('practice', articleId);
         if (!progress) progress = await capturedClient.getProgress('book', articleId);
         if (!progress) progress = await capturedClient.getProgress('article', articleId);
       } catch {
@@ -150,12 +160,14 @@ export function createPracticeReaderProgressClient(
     },
     async flush(): Promise<number> {
       writer.flush();
+      progressSync.cancel();
       return requestFlush();
     },
     setSession(next: ReadingActivitySession): void {
       const nextPrincipalId = next.authenticated ? next.user?.id ?? null : null;
       if (nextPrincipalId !== principalId()) {
         writer.cancel();
+        progressSync.cancel();
         generation += 1;
         reads.abort();
         reads = new AbortController();
@@ -169,6 +181,7 @@ export function createPracticeReaderProgressClient(
     },
     destroy(): void {
       writer.cancel();
+      progressSync.cancel();
       generation += 1;
       reads.abort();
       client.setSession(guest);

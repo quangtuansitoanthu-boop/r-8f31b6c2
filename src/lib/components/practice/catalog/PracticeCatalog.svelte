@@ -4,6 +4,7 @@
   import { getPracticeEntryCopy } from '$lib/i18n/practice-entry-cards';
   import { createInterfaceTranslator } from '$lib/i18n/interface';
   import { createInterfaceTranslator as createCopyingTranslator } from '$lib/i18n/copying-interface';
+  import { createRoutineActivityTranslator } from '$lib/i18n/routine-activity-copy';
   const localizeCopying = createCopyingTranslator();
 
   import { getPreceptPracticeCopy } from '$lib/i18n/precept-practice-ui';
@@ -24,11 +25,13 @@
   import { normalizeCoverSrc } from '$lib/domain/cover-url';
   import { sessionCover } from '$lib/browser/session-cover';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
+  import { veganUi } from '$lib/i18n/vegan-ui';
   import PracticeCatalogSkeleton from './PracticeCatalogSkeleton.svelte';
   import { NAME_COPYING_COPY } from '$lib/domain/practice/name-copying-copy';
 
   const localeStore = getLocaleContext();
   const localizeUi = createInterfaceTranslator();
+  const activityName = createRoutineActivityTranslator();
   const t = $derived(localeStore.t);
   const isEn = $derived(localeStore.current === 'en');
   const entryCopy = $derived(getPracticeEntryCopy(isEn));
@@ -299,7 +302,7 @@
         <a href="/tu-tap/an-chay" class="tt-mode-card tt-mode-card--vegan" data-sveltekit-preload-data="off">
           <div class="tt-mode-icon-wrap" aria-hidden="true"><Leaf size={24} /></div>
           <div class="tt-mode-body">
-            <span class="tt-mode-title">{localizeUi("Ăn Chay Thanh Tịnh")}</span>
+            <span class="tt-mode-title">{veganUi[isEn ? 'en' : 'vi'].title}</span>
             <span class="tt-mode-desc">{localizeUi("Thực đơn và danh sách đi chợ")}</span>
           </div>
           <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -350,7 +353,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--thien" onclick={onMeditationOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="meditation" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Thiền định")}</span>
+                <span class="tt-mode-title">{activityName('meditation')}</span>
                 <span class="tt-mode-desc">{localizeUi("Hẹn giờ chuông tĩnh tâm, quán niệm hơi thở")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -360,7 +363,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--chuoi" onclick={onRosaryOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="rosary" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Lần tràng hạt")}</span>
+                <span class="tt-mode-title">{activityName('rosary')}</span>
                 <span class="tt-mode-desc">{localizeUi("Chuỗi hạt niệm Phật & trì niệm có âm thanh")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -370,7 +373,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--le-phat" onclick={onLePhatOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="bowing" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Lễ Phật & Sám Hối")}</span>
+                <span class="tt-mode-title">{activityName('prostration')}</span>
                 <span class="tt-mode-desc">{localizeUi("Chiêm bái tôn tượng chư Phật, đếm lạy trang nghiêm")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -388,7 +391,7 @@
             <a href="/tu-tap/chep-kinh" class="tt-mode-card tt-mode-card--copying" style="text-decoration: none;">
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="scripture-copying" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Chép kinh")}</span>
+                <span class="tt-mode-title">{activityName('scripture-copying')}</span>
                 <span class="tt-mode-desc">{localizeUi("Tự tay chép lời kinh, rà soát và lưu bản chép")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -398,7 +401,7 @@
             <a href="/tu-tap/chep-danh-hieu" class="tt-mode-card tt-mode-card--name-copying" style="text-decoration: none;">
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="name-copying" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeCopying(NAME_COPYING_COPY.title)}</span>
+                <span class="tt-mode-title">{activityName('name-copying')}</span>
                 <span class="tt-mode-desc">{localizeCopying(NAME_COPYING_COPY.description)}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -416,7 +419,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--precepts" onclick={onPreceptsOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="precepts" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{preceptCopy.catalogTitle}</span>
+                <span class="tt-mode-title">{activityName('precepts')}</span>
                 <span class="tt-mode-desc">{preceptCopy.dailyIntro}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -426,7 +429,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--precepts tt-mode-card--eight-precepts" onclick={onEightPreceptsOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="eight-precepts" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{preceptCopy.catalogEight}</span>
+                <span class="tt-mode-title">{activityName('eight-precepts')}</span>
                 <span class="tt-mode-desc">{preceptCopy.eightDescription}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -437,7 +440,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--thanh-tinh" onclick={onThanhTinhOpen}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="abstinence" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{preceptCopy.abstinenceTitle}</span>
+                <span class="tt-mode-title">{activityName('abstinence')}</span>
                 <span class="tt-mode-desc">{preceptCopy.abstinenceDescription}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -455,7 +458,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--kinh" onclick={() => handleSectionClick('KINH PHẬT')}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="recitation" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Tụng, đọc kinh")}</span>
+                <span class="tt-mode-title">{activityName('sutra')}</span>
                 <span class="tt-mode-desc">{localizeUi("Kinh Địa Tạng, Kim Cang, Pháp Hoa, Lăng Nghiêm…")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -465,7 +468,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--tri-chu" onclick={() => handleSectionClick('TRÌ CHÚ')}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="chanting" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Trì chú")}</span>
+                <span class="tt-mode-title">{activityName('mantra')}</span>
                 <span class="tt-mode-desc">{localizeUi("Chú Lăng Nghiêm, Chú Đại Bi, các chân ngôn…")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>
@@ -475,7 +478,7 @@
             <button type="button" class="tt-mode-card tt-mode-card--nghi-thuc" onclick={() => handleSectionClick('NGHI THỨC KHÁC')}>
               <div class="tt-mode-icon-wrap" aria-hidden="true"><AppArtwork name="ritual" size={48} /></div>
               <div class="tt-mode-body">
-                <span class="tt-mode-title">{localizeUi("Nghi thức khác")}</span>
+                <span class="tt-mode-title">{activityName('ritual')}</span>
                 <span class="tt-mode-desc">{localizeUi("Sám hối, phóng sinh, cúng ngọ, phát nguyện…")}</span>
               </div>
               <span class="tt-mode-arrow" aria-hidden="true">→</span>

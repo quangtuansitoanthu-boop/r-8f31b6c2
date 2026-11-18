@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('$app/environment', () => ({ browser: true }));
-import { extractDedicationText, loadPracticeDedicationTemplates } from '$lib/browser/practice-dedication-templates';
+import { extractDedicationText, loadPracticeDedicationTemplates, loadRoutineRepentanceText } from '$lib/browser/practice-dedication-templates';
 
 describe('bundled dedication templates', () => {
   it('starts the converted closing at its logical heading despite split formatting runs', () => {
@@ -44,5 +44,18 @@ describe('bundled dedication templates', () => {
   });
   it('rejects a missing source section instead of inventing dedication text', () => {
     expect(() => extractDedicationText('Nội dung không có phần hồi hướng')).toThrow('dedication_section_missing');
+  });
+  it('keeps the original vow before the full repentance section from Kinh Địa Tạng', async () => {
+    const fetcher = vi.fn(async (url: string) => new Response(readFileSync(`static${url}`, 'utf8')));
+    const text = await loadRoutineRepentanceText(fetcher as typeof fetch);
+    const source = JSON.parse(readFileSync('static/offline-data/chapters/tt_1780910773084.json', 'utf8'));
+    const container = document.createElement('div');
+    container.innerHTML = source.find((item: { id: string }) => item.id === '13617').noi_dung;
+    const paragraphs = [...container.querySelectorAll('.book-paragraph')].map(node => node.textContent.trim());
+    const start = paragraphs.indexOf('LỜI NGUYỆN TRƯỚC KHI TỤNG KINH');
+    const end = paragraphs.indexOf('BÀI TÁN', start);
+    expect(text.split('\n\n')).toEqual(paragraphs.slice(start, end).filter(Boolean));
+    expect(text).toContain('SÁM OAN GIA TRÁI CHỦ');
+    expect(fetcher).toHaveBeenCalledOnce();
   });
 });

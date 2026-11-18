@@ -1,4 +1,4 @@
-import type { CloudflareEnvLike, D1PreparedStatement, D1ResultRow } from '../cloudflare-context';
+import type { CloudflareEnvLike, D1DatabaseLike, D1PreparedStatement, D1ResultRow } from '../cloudflare-context';
 import type { CompletedPracticeLog } from '../../domain/practice/completed-logs';
 import { normalizePracticeLogs } from '../../domain/practice/logs';
 
@@ -50,7 +50,33 @@ export interface PracticeCampaignRow extends D1ResultRow {
   joined?: number;
 }
 
+const CAMPAIGN_TOTALS_TTL_MS = 30_000;
+const MAX_CACHED_CAMPAIGNS = 128;
+type CampaignTotals = Pick<PracticeCampaignRow, 'member_count' | 'contribution_value'>;
+const campaignTotals = new WeakMap<D1DatabaseLike, { expiresAt: number; totals?: Map<string, CampaignTotals> }>();
+
 export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
+  const invalidateCampaignTotals = () => campaignTotals.delete(env.DB);
+  function queryCampaigns(includeDrafts: boolean, now: string, ownerId: string | null, readTotals: boolean) {
+    return env.DB.prepare(`
+      SELECT campaigns.id, campaigns.title, campaigns.description, campaigns.metric, campaigns.goal_value,
+        campaigns.starts_at, campaigns.ends_at, campaigns.status, campaigns.created_by,
+        campaigns.created_at, campaigns.updated_at,
+        ${readTotals ? `(SELECT COUNT(*) FROM practice_campaign_members members
+          WHERE members.campaign_id = campaigns.id AND members.left_at IS NULL) AS member_count,
+        (SELECT COALESCE(SUM(contributions.contribution_value), 0)
+          FROM practice_campaign_contributions contributions
+          WHERE contributions.campaign_id = campaigns.id) AS contribution_value,` : ''}
+        EXISTS(
+          SELECT 1 FROM practice_campaign_members current_member
+          WHERE current_member.campaign_id = campaigns.id
+            AND current_member.owner_id = ? AND current_member.left_at IS NULL
+        ) AS joined
+      FROM practice_campaigns campaigns
+      ${includeDrafts ? '' : "WHERE campaigns.status = 'active' AND campaigns.starts_at <= ? AND campaigns.ends_at >= ?"}
+      ORDER BY campaigns.starts_at DESC, campaigns.id DESC
+    `).bind(...(includeDrafts ? [ownerId] : [ownerId, now, now])).all<PracticeCampaignRow>();
+  }
   return {
     getProfile(ownerId: string) {
       return env.DB.prepare(`SELECT profile.owner_id, profile.time_zone, profile.leaderboard_opt_in, profile.presence_opt_in,
@@ -191,23 +217,28 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
       ).all<PublicPracticeActivityRow>();
     },
 
-    listCampaigns(includeDrafts: boolean, now: string, ownerId: string | null = null) {
-      return env.DB.prepare(`
-        SELECT campaigns.*,
-          (SELECT COUNT(*) FROM practice_campaign_members members
-            WHERE members.campaign_id = campaigns.id AND members.left_at IS NULL) AS member_count,
-          (SELECT COALESCE(SUM(contributions.contribution_value), 0)
-            FROM practice_campaign_contributions contributions
-            WHERE contributions.campaign_id = campaigns.id) AS contribution_value,
-          EXISTS(
-            SELECT 1 FROM practice_campaign_members current_member
-            WHERE current_member.campaign_id = campaigns.id
-              AND current_member.owner_id = ? AND current_member.left_at IS NULL
-          ) AS joined
-        FROM practice_campaigns campaigns
-        WHERE (? = 1 OR (campaigns.status = 'active' AND campaigns.starts_at <= ? AND campaigns.ends_at >= ?))
-        ORDER BY campaigns.starts_at DESC, campaigns.id DESC
-      `).bind(ownerId, includeDrafts ? 1 : 0, now, now).all<PracticeCampaignRow>();
+    async listCampaigns(includeDrafts: boolean, now: string, ownerId: string | null = null) {
+      if (includeDrafts) return queryCampaigns(true, now, ownerId, true);
+      const cached = campaignTotals.get(env.DB);
+      if (cached?.totals && cached.expiresAt > Date.now()) {
+        const result = await queryCampaigns(false, now, ownerId, false);
+        if (campaignTotals.get(env.DB) === cached && cached.expiresAt > Date.now()
+          && result.results?.every((row) => cached.totals!.has(row.id))) {
+          return { ...result, results: result.results.map((row) => ({ ...row, ...cached.totals!.get(row.id) })) };
+        }
+      }
+      // Store only shared aggregates. Always read current campaign visibility and viewer membership.
+      const entry: { expiresAt: number; totals?: Map<string, CampaignTotals> } = {
+        expiresAt: Date.now() + CAMPAIGN_TOTALS_TTL_MS,
+      };
+      campaignTotals.set(env.DB, entry);
+      const result = await queryCampaigns(false, now, ownerId, true);
+      if (result.results && result.results.length <= MAX_CACHED_CAMPAIGNS) {
+        entry.totals = new Map(result.results.map(({ id, member_count, contribution_value }) => [
+          id, { member_count, contribution_value },
+        ]));
+      }
+      return result;
     },
 
     getCampaign(campaignId: string) {
@@ -239,6 +270,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         input.starts_at, input.ends_at, input.status, input.created_by,
         input.created_at, input.updated_at,
       ).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       return Number(result.meta?.changes ?? 0) === 1;
     },
 
@@ -268,12 +300,14 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         input.endsAt, input.status, now, campaignId,
         input.metric, input.startsAt,
       ).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       return Number(result.meta?.changes ?? 0) === 1;
     },
 
     async deleteCampaign(campaignId: string): Promise<boolean> {
       const result = await env.DB.prepare('DELETE FROM practice_campaigns WHERE id = ?')
         .bind(campaignId).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       // D1 includes rows removed by ON DELETE CASCADE, including members and contributions.
       return Number(result.meta?.changes ?? 0) > 0;
     },
@@ -284,6 +318,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         VALUES (?, ?, ?, NULL)
         ON CONFLICT(campaign_id, owner_id) DO UPDATE SET joined_at = excluded.joined_at, left_at = NULL
       `).bind(campaignId, ownerId, now).run();
+      invalidateCampaignTotals();
     },
 
     async leaveCampaign(campaignId: string, ownerId: string, now: string): Promise<boolean> {
@@ -291,6 +326,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         UPDATE practice_campaign_members SET left_at = ?
         WHERE campaign_id = ? AND owner_id = ? AND left_at IS NULL
       `).bind(now, campaignId, ownerId).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       return Number(result.meta?.changes ?? 0) === 1;
     },
 
@@ -348,6 +384,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
           END > 0
         ON CONFLICT(campaign_id, session_id) DO NOTHING
       `).bind(now, sessionId, ownerId).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       return Number(result.meta?.changes ?? 0);
     },
 
@@ -443,6 +480,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
       );
 
       await env.DB.batch([sessionStmt, contributionStmt]);
+      invalidateCampaignTotals();
 
       return { contributionValue };
     },
@@ -453,6 +491,7 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         DELETE FROM practice_sessions
         WHERE owner_id = ? AND client_session_id = ?
       `).bind(ownerId, sessionId).run();
+      if (result.meta?.changes) invalidateCampaignTotals();
       return Number(result.meta?.changes ?? 0) > 0;
     },
 
@@ -555,9 +594,11 @@ export function createPracticeCommunityRepository(env: CloudflareEnvLike) {
         ];
       });
       const results = await env.DB.batch(statements);
+      const contributionsAdded = results.reduce((sum, r, i) => sum + (i % 2 ? Number(r.meta?.changes ?? 0) : 0), 0);
+      if (contributionsAdded) invalidateCampaignTotals();
       return {
         recorded: results.filter((r, i) => i % 2 === 0 && Number(r.meta?.changes ?? 0) > 0).length,
-        contributionsAdded: results.reduce((sum, r, i) => sum + (i % 2 ? Number(r.meta?.changes ?? 0) : 0), 0),
+        contributionsAdded,
       };
     },
 

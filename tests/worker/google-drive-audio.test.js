@@ -29,7 +29,7 @@ beforeAll(async () => {
 });
 
 describe('Google Drive audio gateway', () => {
-  it('catalog-authorizes and streams a byte range with safe response headers', async () => {
+  it.each(['audio/mpeg', 'video/mp4'])('catalog-authorizes and streams a %s byte range with safe response headers', async (contentType) => {
     const fetchImpl = vi.fn(async (_input, init) => {
       expect(init.method).toBe('GET');
       expect(new Headers(init.headers).get('range')).toBe('bytes=2-5');
@@ -37,7 +37,7 @@ describe('Google Drive audio gateway', () => {
       return new Response('2345', {
         status: 206,
         headers: {
-          'Content-Type': 'audio/mpeg',
+          'Content-Type': contentType,
           'Content-Length': '4',
           'Content-Range': 'bytes 2-5/10',
           'Accept-Ranges': 'bytes',
@@ -53,6 +53,7 @@ describe('Google Drive audio gateway', () => {
       accessToken: 'test-token', fetchImpl,
     });
     expect(response.status).toBe(206);
+    expect(response.headers.get('content-type')).toBe(contentType);
     expect(new TextDecoder().decode(await response.arrayBuffer())).toBe('2345');
     expect(response.headers.get('content-range')).toBe('bytes 2-5/10');
     expect(response.headers.get('etag')).toBe('"drive-etag"');

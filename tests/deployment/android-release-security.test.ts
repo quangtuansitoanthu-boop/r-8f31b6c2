@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
+import capacitorConfig from '../../capacitor.config';
+import { NATIVE_BACKEND_ORIGINS } from '../../src/lib/browser/native-backend-origin';
 const gradle = readFileSync('android/app/build.gradle', 'utf8');
 const activity = readFileSync('android/app/src/main/java/vn/quangtu/tutam/MainActivity.java', 'utf8');
 const manifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
@@ -75,10 +77,13 @@ it('keeps local notifications on the supported Capacitor major', () => {
   const notifications = JSON.parse(readFileSync('node_modules/@capacitor/local-notifications/package.json', 'utf8'));
   expect(notifications.version.split('.')[0]).toBe(core.version.split('.')[0]);
 });
-it('does not trust unrelated workers.dev hosts inside the native bridge', () => {
-  const config = readFileSync('capacitor.config.ts', 'utf8');
-  expect(config).not.toContain("'*.workers.dev'");
-  expect(config).toContain("'quangtu-web.quangtu-ansitoanthu.workers.dev'");
+it('keeps native navigation local while allowing only the configured API origins', () => {
+  expect(capacitorConfig.server?.url).toBeUndefined();
+  expect(capacitorConfig.server?.allowNavigation ?? []).toEqual([]);
+  expect(NATIVE_BACKEND_ORIGINS).toEqual([
+    'https://quangtu-web.quangtu-ansitoanthu.workers.dev',
+    'https://quangtu.vn',
+  ]);
 });
 it('does not allow cleartext traffic through the native bridge', () => {
   const config = readFileSync('capacitor.config.ts', 'utf8');

@@ -256,6 +256,7 @@
 
   const searchDocuments = $derived(albums.map((album) => prepareVietnameseSearchDocument(
     [album.tieu_de, album.mo_ta, album.chu_de, talkSpeaker(album), ...album.tracks.map((track) => track.title)],
+    { matchShortWords: true },
   )));
   const filtered = $derived.by(() => {
     const recentOrder = new Map(recentAlbumIds.map((albumId, index) => [albumId, index]));
@@ -335,6 +336,8 @@
   $effect(() => {
     if (checkedInitialUrl || (loading && !albums.length)) return;
     if (typeof window === 'undefined') return;
+    // Chỉ lấy từ khóa từ liên kết một lần, kể cả khi liên kết không có album.
+    checkedInitialUrl = true;
     const params = page.url.searchParams;
     const searchQuery = params.get('q') || params.get('search');
     if (searchQuery && !query) {
@@ -342,7 +345,6 @@
     }
     const targetId = params.get('album') || params.get('id') || params.get('album_id') || params.get('phap_thoai') || params.get('phap-thoai') || params.get('audio') || params.get('track');
     if (targetId) {
-      checkedInitialUrl = true;
       const needle = targetId.toLowerCase().trim();
       const matched = albums.find((a) =>
         a.id === targetId ||

@@ -90,7 +90,6 @@
     onNotify?: (message: string) => void;
     onOpenArticle?: (article: LibraryArticle) => void;
     onViewerScroll?: (scrollTop: number) => void;
-    onClose?: () => void;
     targetAnnotationId?: string | null;
   }
 
@@ -112,7 +111,7 @@
     title: string;
   }
 
-  let { url, articleId, title, category, categoryIcon, author, dateLabel, viewCount, authenticated, session = { authenticated: false, csrfToken: null, user: null }, currentArticle, articles = [], onShare = () => {}, onNotify = () => {}, onOpenArticle = () => {}, onViewerScroll = () => {}, onClose = () => {}, targetAnnotationId = null }: Props = $props();
+  let { url, articleId, title, category, categoryIcon, author, dateLabel, viewCount, authenticated, session = { authenticated: false, csrfToken: null, user: null }, currentArticle, articles = [], onShare = () => {}, onNotify = () => {}, onOpenArticle = () => {}, onViewerScroll = () => {}, targetAnnotationId = null }: Props = $props();
   const localeStore = getLocaleContext();
   let isOfflineError = $state(false);
   let retryStart = $state<() => void>(() => {});
@@ -1869,16 +1868,6 @@
             {localeStore.current === 'en' ? 'Retry Connection' : 'Thử lại kết nối'}
           </button>
 
-          <button
-            type="button"
-            class="btn-back"
-            onclick={() => {
-              if (onClose) onClose();
-              else if (typeof history !== 'undefined') history.back();
-            }}
-          >
-            {localeStore.current === 'en' ? '← Back to Library' : '← Quay lại tủ sách'}
-          </button>
         </div>
       </div>
     </div>
@@ -2271,8 +2260,6 @@
   .btn-retry{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,#d4a84b 0%,#b37d22 100%);color:#fff;font:700 var(--font-size-label) var(--font-app);cursor:pointer;box-shadow:0 4px 16px rgba(179,125,34,.3);transition:all .18s ease}
   .btn-retry:hover{filter:brightness(1.08);transform:translateY(-1px)}
   .btn-retry:active{transform:translateY(0) scale(.98)}
-  .btn-back{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:42px;border-radius:14px;border:1.5px solid var(--border,#e6decb);background:transparent;color:var(--text2,#5a4d3f);font:600 var(--font-size-label) var(--font-app);cursor:pointer;transition:all .15s ease}
-  .btn-back:hover{background:var(--bg2,#f5efe3);color:var(--text,#261f18)}
   .pdf-error{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:12px 18px;background:#fff1ee;color:#8c1c13;font:600 var(--font-size-body) var(--font-app);border-bottom:1px solid rgba(140,28,19,.2);text-align:center}
   .pdf-error-retry-btn{padding:4px 12px;border-radius:8px;border:1px solid #8c1c13;background:#fff;color:#8c1c13;font:700 var(--font-size-label) var(--font-app);cursor:pointer}
   .pdf-error-retry-btn:hover{background:#8c1c13;color:#fff}
@@ -2281,8 +2268,6 @@
   :global([data-theme='dark']) .pdf-offline-card h2,:global(.bg-dark) .pdf-offline-card h2{color:#f7eedf}
   :global([data-theme='dark']) .pdf-offline-desc,:global(.bg-dark) .pdf-offline-desc{color:#d1c2aa}
   :global([data-theme='dark']) .pdf-offline-tip,:global(.bg-dark) .pdf-offline-tip{background:rgba(212,168,75,.1);border-color:rgba(212,168,75,.3);color:#e5d8c3}
-  :global([data-theme='dark']) .btn-back,:global(.bg-dark) .btn-back{border-color:rgba(212,168,75,.3);color:#e5d8c3}
-  :global([data-theme='dark']) .btn-back:hover,:global(.bg-dark) .btn-back:hover{background:rgba(212,168,75,.15);color:#fff}
   :global([data-theme='dark']) .pdf-error,:global(.bg-dark) .pdf-error{background:#2a110f;color:#ff9d94;border-color:rgba(255,157,148,.2)}
   :global([data-theme='dark']) .pdf-error-retry-btn,:global(.bg-dark) .pdf-error-retry-btn{background:#3b1714;color:#ffb8b0;border-color:#ff9d94}
 </style>

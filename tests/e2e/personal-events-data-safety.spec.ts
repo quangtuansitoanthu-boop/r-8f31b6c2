@@ -12,11 +12,11 @@ test('personal event date-only draft survives reopen and calendar tabs preserve 
   await page.locator('.personal-add-first-btn').click();
   await expect(page.locator('#pem-select-day')).toHaveValue('6');
   await expect(page.locator('#pem-select-month')).toHaveValue('3');
-  await page.getByRole('tab', { name: '☀️ Nhập theo Dương lịch' }).click();
+  await page.getByRole('button', { name: 'Dương lịch', exact: true }).click();
   const solarDay = Number(await page.locator('#pem-solar-day').inputValue());
   const solarMonth = Number(await page.locator('#pem-solar-month').inputValue());
   expect(solarToLunar(solarDay, solarMonth, 2026)).toMatchObject({ day: 6, month: 3 });
-  await page.getByRole('tab', { name: '🌙 Nhập theo Âm lịch' }).click();
+  await page.getByRole('button', { name: 'Âm lịch', exact: true }).click();
   await expect(page.locator('#pem-select-day')).toHaveValue('6');
   await expect(page.locator('#pem-select-month')).toHaveValue('3');
 });
@@ -51,7 +51,7 @@ test.describe('personal anniversary validation and current date', () => {
       await expect(page.locator('#pem-input-title')).toBeFocused();
       await expect(page.locator('.pem-list')).toHaveCount(0);
       await page.locator('#pem-input-title').fill('Ngày thử nghiệm');
-      await page.getByRole('tab', { name: locale === 'vi' ? '☀️ Nhập theo Dương lịch' : '☀️ Solar Input' }).click();
+      await page.getByRole('button', { name: locale === 'vi' ? 'Dương lịch' : 'Solar', exact: true }).click();
       await expect(page.locator('#pem-solar-day')).toHaveValue('7');
       await expect(page.locator('#pem-solar-month')).toHaveValue('11');
       await page.locator('#pem-solar-day').selectOption('31');

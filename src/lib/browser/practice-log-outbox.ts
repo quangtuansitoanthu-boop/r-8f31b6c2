@@ -148,7 +148,7 @@ export function createCompletedLogSync(
 
 export function startCompletedPracticeLogSync(
   fetcher: typeof fetch, storage: StorageLike, getSession: () => SyncSession,
-  onApplied: () => void, onError: (pending: boolean) => void,
+  onApplied: () => void, onError?: (pending: boolean) => void,
 ): () => void {
   let disposed = false;
   const sync = createCompletedLogSync(fetcher, storage, { onApplied });
@@ -161,8 +161,8 @@ export function startCompletedPracticeLogSync(
       // Đổi tài khoản phải thu hồi request cũ ngay cả khi app đang ở nền.
       if (document.visibilityState === 'hidden') return;
       const current = () => !disposed && (getSession().user?.id ?? null) === owner;
-      void sync.flush().then(() => { if (current()) onError(false); }).catch(() => { if (current()) onError(true); });
-    } catch { onError(true); }
+      void sync.flush().then(() => { if (current()) onError?.(false); }).catch(() => { if (current()) onError?.(true); });
+    } catch { onError?.(true); }
   };
   const storageChanged = (event: StorageEvent) => {
     const session = getSession();

@@ -34,15 +34,19 @@ async function setup() {
   } });
   await settle(); button('Tạo thời khóa mới').click(); await settle();
   document.querySelector<HTMLElement>('[role="combobox"][aria-label="Thêm bước"]')!.click(); await settle();
-  button('Niệm Phật').click(); await settle();
-  const phrase = [...document.querySelectorAll<HTMLLabelElement>('label')].find(node => node.textContent?.includes('Danh hiệu / nội dung hành trì'))!.querySelector<HTMLInputElement>('input')!;
+  button('Lần tràng hạt').click(); await settle();
+  document.querySelector<HTMLElement>('[role="combobox"][aria-label="Chọn danh hiệu"]')!.click(); await settle();
+  button('Tùy chọn').click(); await settle();
+  document.querySelector<HTMLElement>('[role="combobox"][aria-label="Thêm bước"]')!.click(); await settle();
+  button('Thiền định').click(); await settle();
+  document.querySelectorAll<HTMLElement>('.step-card summary')[0].click(); await settle();
+  const phrase = document.querySelector<HTMLInputElement>('.step-card input[maxlength="500"]')!;
   return { owner, save, run, phrase };
 }
-it('blocks an unsupported121character custom recitation before either saving or starting', async () => {
+it('keeps the dialog open when an unsupported 121-character recitation cannot be saved', async () => {
   const { save, run, phrase } = await setup(); change(phrase, 'A'.repeat(121));
   button('Lưu thời khóa').click(); await settle();
-  expect(save).not.toHaveBeenCalled(); expect(document.querySelector('[role="status"]')?.textContent).toContain('120');
-  button('Bắt đầu thời khóa').click(); await settle();
+  expect(document.querySelector('dialog[open] [role="status"]')?.textContent).toContain('120');
   expect(save).not.toHaveBeenCalled(); expect(run).not.toHaveBeenCalled();
 });
 it('preserves long canonical recitations and trims surrounding whitespace before saving', async () => {

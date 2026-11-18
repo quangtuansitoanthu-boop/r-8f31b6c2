@@ -8,6 +8,9 @@ test.beforeEach(async ({ page }) => {
     : new URL(route.request().url()).pathname === '/api/presence' ? { enabled: false, activeCount: 0 } : [] }));
   await page.goto('/tu-tap');
   await page.locator('.tt-mode-card--reflection').click();
+  const guideToggle = page.locator('.guide-toggle-button');
+  await expect(guideToggle).toHaveAttribute('aria-expanded', 'true');
+  await guideToggle.click();
 });
 
 const field = (page: import('@playwright/test').Page) => page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true });

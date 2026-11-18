@@ -14,6 +14,41 @@ const audioPrincipalSessions = new Map([
 ]);
 
 test.describe('Pháp Thoại public and download contracts', () => {
+  test('shows the approved justified Bookerly story notice without adding API requests', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loginAsMember(page);
+    const album = offlineTalks.find(item => item.id === 'pt_drive_c435791b562e6f6e9d345b414df4a273')!;
+    await page.route(/\/api\/talks(?:\?|$)/u, route => route.fulfill({ json: [album] }));
+    await page.goto('/phap-thoai');
+    await settleClient(page);
+    await page.clock.install({ time: new Date('2026-11-18T08:00:00Z') });
+    await page.clock.pauseAt(new Date('2026-11-18T08:00:01Z'));
+    const extraApiRequests: string[] = [];
+    page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) extraApiRequests.push(request.url()); });
+    await page.locator('.pt-card').filter({ hasText: album.tieu_de }).locator('.pt-card-thumb').click();
+    const notice = page.getByRole('complementary', { name: 'Lưu ý về nội dung' });
+    await expect(notice).toBeVisible();
+    await expect(notice.locator('p')).toHaveText('Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ');
+    const geometry = await notice.locator('p').evaluate(async element => {
+      await document.fonts.load('14px Bookerly');
+      const style = getComputedStyle(element);
+      const bounds = element.getBoundingClientRect();
+      return { font: style.fontFamily, align: style.textAlign, left: bounds.left, right: bounds.right, bottom: bounds.bottom, viewportHeight: innerHeight, fontLoaded: document.fonts.check('14px Bookerly') };
+    });
+    expect(geometry.font).toContain('Bookerly');
+    expect(geometry.fontLoaded).toBe(true);
+    expect(geometry.align).toBe('justify');
+    expect(geometry.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.right).toBeLessThanOrEqual(page.viewportSize()!.width);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
+    await page.screenshot({ path: test.info().outputPath('approved-album-story-notice.png') });
+    await page.clock.fastForward(9999);
+    await expect(notice).toBeVisible();
+    await page.clock.fastForward(1);
+    await expect(notice).toHaveCount(0);
+    expect(extraApiRequests).toEqual([]);
+  });
+
   test('guides listeners to offline download without starting a download', async ({ page }) => {
     await loginAsMember(page);
     await page.goto('/phap-thoai');

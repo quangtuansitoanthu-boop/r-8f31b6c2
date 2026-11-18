@@ -180,6 +180,29 @@ export function getBadgeDefinition(id: string | null | undefined) {
 
 export type PracticeBadgeId = (typeof PRACTICE_BADGE_DEFINITIONS)[number]['id'];
 
+export const PRACTICE_STARTER_BADGE = {
+  threshold: 1,
+  title: 'Mới phát tâm',
+  titleEn: 'New practitioner',
+} as const;
+
+export function getPracticeIdentity(
+  progress: {
+    badges?: readonly PracticeBadgeId[];
+    streaks?: { longest: number };
+  } | undefined,
+  isEn = false,
+) {
+  const earned = PRACTICE_BADGE_DEFINITIONS.filter(badge => progress?.badges?.includes(badge.id));
+  const highestBadge = earned[earned.length - 1];
+  const title = highestBadge
+    ? getBadgeTitle(highestBadge, isEn)
+    : (progress?.streaks?.longest ?? 0) >= PRACTICE_STARTER_BADGE.threshold
+      ? isEn ? PRACTICE_STARTER_BADGE.titleEn : PRACTICE_STARTER_BADGE.title
+      : '';
+  return { highestBadge, avatarBadge: highestBadge, title };
+}
+
 export interface AcceptedPracticeActivity {
   acceptedCount: number;
   acceptedDurationSeconds: number;

@@ -111,6 +111,7 @@ async function dispatch(event: EventLike, env: NonNullable<ReturnType<typeof get
     let payload: unknown;
     if (action === 'catalog') payload = await service.catalog(url);
     else if (action === 'estimate') payload = await service.estimate(contentUpdateIds(url.searchParams.get('ids')));
+    else if (action === 'chapter-index') payload = await service.chapterIndex(contentUpdateIds(url.searchParams.get('ids'), 200));
     else if (action === 'article') {
       const ids = contentUpdateIds(url.searchParams.get('id'));
       const after = url.searchParams.has('after') ? Number(url.searchParams.get('after')) : null;

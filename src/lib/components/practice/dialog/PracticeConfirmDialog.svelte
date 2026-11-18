@@ -17,6 +17,7 @@
     hideTitle?: boolean;
     showCancel?: boolean;
     busy?: boolean;
+    destructive?: boolean;
     onCancel: () => void;
     onConfirm: () => void;
   }
@@ -34,6 +35,7 @@
     hideTitle = false,
     showCancel = true,
     busy = false,
+    destructive = false,
     onCancel,
     onConfirm
   }: Props = $props();
@@ -94,7 +96,7 @@
       {@render children?.()}
       <div class="practice-confirm__actions" class:dialog-actions-balanced={showCancel}>
         {#if showCancel}<button bind:this={cancelButton} type="button" disabled={busy} onclick={onCancel}>{cancelLabel}</button>{/if}
-        <button bind:this={confirmButton} type="button" disabled={busy} class="practice-confirm__primary" onclick={onConfirm}>{confirmLabel}</button>
+        <button bind:this={confirmButton} type="button" disabled={busy} class="practice-confirm__primary" class:destructive onclick={onConfirm}>{confirmLabel}</button>
       </div>
     </div>
   </dialog>
@@ -127,6 +129,7 @@
   button:disabled{opacity:.6;cursor:wait}
   .practice-confirm__icon{font-size:var(--font-size-dialog-count);margin-bottom:var(--radius)}
   .practice-confirm__primary{background:var(--gold);color:var(--on-gold);box-shadow:var(--glass-button-shadow)}
+  .practice-confirm__primary.destructive{background:var(--red);color:var(--white)}
   @supports not (backdrop-filter:blur(1px)){.practice-confirm__dialog{background:var(--card)}}
   @supports not (background:color-mix(in srgb,currentColor,transparent)){.practice-confirm__dialog{background:var(--card);border-color:var(--border)}}
   @media(prefers-reduced-transparency:reduce){.practice-confirm__dialog{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}}

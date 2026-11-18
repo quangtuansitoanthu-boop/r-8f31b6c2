@@ -21,12 +21,17 @@ export function assertPdfTransitionCurrent(context: PdfTransitionContext, signal
   throwIfAborted(signal);
   if (!context.isCurrent()) throw new DOMException('Account changed', 'AbortError');
 }
+/** The historic PDF CDN and the same-origin media route read the same R2 key. */
+function pdfSourceIdentity(raw: string): string {
+  return resolvePdfUrl(raw).replace(/^https:\/\/media\.quangtu\.vn(?=\/pdfs\/)/u, '/api/media');
+}
+
 export async function hasPreservedOfflinePdf(article: { id: string; pdfUrl?: string }, principalId: string | null): Promise<boolean> {
   if (!article.pdfUrl) return false;
   const owner = normalizePdfPrincipal(principalId);
   const record = await getOfflinePdf(owner, article.id);
   return Boolean(record && record.ownerId === owner && record.key === offlinePdfRecordKey(owner, article.id)
-    && resolvePdfUrl(record.sourceUrl) === resolvePdfUrl(article.pdfUrl));
+    && pdfSourceIdentity(record.sourceUrl) === pdfSourceIdentity(article.pdfUrl));
 }
 export async function collectPdfBookTransitions(items: ContentUpdateItem[], context: PdfTransitionContext): Promise<PdfBookTransition[]> {
   assertPdfTransitionCurrent(context);
@@ -39,7 +44,7 @@ export async function collectPdfBookTransitions(items: ContentUpdateItem[], cont
     if (item.kind !== 'article' || item.group !== 'book' || item.mode !== 'full' || !item.row.pdf_url || Number(item.row.so_tap) <= 0 || seen.has(item.row.id)) continue;
     const record = downloads.find(record => record.ownerId === owner && record.documentId === item.row.id
       && record.key === offlinePdfRecordKey(owner, item.row.id)
-      && resolvePdfUrl(record.sourceUrl) === resolvePdfUrl(String(item.row.pdf_url)));
+      && pdfSourceIdentity(record.sourceUrl) === pdfSourceIdentity(String(item.row.pdf_url)));
     if (record) { transitions.push({ item, record }); seen.add(item.row.id); }
   }
   return transitions;
@@ -154,7 +159,7 @@ export async function retireBundledPdfBooks(context: PdfTransitionContext, signa
     const row = rows.find(row => row.id === record.documentId);
     if (!row || isIosExcludedContent(row) || row.trang_thai !== 'Hoàn thành' || updateGroup(row, 'article') !== 'book' || Number(row.so_tap) <= 0
       || !row.pdf_url || record.ownerId !== owner || record.key !== offlinePdfRecordKey(owner, row.id)
-      || resolvePdfUrl(record.sourceUrl) !== resolvePdfUrl(String(row.pdf_url))) continue;
+      || pdfSourceIdentity(record.sourceUrl) !== pdfSourceIdentity(String(row.pdf_url))) continue;
     let version: string;
     try { version = await contentVersion(row, 'article'); }
     catch { assertPdfTransitionCurrent(context, signal); result.retained.push(String(row.tieu_de ?? record.title)); continue; }

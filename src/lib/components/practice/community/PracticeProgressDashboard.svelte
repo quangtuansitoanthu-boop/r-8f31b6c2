@@ -20,6 +20,7 @@
     updatePracticeProfile,
     withCampaignMembership,
     PRACTICE_COMMUNITY_QUERY_POLICY,
+    PRACTICE_PROGRESS_QUERY_POLICY,
     type PracticeCampaign,
     type PracticeCampaignListData,
     type PracticeLeaderboardData,
@@ -30,15 +31,18 @@
   import { serverStateKeys } from '$lib/browser/server-state';
   import {
     PRACTICE_BADGE_DEFINITIONS,
+    PRACTICE_STARTER_BADGE,
     getBadgeTitle,
     getBadgeLabel,
     getBadgeSubtitle,
+    getPracticeIdentity,
     type PracticeBadgeId,
   } from '$lib/domain/practice/progress-achievements';
   import type { PageSessionDTO } from '$lib/server/auth/types';
   import { getSessionContext, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import PracticeCampaigns from './PracticeCampaigns.svelte';
+  import PracticeBadgeIcon from './PracticeBadgeIcon.svelte';
   import PracticeHeatmap from './PracticeHeatmap.svelte';
   import PracticeLeaderboard from './PracticeLeaderboard.svelte';
 
@@ -67,15 +71,11 @@
   let exportGeneration = 0;
 
   const progressQuery = createQuery(() => ({
-    ...PRACTICE_COMMUNITY_QUERY_POLICY,
+    ...PRACTICE_PROGRESS_QUERY_POLICY,
     queryKey: serverStateKeys.practiceCommunity.progress(user.id),
     queryFn: ({ signal }) => fetchPracticeProgress(fetchWithSessionRefresh, signal),
     initialData: initialProgress,
     initialDataUpdatedAt: 0,
-    staleTime: 48 * 60 * 60 * 1000,
-    gcTime: 72 * 60 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     enabled: browser && privateVisible,
   }));
   const leaderboardQuery = createQuery(() => ({
@@ -117,6 +117,9 @@
     new Map((campaigns ?? []).map((campaign) => [campaign.id, campaign.title]))
   );
   const progress = $derived(progressQuery.data ?? initialProgress);
+  const { title: practiceRank, avatarBadge } = $derived(getPracticeIdentity(progress, isEn));
+  const activeBadgeLabel = $derived(isEn ? 'Displayed on your avatar' : 'Đang hiển thị trên ảnh đại diện');
+  const starterEarned = $derived(progress.streaks.longest >= PRACTICE_STARTER_BADGE.threshold);
   const leaderboardData = $derived(leaderboardQuery.data ?? initialLeaderboard);
   const leaderboard = $derived({ ...leaderboardData, ranking: leaderboardData.ranking.filter(member => !member.authorId || !blockedAuthors.includes(member.authorId)) });
   const communityEnabled = $derived(
@@ -127,9 +130,6 @@
     leaderboardQuery.error,
     campaignsQuery.error,
   ].some(Boolean) ? (isEn ? 'Part of the data could not be refreshed. The latest version was retained.' : 'Một phần dữ liệu chưa thể làm mới. Bản gần nhất vẫn được giữ lại.') : '');
-  const selectedBadge = $derived(
-    PRACTICE_BADGE_DEFINITIONS.find((badge) => badge.id === progress.profile.selectedBadge) ?? null,
-  );
   const timeZoneOptions = $derived.by(() => Array.from(new Set([
     progress.profile.timeZone,
     detectedTimeZone,
@@ -213,8 +213,8 @@
         totalAcceptedCount: progress.totals.acceptedCount,
         totalAcceptedDurationSeconds: progress.totals.acceptedDurationSeconds,
         totalSessions: progress.totals.sessions,
-        selectedBadge: progress.profile.selectedBadge,
-        badgeLabel: selectedBadge ? getBadgeLabel(selectedBadge, isEn) : '',
+        selectedBadge: avatarBadge?.id ?? null,
+        badgeLabel: avatarBadge ? getBadgeLabel(avatarBadge, isEn) : '',
         today: progress.today,
       }, isCurrent);
       if (!downloaded) return;
@@ -414,13 +414,17 @@
       <p>{isEn ? 'Your personal data, aggregated from verified cultivation sessions.' : 'Dữ liệu riêng của bạn, được tổng hợp từ những phiên đã xác minh.'}</p>
     </div>
     <div class="practice-community__identity">
-      <div class={`avatar-ring avatar-ring--hero ${selectedBadge ? `avatar-ring--${selectedBadge.id}` : ''}`}>
-        <span class:decorated={Boolean(selectedBadge)} class="practice-community__avatar">
+      <div class={`avatar-ring avatar-ring--hero ${avatarBadge ? `avatar-ring--${avatarBadge.id}` : ''}`}>
+        <span class:decorated={Boolean(practiceRank)} class="practice-community__avatar">
           {#if user.avatarUrl}<img src={user.avatarUrl} alt="" width="64" height="64" referrerpolicy="no-referrer" />{:else}{initials(user.displayName)}{/if}
-          {#if selectedBadge}<i title={getBadgeLabel(selectedBadge, isEn)}><Award aria-hidden="true" size={16} strokeWidth={2.2} /><span class="sr-only">{isEn ? 'Pinned badge: ' : 'Huy hiệu đang gắn: '}{getBadgeLabel(selectedBadge, isEn)}</span></i>{/if}
         </span>
+        {#if practiceRank}
+          <span class="practice-avatar-badge" role="img" aria-label={avatarBadge ? getBadgeTitle(avatarBadge, isEn) : practiceRank}>
+            <PracticeBadgeIcon badgeId={avatarBadge?.id} />
+          </span>
+        {/if}
       </div>
-      <span><strong>{user.displayName}</strong><small>{selectedBadge ? getBadgeLabel(selectedBadge, isEn) : (isEn ? 'No badge pinned to profile avatar' : 'Chưa gắn huy hiệu vào ảnh đại diện')}</small></span>
+      <span><strong>{user.displayName}</strong><small>{practiceRank || (isEn ? 'No achievement badge yet' : 'Chưa đạt huy hiệu')}</small></span>
     </div>
   </header>
 
@@ -488,31 +492,39 @@
   </section>
   {/if}
 
+  {#snippet badgePreview(badgeId: PracticeBadgeId | null, locked: boolean)}
+    <div class="badge-card__preview">
+      <PracticeBadgeIcon {badgeId} />
+      {#if locked}
+        <span class="badge-card__lock"><Lock aria-hidden="true" size={12} strokeWidth={2} /></span>
+      {/if}
+    </div>
+  {/snippet}
+
   <div class="practice-community__personalize">
     <section class="practice-panel practice-badges" aria-labelledby="practice-badges-title">
-      <header><div><h2 id="practice-badges-title">{isEn ? 'Achievement Badges' : 'Huy hiệu thành tựu'}</h2><p>{isEn ? 'Each milestone day streak unlocks a halo avatar ring.' : 'Mỗi mốc chuỗi ngày đạt được sẽ mở khóa vòng tròn hào quang trang nghiêm quanh ảnh đại diện.'}</p></div><Award aria-hidden="true" size={24} strokeWidth={1.7} /></header>
+      <header><div><h2 id="practice-badges-title">{isEn ? 'Achievement Badges' : 'Huy hiệu thành tựu'}</h2><p>{isEn ? 'Your highest earned badge automatically appears on your avatar.' : 'Huy hiệu cao nhất đã đạt sẽ tự động hiển thị trên ảnh đại diện.'}</p></div><Award aria-hidden="true" size={24} strokeWidth={1.7} /></header>
       <div class="practice-badges__list">
-        {#each PRACTICE_BADGE_DEFINITIONS as badge (badge.id)}
-          <button
-            class:selected={progress.profile.selectedBadge === badge.id}
-            class:earned={badgeEarned(badge.id)}
-            class="badge-card"
-            type="button"
-            disabled={!badgeEarned(badge.id) || profileMutation.isPending}
-            aria-pressed={progress.profile.selectedBadge === badge.id}
-            onclick={() => saveProfile({ selectedBadge: progress.profile.selectedBadge === badge.id ? null : badge.id })}
-          >
-            <div class="badge-card__preview">
-              <div class={`avatar-ring avatar-ring--mini avatar-ring--${badge.id} ${badgeEarned(badge.id) ? '' : 'locked'}`}>
-                <div class="avatar-ring__core">
-                  {#if badgeEarned(badge.id)}
-                    <Award aria-hidden="true" size={18} strokeWidth={2} />
-                  {:else}
-                    <Lock aria-hidden="true" size={16} strokeWidth={2} />
-                  {/if}
-                </div>
-              </div>
+        <div class="badge-card badge-card--starter" class:earned={starterEarned} class:current={starterEarned && !avatarBadge}>
+          {@render badgePreview(null, !starterEarned)}
+          <div class="badge-card__content">
+            <strong class="badge-card__title">{isEn ? PRACTICE_STARTER_BADGE.titleEn : PRACTICE_STARTER_BADGE.title}</strong>
+            <p class="badge-card__subtitle">{isEn ? 'First day of practice' : 'Ngày tu tập đầu tiên'}</p>
+            <div class="badge-card__status">
+              {#if starterEarned && !avatarBadge}
+                <span class="badge-status badge-status--active">{activeBadgeLabel}</span>
+              {:else if starterEarned}
+                <span class="badge-status badge-status--unlocked">{isEn ? '✓ Unlocked' : '✓ Đã mở khóa'}</span>
+              {:else}
+                <span class="badge-status badge-status--locked">{isEn ? 'Requires one day of practice' : 'Cần 1 ngày tu tập'}</span>
+              {/if}
             </div>
+          </div>
+        </div>
+        {#each PRACTICE_BADGE_DEFINITIONS as badge (badge.id)}
+          {@const earned = badgeEarned(badge.id)}
+          <div class="badge-card" class:current={avatarBadge?.id === badge.id} class:earned class:locked={!earned}>
+            {@render badgePreview(badge.id, !earned)}
             <div class="badge-card__content">
               <div class="badge-card__top">
                 <strong class="badge-card__title">{getBadgeTitle(badge, isEn)}</strong>
@@ -520,16 +532,16 @@
               </div>
               <p class="badge-card__subtitle">{getBadgeSubtitle(badge, isEn)}</p>
               <div class="badge-card__status">
-                {#if progress.profile.selectedBadge === badge.id}
-                  <span class="badge-status badge-status--active">{isEn ? '✦ Pinned to profile avatar' : '✦ Đang gắn vào ảnh đại diện'}</span>
-                {:else if badgeEarned(badge.id)}
-                  <span class="badge-status badge-status--unlocked">{isEn ? '✓ Unlocked • Click to pin' : '✓ Đã mở khóa • Nhấn để gắn'}</span>
+                {#if avatarBadge?.id === badge.id}
+                  <span class="badge-status badge-status--active">{activeBadgeLabel}</span>
+                {:else if earned}
+                  <span class="badge-status badge-status--unlocked">{isEn ? '✓ Unlocked' : '✓ Đã mở khóa'}</span>
                 {:else}
                   <span class="badge-status badge-status--locked">{isEn ? `Requires streak of ${numberFormat.format(badge.threshold)} days (Record: ${numberFormat.format(progress.streaks.longest)}/${badge.threshold})` : `Cần chuỗi ${numberFormat.format(badge.threshold)} ngày (Kỷ lục: ${numberFormat.format(progress.streaks.longest)}/${badge.threshold})`}</span>
                 {/if}
               </div>
             </div>
-          </button>
+          </div>
         {/each}
       </div>
       <button class="practice-badges__download" type="button" disabled={exportBusy} onclick={exportDedication}><Download aria-hidden="true" size={17} strokeWidth={2} /> {exportBusy ? (isEn ? 'Generating PNG…' : 'Đang tạo PNG…') : (isEn ? 'Download Dedication Card' : 'Tải thẻ hồi hướng')}</button>
@@ -579,7 +591,8 @@
   h1{margin:var(--pc-space-2) 0 0;color:var(--brown-dark);font-size:var(--pc-type-5);line-height:1.12;letter-spacing:-.02em;text-wrap:balance}:global([data-theme="dark"]) h1{color:var(--text)}
   .practice-community__intro{min-width:0}.practice-community__intro>p{max-width:62ch;overflow-wrap:anywhere;margin:var(--pc-space-2) 0 0;color:var(--muted);font-size:var(--pc-type-2);line-height:1.65;text-wrap:pretty}
   .practice-community__identity{display:flex;min-width:0;flex:0 1 auto;align-items:center;gap:var(--pc-space-3)}.practice-community__identity>span:last-child{display:grid;min-width:0;overflow-wrap:anywhere;gap:var(--pc-space-1)}.practice-community__identity strong{font-size:var(--pc-type-2)}.practice-community__identity small{max-width:220px;color:var(--muted);font-size:var(--font-size-meta)}
-  .practice-community__avatar{position:relative;display:grid;flex:0 0 auto;width:64px;height:64px;place-items:center;border:1px solid var(--border);border-radius:50%;background:var(--bg2);color:var(--brown);font-size:var(--pc-type-3);font-weight:800}.practice-community__avatar.decorated{border:3px solid var(--gold)}.practice-community__avatar img{width:100%;height:100%;overflow:hidden;border-radius:50%;object-fit:cover}.practice-community__avatar i{position:absolute;right:-8px;bottom:-4px;display:grid;width:28px;height:28px;place-items:center;border:3px solid var(--bg);border-radius:50%;background:var(--gold);color:var(--on-gold)}
+  .practice-community__avatar{position:relative;display:grid;flex:0 0 auto;width:64px;height:64px;place-items:center;border:1px solid var(--border);border-radius:50%;background:var(--bg2);color:var(--brown);font-size:var(--pc-type-3);font-weight:800}.practice-community__avatar.decorated{border:3px solid var(--gold)}.practice-community__avatar img{width:100%;height:100%;overflow:hidden;border-radius:50%;object-fit:cover}
+  .practice-avatar-badge{position:absolute;z-index:3;right:-1px;bottom:1px;display:grid}
   .practice-community__notice{margin:calc(var(--pc-space-7) * -1 + var(--pc-space-2)) 0 0;padding:var(--pc-space-3) var(--pc-space-4);border-radius:var(--pc-radius);background:var(--gold-light);color:var(--brown);font-size:var(--pc-type-1)}.practice-community__notice.error{background:color-mix(in srgb,var(--red) 12%,var(--bg2));color:var(--danger-text)}
   .practice-community__transition{display:grid;min-height:50vh;place-items:center;color:var(--muted);font:600 13px var(--font-app)}
   .practice-community__summary{display:grid;margin:0;grid-template-columns:1.2fr repeat(3,1fr);border:1px solid var(--border2);border-radius:var(--pc-radius-lg);background:var(--card)}
@@ -590,21 +603,20 @@
   .practice-badges>header,.practice-privacy>header{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--pc-space-4);padding:var(--pc-space-5);border-bottom:1px solid var(--border2)}.practice-badges>header>:global(svg),.practice-privacy>header>:global(svg){color:var(--gold)}
   .practice-badges h2,.practice-privacy h2{margin:0;font-size:var(--pc-type-3);line-height:1.2}.practice-badges header p,.practice-privacy header p{margin:var(--pc-space-2) 0 0;color:var(--muted);font-size:var(--pc-type-1);line-height:1.6}
   .practice-badges__list{display:grid;padding:var(--pc-space-4);grid-template-columns:1fr;gap:var(--pc-space-3)}
-  .badge-card{display:flex;align-items:center;gap:var(--pc-space-3);padding:var(--pc-space-3) var(--pc-space-4);border:1px solid var(--border2);border-radius:var(--pc-radius-lg);background:var(--bg2);color:var(--muted);cursor:pointer;font:inherit;text-align:left;transition:transform .15s var(--pc-ease),border-color .2s var(--pc-ease),background .2s var(--pc-ease),box-shadow .2s var(--pc-ease)}
+  .badge-card{display:flex;align-items:center;gap:var(--pc-space-3);padding:var(--pc-space-3) var(--pc-space-4);border:1px solid var(--border2);border-radius:var(--pc-radius-lg);background:var(--bg2);color:var(--muted);font:inherit;text-align:left}
   .badge-card.earned{background:var(--card);color:var(--text)}
-  .badge-card.selected{border-color:var(--gold);background:var(--gold-light);box-shadow:0 0 16px rgba(217,119,6,.18)}
-  .badge-card:hover:not(:disabled){border-color:var(--gold);transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.08)}
-  .badge-card:active:not(:disabled){transform:translateY(1px)}
-  .badge-card:focus-visible{outline:3px solid color-mix(in srgb,var(--gold) 48%,transparent);outline-offset:3px}
-  .badge-card:disabled{cursor:not-allowed;opacity:.72}
-  .badge-card__preview{display:grid;place-items:center;flex-shrink:0;width:52px;height:52px}
+  .badge-card.current{border-color:var(--gold);background:var(--gold-light);box-shadow:var(--shadow)}
+  .badge-card.locked{opacity:.72}
+  .badge-card--starter:not(.earned){opacity:.72}
+  .badge-card__preview{position:relative;display:grid;place-items:center;flex-shrink:0;width:52px;height:52px;--practice-badge-size:48px}
+  .badge-card__lock{position:absolute;right:0;bottom:0;display:grid;place-items:center;padding:2px;border:1px solid var(--gold);border-radius:50%;background:var(--card);color:var(--text)}
   .badge-card__content{display:grid;min-width:0;flex:1 1 auto;gap:3px}
   .badge-card__top{display:flex;align-items:center;justify-content:space-between;gap:var(--pc-space-2)}
   .badge-card__title{font-size:var(--font-size-card-title);font-weight:700;color:var(--text)}
-  .badge-card.selected .badge-card__title{color:var(--brown-dark)}
+  .badge-card.current .badge-card__title{color:var(--brown-dark)}
   .badge-card__tier{font-size:var(--font-size-meta);font-weight:700;padding:2px 8px;border-radius:var(--pc-radius-pill);background:var(--bg3);color:var(--muted)}
   .badge-card.earned .badge-card__tier{background:var(--gold-light);color:var(--brown)}
-  .badge-card.selected .badge-card__tier{background:var(--gold);color:var(--on-gold)}
+  .badge-card.current .badge-card__tier{background:var(--gold);color:var(--on-gold)}
   .badge-card__subtitle{margin:0;font-size:var(--pc-type-1);color:var(--muted);line-height:1.4}
   .badge-card__status{margin-top:2px;font-size:var(--font-size-meta)}
   .badge-status{display:inline-block;font-weight:600}

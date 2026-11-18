@@ -99,6 +99,7 @@ export async function fetchNativeJsonMutation(input: string, init: RequestInit, 
   // These writes use the same origin as the backend that owns their session.
   const usesBackendOrigin = url.pathname === '/api/auth/logout'
     || url.pathname === '/api/notifications/read-state'
+    || /^\/api\/practice\/mindful-posts(?:\/[^/]+(?:\/reactions)?)?$/u.test(url.pathname)
     || /^\/api\/practice\/sessions(?:\/[^/]+\/complete)?$/u.test(url.pathname);
   headers.set('Origin', usesBackendOrigin ? url.origin : 'https://quangtu.vn');
   const response = await CapacitorHttp.request({

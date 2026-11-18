@@ -59,6 +59,15 @@ it('fetches immediately on first install and accepts an empty server snapshot', 
   expect(fetchWithSessionRefresh).toHaveBeenCalledTimes(1);
 });
 
+it('uses shipped public totals on an offline native device before the first server sync', async () => {
+  vi.stubGlobal('Capacitor', { isNativePlatform: () => true });
+  vi.stubGlobal('navigator', { onLine: false });
+  const { default: expected } = await import('$lib/data/offline-album-plays.json');
+  expect(await fetchAlbumPlays()).toEqual(expected);
+  expect(fetchWithSessionRefresh).not.toHaveBeenCalled();
+  expect(localStorage.getItem(syncKey)).toBeNull();
+});
+
 it('refreshes a legacy snapshot without a timestamp', async () => {
   localStorage.setItem(cacheKey, JSON.stringify(stored));
   expect(await fetchAlbumPlays()).toEqual(updated);

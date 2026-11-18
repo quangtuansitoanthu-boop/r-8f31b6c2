@@ -25,7 +25,7 @@ export function removeVietnameseDiacritics(str: string | null | undefined): stri
  * 3. Khớp đa từ khóa (nếu gõ nhiều từ cách nhau, tất cả các từ đều phải có mặt).
  */
 type SearchTarget = string | Array<string | null | undefined> | null | undefined;
-type SearchDocument = { lower: string; normalized: string; hasText: boolean };
+type SearchDocument = { lower: string; normalized: string; hasText: boolean; shortWords?: Set<string> };
 
 const searchDocuments = new Map<string, SearchDocument>();
 const searchQueries = new Map<string, { lower: string; normalized: string; tokens: string[] }>();
@@ -34,9 +34,16 @@ function searchTargetText(target: SearchTarget): string {
   return Array.isArray(target) ? target.filter(Boolean).join(' ') : String(target || '');
 }
 
-export function prepareVietnameseSearchDocument(target: SearchTarget): SearchDocument {
+export function prepareVietnameseSearchDocument(
+  target: SearchTarget,
+  options?: { matchShortWords: boolean },
+): SearchDocument {
   const text = searchTargetText(target);
-  return { lower: text.toLowerCase(), normalized: removeVietnameseDiacritics(text), hasText: Boolean(text.trim()) };
+  const normalized = removeVietnameseDiacritics(text);
+  const shortWords = options?.matchShortWords
+    ? new Set(normalized.split(/[^\p{L}\p{N}]+/u).filter(word => word.length > 0 && word.length <= 2))
+    : undefined;
+  return { lower: text.toLowerCase(), normalized, hasText: Boolean(text.trim()), shortWords };
 }
 
 export function matchesVietnameseSearch(target: SearchTarget, query: string): boolean {
@@ -84,7 +91,9 @@ export function matchesPreparedVietnameseSearch(document: SearchDocument, query:
   // 3. Khớp từng từ (tất cả các từ trong query đều xuất hiện trong target)
   const queryTokens = prepared.tokens;
   if (queryTokens.length > 1) {
-    return queryTokens.every((token) => targetNoMark.includes(token));
+    return queryTokens.every((token) => document.shortWords && token.length <= 2
+      ? document.shortWords.has(token)
+      : targetNoMark.includes(token));
   }
 
   return false;

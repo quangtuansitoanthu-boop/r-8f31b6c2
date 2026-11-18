@@ -192,7 +192,10 @@ export class NativeTalkAudio extends EventTarget {
       artwork: artwork ? nativeTalkUrl(artwork) : '',
       originalArtwork: album.artwork || '',
       index, position,
-    }));
+    })).catch(cause => {
+      if (this.queueId === queueId) this.error = { code: 3, message: cause instanceof Error ? cause.message : String(cause) };
+      throw cause;
+    });
   }
   get currentTime() { return this.position; }
   get isPracticePlayback() { return [MEDITATION_AUDIO_ALBUM_ID, ROSARY_AUDIO_ALBUM_ID].some(id => this.queueId.startsWith(`${id}:`)); }

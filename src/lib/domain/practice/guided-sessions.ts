@@ -409,7 +409,7 @@ export function acceptRosaryInteraction(
   const totalAfter = input.dailyCountBeforeSession + acceptedCount;
   return {
     accepted: true,
-    completedCycle: acceptedCount % input.size === 0,
+    completedCycle: totalAfter % input.size === 0,
     reachedDailyGoal: totalBefore < input.dailyGoal && totalAfter >= input.dailyGoal,
     state: {
       ...input,

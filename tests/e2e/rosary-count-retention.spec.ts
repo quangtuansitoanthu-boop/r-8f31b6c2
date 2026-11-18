@@ -110,3 +110,31 @@ test('real touch taps increase both the visible cycle and persisted daily beads'
   await expect(page.locator('.tt-rosary__cycle')).toContainText('2/108');
   expect(await page.evaluate(key => localStorage.getItem(key), countKey)).toBe('2');
 });
+
+test('the 108th bead announces a completed cycle inside the open rosary', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(({ countKey, guidedKey, phrase }) => {
+    localStorage.setItem(countKey, '107');
+    localStorage.setItem(guidedKey, JSON.stringify({
+      rosaryDate: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }),
+      rosaryPhrase: phrase, rosarySize: 108, rosaryDailyGoal: 1000,
+    }));
+  }, { countKey, guidedKey, phrase });
+  await page.goto('/tu-tap');
+  await settleClient(page);
+  await openRosary(page);
+  const rosary = page.getByRole('dialog', { name: 'Lần tràng hạt', exact: true });
+  const cycle = rosary.locator('.tt-rosary__cycle');
+  await expect(cycle).toHaveText('107/1080 chuỗi hoàn tất');
+
+  const countButton = rosary.getByRole('button', { name: 'Niệm một hạt', exact: true });
+  await countButton.tap();
+  await expect(cycle).toHaveText('0/1081 chuỗi hoàn tất');
+  const announcement = rosary.getByRole('status').filter({ hasText: 'Đã hoàn thành 1 chuỗi (108 hạt)!' });
+  await expect(announcement).toBeVisible({ timeout: 2000 });
+
+  await page.waitForTimeout(450);
+  await countButton.tap();
+  await expect(cycle).toHaveText('1/1081 chuỗi hoàn tất');
+  await expect(announcement).toHaveCount(0);
+});

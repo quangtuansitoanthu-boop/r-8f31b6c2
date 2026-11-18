@@ -9,6 +9,10 @@ export const NAME_COPYING_PHRASES: NameCopyingPhrase[] = [
   'Ôm Ma Ni Pát Mê Hùm'
 ];
 
+export function nameCopyingChoiceId(phrase: NameCopyingPhrase): string {
+  return phrase.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-');
+}
+
 export function matchesNameCopyingPhrase(line: string, phrase: NameCopyingPhrase): boolean {
   const normalize = (text: string) => text.normalize('NFC').trim().replace(/\s+/gu, ' ').toLocaleUpperCase('vi-VN');
   return normalize(line) === normalize(phrase);

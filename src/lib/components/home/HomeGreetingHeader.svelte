@@ -1,13 +1,28 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { createQuery } from '@tanstack/svelte-query';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { getSessionContext } from '$lib/stores/session.svelte';
   import { formatInstallNumber } from '$lib/browser/app-stats';
+  import { fetchPracticeProgress, PRACTICE_PROGRESS_QUERY_POLICY } from '$lib/browser/practice-community';
+  import { serverStateKeys } from '$lib/browser/server-state';
+  import { fetchWithSessionRefresh } from '$lib/browser/session-csrf';
+  import { getPracticeIdentity } from '$lib/domain/practice/progress-achievements';
+  import PracticeBadgeIcon from '$lib/components/practice/community/PracticeBadgeIcon.svelte';
 
   const localeStore = getLocaleContext();
   const sessionStore = getSessionContext();
   const isEn = $derived(localeStore.current === 'en');
 
   const formattedCount = $derived(formatInstallNumber(1291, localeStore.current));
+  const principal = $derived(sessionStore.value.authenticated ? sessionStore.value.user?.id ?? null : null);
+  const progress = createQuery(() => ({
+    ...PRACTICE_PROGRESS_QUERY_POLICY,
+    queryKey: serverStateKeys.practiceCommunity.progress(principal ?? 'anonymous'),
+    queryFn: ({ signal }) => fetchPracticeProgress(fetchWithSessionRefresh, signal),
+    enabled: browser && Boolean(principal) && sessionStore.verification === 'verified',
+  }));
+  const { title: rank, avatarBadge } = $derived(getPracticeIdentity(principal ? progress.data : undefined, isEn));
 
   let failedAvatarKey = $state<string | null>(null);
   const avatarUrl = $derived(sessionStore.value.user?.avatarUrl?.trim() || null);
@@ -25,7 +40,7 @@
 <header class="home-greeting-header" aria-label={isEn ? 'Home Header' : 'Đầu trang chủ'}>
   <div class="greeting-top-row">
     <div class="greeting-user">
-      <div class="greeting-avatar" aria-hidden="true">
+      <div class="greeting-avatar" class:greeting-avatar--member={sessionStore.value.authenticated} aria-hidden="true">
         {#if userAvatar}
           <img
             src={userAvatar}
@@ -39,10 +54,16 @@
         {:else}
           <span class="avatar-lotus">🪷</span>
         {/if}
+        {#if rank}
+          <span class="greeting-badge"><PracticeBadgeIcon badgeId={avatarBadge?.id} /></span>
+        {/if}
       </div>
       <div class="greeting-text">
-        <span class="greeting-hello">{isEn ? 'Welcome' : 'Xin chào'},</span>
-        <h1 class="greeting-name">{displayName}</h1>
+        <div class:greeting-line={Boolean(rank)}>
+          <span class="greeting-hello">{isEn ? 'Welcome' : 'Xin chào'},</span>
+          <h1 class="greeting-name">{displayName}</h1>
+        </div>
+        {#if rank}<p class="greeting-rank">{rank}</p>{/if}
       </div>
     </div>
 
@@ -106,6 +127,7 @@
   }
 
   .greeting-avatar {
+    position: relative;
     width: 44px;
     height: 44px;
     min-width: 44px;
@@ -115,6 +137,19 @@
     display: grid;
     place-items: center;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  .greeting-avatar.greeting-avatar--member {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-width: 2px;
+  }
+
+  .greeting-badge {
+    position: absolute;
+    right: -6px;
+    bottom: -4px;
   }
 
   .avatar-lotus {
@@ -132,6 +167,29 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+
+  .greeting-line {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .greeting-line .greeting-hello {
+    flex-shrink: 0;
+  }
+
+  .greeting-rank {
+    align-self: flex-start;
+    max-width: 100%;
+    margin: 4px 0 0;
+    padding: 3px 8px;
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--green-ok) 12%, var(--card));
+    color: var(--green-ok);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    overflow-wrap: anywhere;
   }
 
   .greeting-hello {

@@ -42,8 +42,27 @@ export function createPracticeFabController(
   let startY = 0;
   let startLeft = 0;
   let startTop = 0;
+  let fitX = 0;
+  let fitY = 0;
+
+  function setFitOffset(x: number, y: number): void {
+    fitX = x;
+    fitY = y;
+    element.style.marginLeft = x ? `${x}px` : '';
+    element.style.marginTop = y ? `${y}px` : '';
+  }
+
+  function fitExpandedPanel(): void {
+    const rect = element.getBoundingClientRect();
+    const base = { x: rect.left - fitX, y: rect.top - fitY };
+    const next = element.classList.contains('panel-open')
+      ? clampPracticeFabPosition(base, { width: window.innerWidth, height: window.innerHeight }, rect)
+      : base;
+    setFitOffset(next.x - base.x, next.y - base.y);
+  }
 
   function apply(position: PracticeFabPosition): PracticeFabPosition {
+    setFitOffset(0, 0);
     const rect = element.getBoundingClientRect();
     const next = clampPracticeFabPosition(position, {
       width: window.innerWidth,
@@ -118,8 +137,12 @@ export function createPracticeFabController(
   }
 
   function onResize(): void {
+    if (element.classList.contains('panel-open')) {
+      fitExpandedPanel();
+      return;
+    }
     const rect = element.getBoundingClientRect();
-    onSave(apply({ x: rect.left, y: rect.top }));
+    onSave(apply({ x: rect.left - fitX, y: rect.top - fitY }));
   }
 
   element.addEventListener('pointerdown', onPointerDown);
@@ -127,12 +150,22 @@ export function createPracticeFabController(
   element.addEventListener('pointerup', finishDrag);
   element.addEventListener('pointercancel', finishDrag);
   element.addEventListener('click', onClick, true);
+  // A panel can grow after the user parked its collapsed button at an edge.
+  // Offset the visible panel without moving the saved anchor.
+  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fitExpandedPanel);
+  observer?.observe(element);
   window.addEventListener('resize', onResize);
-  if (initialPosition) requestAnimationFrame(() => onSave(apply(initialPosition)));
+  const initialFrame = initialPosition
+    ? requestAnimationFrame(() => {
+      if (element.classList.contains('panel-open')) fitExpandedPanel();
+      else onSave(apply(initialPosition));
+    }) : undefined;
 
   return {
     apply,
     destroy() {
+      observer?.disconnect();
+      if (initialFrame !== undefined) cancelAnimationFrame(initialFrame);
       window.clearTimeout(dragTimer);
       element.removeEventListener('pointerdown', onPointerDown);
       element.removeEventListener('pointermove', onPointerMove);

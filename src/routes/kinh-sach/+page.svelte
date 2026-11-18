@@ -246,7 +246,7 @@
     }
   }
 
-  let checkedInitialUrl = false;
+  let checkedInitialUrl = $state(false);
   $effect(() => {
     if (checkedInitialUrl || (loading && !articles.length)) return;
     if (typeof window === 'undefined') return;

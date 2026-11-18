@@ -3,6 +3,7 @@ import { createRosaryWater } from './rosary-water';
 /** Dùng chung sóng nước; chỉ lấy nền hiển thị, không đọc/ghi trạng thái phiên thiền. */
 export function createMeditationWater(area: HTMLElement, canvas: HTMLCanvasElement) {
   return createRosaryWater(area, canvas, {
+    maxFrameRate: 30,
     canStartPointer(event) {
       return !(event.target instanceof Element && event.target.closest('button, input, select, textarea, a, .meditation-background-picker'));
     },

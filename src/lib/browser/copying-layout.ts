@@ -1,8 +1,29 @@
+import { withoutCopyNotes } from '../domain/practice/scripture-copying';
 import type { TypedRun } from '../domain/practice/copying-typed-format';
 import { copyingPageStarts } from '../domain/practice/copying-pages';
 
+function appendInkText(target: HTMLElement, text: string, noteMask: string): void {
+  if (!noteMask.includes('\0')) {
+    target.append(document.createTextNode(text));
+    return;
+  }
+  let start = 0;
+  for (const note of noteMask.matchAll(/\0+/gu)) {
+    const left = note.index;
+    const right = left + note[0].length;
+    if (left > start) target.append(text.slice(start, left));
+    const emphasis = document.createElement('em');
+    emphasis.textContent = text.slice(left, right);
+    target.append(emphasis);
+    start = right;
+  }
+  if (start < text.length) target.append(text.slice(start));
+}
+
 export function renderCopyRuns(target: HTMLElement, runs: TypedRun[], start = 0, end = Infinity): void {
   const fragment = document.createDocumentFragment();
+  const manuscript = runs.map(run => run.text).join('');
+  const noteMask = /[(（]/u.test(manuscript) ? withoutCopyNotes(manuscript, '\0') : '';
   let group: HTMLDivElement | undefined, previousLine = -1, offset = 0;
   for (const run of runs) {
     const left = Math.max(start, offset), right = Math.min(end, offset + run.text.length);
@@ -14,7 +35,8 @@ export function renderCopyRuns(target: HTMLElement, runs: TypedRun[], start = 0,
       group.style.textAlign = run.align; fragment.append(group); previousLine = run.line;
     }
     const span = document.createElement(run.bold ? 'strong' : 'span');
-    span.textContent = text; group.append(span);
+    appendInkText(span, text, noteMask.slice(left, right));
+    group.append(span);
   }
   target.replaceChildren(fragment);
 }
@@ -30,6 +52,8 @@ export function renderTracedCopyRuns(target: HTMLElement, runs: TypedRun[], type
 
 function renderReferenceRuns(target: HTMLElement, runs: TypedRun[], typedLength: number, ink: boolean): void {
   const fragment = document.createDocumentFragment();
+  const manuscript = typedLength ? runs.map(run => run.text).join('').slice(0, typedLength) : '';
+  const noteMask = /[(（]/u.test(manuscript) ? withoutCopyNotes(manuscript, '\0') : '';
   let group: HTMLDivElement | undefined, previousLine = -1, offset = 0;
   for (const run of runs) {
     if (!run.text) continue;
@@ -38,11 +62,15 @@ function renderReferenceRuns(target: HTMLElement, runs: TypedRun[], typedLength:
       group.style.textAlign = run.align; fragment.append(group); previousLine = run.line;
     }
     const length = Math.max(0, Math.min(run.text.length, typedLength - offset));
-    if (length || (ink && offset === 0)) {
+    const nextParagraph = ink && typedLength > 0 && offset === typedLength
+      && manuscript.endsWith('\n') && !group.hasChildNodes();
+    if (length || (ink && offset === 0) || nextParagraph) {
       const typed = document.createElement(run.bold ? 'strong' : 'span');
-      typed.append(document.createTextNode(run.text.slice(0, length)));
+      const text = run.text.slice(0, length);
+      appendInkText(typed, text, noteMask.slice(offset, offset + length));
       if (!ink) typed.style.visibility = 'hidden';
       else typed.dataset.copyTyped = '';
+      if (nextParagraph) typed.dataset.copyParagraphStart = '';
       group.append(typed);
     }
     if (length < run.text.length) {

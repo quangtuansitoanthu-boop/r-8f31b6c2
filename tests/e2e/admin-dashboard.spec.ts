@@ -13,9 +13,8 @@ test.describe('admin dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Quản lý nội dung' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Vận hành & Hệ thống' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Chọn khoảng thời gian. Hiện tại: 28 ngày gần nhất' })).toBeVisible();
-    const liveCard = page.locator('.admin-dashboard__overview-links > a').first();
-    await expect(liveCard).toContainText('Đang online');
-    await expect(liveCard.locator('.admin-dashboard__live-dot')).toBeVisible();
+    const trafficCard = page.locator('.admin-dashboard__overview-links').getByRole('link', { name: /Lượt truy cập/u });
+    await expect(trafficCard).toHaveAttribute('href', '/admin/analytics?range=28d');
     await expect(page.locator('.admin-dashboard__overview-links').getByText('Hệ thống', { exact: true })).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });

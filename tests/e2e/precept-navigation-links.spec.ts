@@ -10,7 +10,7 @@ const tools = [
   { action: 'meditation', card: '.tt-mode-card--thien', surface: '.meditation-chooser' },
   { action: 'rosary', card: '.tt-mode-card--chuoi', surface: '.practice-confirm' },
   { action: 'cong-phu', card: '.tt-mode-card--tracker', surface: '.tt-tracker__card' },
-  { action: 'thoi-khoa', card: '.tt-mode-card--rec', surface: '.practice-recommendations' },
+  { action: 'thoi-khoa', card: '.tt-mode-card--rec', surface: '.routine-page' },
   { action: 'tiep-tuc-cong-phu', card: '.tt-mode-card--continue', surface: '.tt-continue-modal' },
 ] as const;
 const companionKey = 'tutam_precept_companion_v1';
@@ -245,7 +245,7 @@ test('reloading a tool above an article keeps its chapter and practice return co
   await expectAction(page, null);
   await expect(page.locator('.tt-practice')).toBeVisible();
   await expect(page.locator('.tt-practice .ttp-header-title')).toHaveText(title.replace(/\s+/g, ' ').toLocaleUpperCase('vi'));
-  await expect(page.locator('.tt-practice')).toContainText('Trước khi bắt đầu');
+  await expect(page.locator('.tt-practice').getByRole('heading', { name: 'Trì chú Bảo Khiếp Ấn • 21 lần', exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('article')).toBe('tt_nghi_thuc_tri_chu_bao_khiep_an');
   expect(new URL(page.url()).searchParams.get('chap')).toBe('1');
   await expect(page.getByRole('dialog', { name: 'Kết Thúc Công Phu?', exact: true })).toHaveCount(0);

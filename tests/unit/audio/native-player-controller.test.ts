@@ -21,6 +21,8 @@ vi.mock('$lib/browser/media-session', () => ({ configureMediaSession: () => () =
 import { AudioPlayerController } from '../../../src/lib/browser/audio-player-controller';
 import { getOfflineTrack, getOfflineTracksForAlbum } from '../../../src/lib/browser/offline-audio-database';
 import { fetchTalkAlbums } from '../../../src/lib/browser/content-catalogs';
+import publicTalkStreams from '$lib/data/public-talk-streams.json';
+import { markVerifiedTalkCatalog } from '$lib/browser/talk-catalog-proof';
 
 const album = { id: 'native-three', title: 'Album', description: '', tracks: [0, 1, 2].map(i => ({ title: `Part ${i}`, url: `https://media.quangtu.vn/${i}.mp3` })) };
 let state: NativeAudioState;
@@ -56,6 +58,63 @@ afterEach(async () => {
   controller.destroy();
   await vi.waitFor(() => expect(bridge.plugin.stop).toHaveBeenCalled());
   vi.unstubAllGlobals();
+});
+
+it('switches the native queue to Archive and Drive at the interrupted position', async () => {
+  await controller.ready;
+  const [albumId, files] = Object.entries(publicTalkStreams)[0];
+  const [id, archive] = Object.entries(files)[0];
+  const url = `/api/audio/drive/${id}`;
+  await controller.playTrack(markVerifiedTalkCatalog({ ...album, id: albumId, visibility: 'public', tracks: [{ title: 'Talk', url }] }, { authenticated: false, user: null }));
+  publish({ ...state, playing: false, playWhenReady: false, position: 42, error: 'HTTP 429' });
+  await vi.waitFor(() => expect(bridge.plugin.setQueue).toHaveBeenLastCalledWith(expect.objectContaining({
+    position: 42, tracks: [{ title: 'Talk', url: archive }],
+  })));
+  await vi.waitFor(() => expect(controller.snapshot.playing).toBe(true));
+  publish({ ...state, playing: false, playWhenReady: false, position: 49, error: 'Archive disconnected' });
+  await vi.waitFor(() => expect(bridge.plugin.setQueue).toHaveBeenLastCalledWith(expect.objectContaining({
+    position: 49, tracks: [{ title: 'Talk', url: expect.stringContaining('drive.usercontent.google.com') }],
+  })));
+  expect(controller.snapshot.album?.tracks[0].url).toBe(url);
+});
+
+it('resumes the Archive-first Báo Ứng Hiện Đời queue on Drive without changing the catalog URL', async () => {
+  await controller.ready;
+  const albumId = 'pt_bao_ung_hien_doi';
+  const [driveId, url] = Object.entries(publicTalkStreams[albumId])[0];
+  const track = { title: 'Tập 1 · Phần 1', url };
+  const current = markVerifiedTalkCatalog({
+    ...album, id: albumId, visibility: 'public', tracks: [track],
+  }, { authenticated: false, user: null });
+  await controller.playTrack(current);
+  expect(bridge.plugin.setQueue).toHaveBeenLastCalledWith(expect.objectContaining({ tracks: [track] }));
+  publish({ ...state, playing: false, playWhenReady: false, position: 42, error: 'Archive disconnected' });
+  await vi.waitFor(() => expect(bridge.plugin.setQueue).toHaveBeenLastCalledWith(expect.objectContaining({
+    position: 42,
+    tracks: [{ ...track, url: `https://drive.usercontent.google.com/download?id=${driveId}&export=download&confirm=t` }],
+  })));
+  await vi.waitFor(() => expect(controller.snapshot.playing).toBe(true));
+  expect(controller.snapshot.album?.tracks[0].url).toBe(url);
+});
+
+it('recovers a Báo Ứng Hiện Đời queue already playing on Drive with its Archive catalog URL', async () => {
+  await controller.ready;
+  controller.destroy();
+  await vi.waitFor(() => expect(bridge.plugin.stop).toHaveBeenCalled());
+  bridge.plugin.stop.mockClear();
+  const albumId = 'pt_bao_ung_hien_doi';
+  const [driveId, archive] = Object.entries(publicTalkStreams[albumId])[0];
+  const url = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&confirm=t`;
+  const playingAlbum = { ...album, id: albumId, visibility: 'public' as const, tracks: [{ title: 'Tập 1 · Phần 1', url }] };
+  bridge.plugin.peek.mockResolvedValueOnce({
+    ...state, album: playingAlbum, position: 87, playing: true, playWhenReady: true, ended: false,
+  });
+  controller = new AudioPlayerController();
+  await controller.ready;
+  expect(controller.snapshot).toMatchObject({
+    playing: true, currentTime: 87, album: { id: albumId, tracks: [{ title: 'Tập 1 · Phần 1', url: archive }] },
+  });
+  expect(bridge.plugin.setQueue).not.toHaveBeenCalled();
 });
 
 it('uses a finite root lease for rosary without repeating the completion bells', async () => {

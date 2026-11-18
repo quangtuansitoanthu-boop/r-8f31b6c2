@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { routineCopyChoice } from '$lib/browser/routine-copy-navigation';
   import { recordCompletedNameCopyingRound } from '$lib/browser/name-copying-storage';
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { createInterfaceTranslator } from '$lib/i18n/copying-interface';
-  import { NAME_COPYING_PHRASES, NAME_COPYING_ROUND_SIZE, matchesNameCopyingPhrase, type NameCopyingPhrase } from '$lib/domain/practice/name-copying';
+  import { NAME_COPYING_PHRASES, NAME_COPYING_ROUND_SIZE, nameCopyingChoiceId, matchesNameCopyingPhrase, type NameCopyingPhrase } from '$lib/domain/practice/name-copying';
   import { NAME_COPYING_COPY as copy } from '$lib/domain/practice/name-copying-copy';
   import { createNameCopyingDraft, readNameCopyingDraft, saveNameCopyingDraft, completeNameCopyingRound, nameCopyingTotal, completeNameCopyingSession, resetNameCopyingData, type NameCopyingDraft } from '$lib/browser/name-copying-storage';
   import PracticeConfirmDialog from '$lib/components/practice/dialog/PracticeConfirmDialog.svelte';
@@ -31,6 +32,9 @@
   onMount(() => {
     try { draft = readNameCopyingDraft(localStorage, principal); }
     catch { storageBlocked = true; notice = copy.unreadable; saveError = true; }
+    const choice = routineCopyChoice(new URL(window.location.href), principal);
+    const phrase = NAME_COPYING_PHRASES.find(item => nameCopyingChoiceId(item) === choice);
+    if (phrase) draft.selected = phrase;
     ready = true;
     if (!storageBlocked) void finishRound();
   });

@@ -66,24 +66,30 @@ async function documentNetworkFirst(request: Request): Promise<Response> {
   const url = new URL(request.url);
   try {
     const response = await fetch(request);
+    if (response.status === 429 || response.status === 503) {
+      return (await cachedOfflineDocument(request)) ?? response;
+    }
     if (response.ok && OFFLINE_DOCUMENT_ROUTES.has(url.pathname) && !isNetworkOnlyRequest(url, response)) {
       const cache = await caches.open(CACHE_NAME);
       await cache.put(request, response.clone());
     }
     return response;
   } catch (error) {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(request) ?? await cache.match('/');
-    if (cached) {
-      if (!cached.headers.get('content-type')?.toLowerCase().includes('text/html')) return cached;
-      // HTML public cũ không chứng minh phiên hiện tại đã được server xác minh.
-      const html = (await cached.text()).replace(/<html(?=[\s>])/iu, '<html data-offline-shell="1"');
-      const headers = new Headers(cached.headers);
-      for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
-      return new Response(html, { status: cached.status, statusText: cached.statusText, headers });
-    }
+    const cached = await cachedOfflineDocument(request);
+    if (cached) return cached;
     throw error;
   }
+}
+
+async function cachedOfflineDocument(request: Request): Promise<Response | undefined> {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request) ?? await cache.match('/');
+  if (!cached?.headers.get('content-type')?.toLowerCase().includes('text/html')) return cached;
+  // HTML public cũ không chứng minh phiên hiện tại đã được server xác minh.
+  const html = (await cached.text()).replace(/<html(?=[\s>])/iu, '<html data-offline-shell="1"');
+  const headers = new Headers(cached.headers);
+  for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
+  return new Response(html, { status: cached.status, statusText: cached.statusText, headers });
 }
 
 async function practiceAudioCacheFirst(request: Request, event: FetchEvent): Promise<Response> {

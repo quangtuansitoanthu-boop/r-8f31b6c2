@@ -1,6 +1,53 @@
 import { expect, test } from '@playwright/test';
 import { translations } from '../../src/lib/i18n/translations';
 
+test('meditation focus keeps the clock running through exit and completion', async ({ page }) => {
+  await page.route('**/api/**', route => route.abort('failed'));
+  await page.addInitScript(() => {
+    localStorage.setItem('tutam_locale', 'vi');
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', { configurable: true, value: undefined });
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/tu-tap?mode=meditation');
+  await page.clock.install();
+  const chooser = page.locator('.meditation-chooser');
+  await chooser.getByRole('checkbox', { name: /Hiện hoa sen và nhịp thở/ }).uncheck();
+  await chooser.getByRole('button', { name: 'Bắt đầu thiền', exact: true }).click();
+  const screen = page.locator('.meditation-screen');
+  const focus = screen.getByRole('button', { name: 'Tập trung', exact: true });
+  const stage = screen.locator('.meditation-focus__stage');
+  const exit = screen.getByRole('button', { name: 'Thoát tập trung', exact: true });
+  const controls = screen.locator('.meditation-screen__controls');
+  const cue = stage.locator('.meditation-focus__cue');
+  await focus.click();
+  await expect(exit).toBeFocused();
+  expect((await exit.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(controls).toBeHidden();
+  await expect(stage).toContainText('🪷');
+  await expect(cue).toHaveText('Hít vào…');
+  await page.clock.fastForward(31_000);
+  await expect(cue).toHaveText('Hít vào…');
+  await page.clock.fastForward(5_000);
+  await expect(cue).toHaveText('Thở ra…');
+  await exit.click();
+  await expect(focus).toBeFocused();
+  await expect(controls.locator('.meditation-screen__visual')).toHaveCount(0);
+  await expect(screen.locator('.meditation-screen__badge--active')).toBeVisible();
+  await focus.click();
+  await expect(cue).toHaveText('Thở ra…');
+  await page.keyboard.press('Escape');
+  await expect(focus).toBeFocused();
+  await expect(screen.locator('.meditation-screen__badge--active')).toBeVisible();
+  await focus.click();
+  await stage.click();
+  await expect(controls).toBeVisible();
+  await focus.click();
+  await page.clock.fastForward(15 * 60_000);
+  await expect(stage).toHaveCount(0);
+  await expect(screen.locator('.meditation-screen__badge--completed')).toBeVisible();
+});
+
 for (const locale of ['vi', 'en'] as const) {
   test(`meditation ends with three bells and the ${locale} blessing`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: locale === 'vi' ? 375 : 1440, height: 900 });

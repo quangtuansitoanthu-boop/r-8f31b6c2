@@ -199,3 +199,11 @@ INSERT INTO facebook_post_imports (
   ('e2e-fb-import-disconnect-edited', 'e2e-fb-confirmation-connection', 'local-disconnect-edited',
    'e2e-fb-disconnect-edited', 'EVERYONE', 'local-source', 'mEJ9ji40tqs-z11FJnrStC3Tl5x2jx6E4h1vNQESPss',
    1, 'review', '2026-07-27T00:00:00.000Z', '2026-07-27T00:00:00.000Z');
+
+-- Dữ liệu phân tích cục bộ độc lập với heartbeat đã tắt trong ứng dụng.
+INSERT INTO analytics_pageviews (
+  pageview_id_hash, visit_date, visitor_id_hash, session_id_hash, path, started_at, last_seen_at
+) VALUES (
+  'e2e-analytics-pageview', date('now', '+7 hours'), 'e2e-analytics-visitor', 'e2e-analytics-session',
+  '/kinh-sach', (unixepoch() - 10) * 1000, unixepoch() * 1000
+);

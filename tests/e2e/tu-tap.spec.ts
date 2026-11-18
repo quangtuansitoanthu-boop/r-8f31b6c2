@@ -177,14 +177,35 @@ test.describe('Tu Tập lifecycle parity', () => {
     await expect(page).toHaveURL(/\/admin\/tu-tap$/u);
   });
 
-  test('authenticated member can open the private verified progress dashboard', async ({ page }) => {
+  test('authenticated member can open the private verified progress dashboard', async ({ page }, testInfo) => {
     await loginAsAdmin(page);
+    await page.route('**/api/practice/progress', route => route.fulfill({ json: {
+      profile: { leaderboardOptIn: false, presenceOptIn: true, selectedBadge: 'streak-7', timeZone: 'Asia/Ho_Chi_Minh' },
+      heatmap: [], streaks: { current: 30, longest: 30 }, badges: ['streak-7', 'streak-30'],
+      totals: { acceptedCount: 30, acceptedDurationSeconds: 0, sessions: 30 },
+      breakdown: [], today: '2026-11-17',
+    } }));
     const response = await page.goto('/tien-do-tu-tap');
 
     expect(response?.status()).toBe(200);
     await expect(page.getByRole('heading', { name: 'Tiến độ tu tập', level: 1 })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Nhật lịch 365 ngày' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Quyền riêng tư cộng đồng' })).toBeVisible();
+    const badge = page.getByRole('img', { name: 'Nguyệt Luân Tịnh Hạnh', exact: true })
+      .and(page.locator('.practice-avatar-badge'));
+    await expect(badge).toBeVisible();
+    for (const [width, theme] of [[375, 'dark'], [1440, 'light']] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await expect.poll(() => badge.evaluate(element => {
+        const avatar = element.previousElementSibling!.getBoundingClientRect();
+        const award = element.getBoundingClientRect();
+        const x = (Math.max(avatar.left, award.left) + Math.min(avatar.right, award.right)) / 2;
+        const y = (Math.max(avatar.top, award.top) + Math.min(avatar.bottom, award.bottom)) / 2;
+        return element.contains(document.elementFromPoint(x, y));
+      })).toBe(true);
+      await page.locator('.practice-community__identity').screenshot({ path: testInfo.outputPath(`badge-${width}-${theme}.png`) });
+    }
   });
 
   test('tracker retains accessible compact controls', async ({ page }) => {
@@ -438,9 +459,9 @@ test.describe('Tu Tập lifecycle parity', () => {
     await expect(practice.getByText('🙏 Đang tu tập')).toBeVisible();
     await expect(practice.getByRole('heading', { name: 'LỜI GIỚI THIỆU' })).toBeVisible();
     await expect(practice.getByText('15px')).toBeVisible();
-    await expect(practice.locator('.ttp-bg-swatch')).toHaveCount(4);
+    await expect(practice.locator('.ttp-bg-swatch')).toHaveCount(6);
     await expect(practice.getByRole('combobox', { name: 'Cuộn', exact: true })).toHaveValue('0.5');
-    await practice.locator('.tt-practice__toggle').click();
+    await expect(practice.locator('.tt-practice__toggle')).toHaveAttribute('aria-expanded', 'true');
     await expect(practice.getByRole('button', { name: '-1', exact: true })).toBeVisible();
     await expect(practice.getByRole('button', { name: '+1', exact: true })).toBeVisible();
     await expect(practice.getByRole('button', { name: '🪘 Mõ' })).toBeVisible();
@@ -486,7 +507,7 @@ test.describe('Tu Tập lifecycle parity', () => {
     await page.getByRole('button', { name: /Bắt Đầu Công Phu/i }).click();
     await page.getByRole('dialog', { name: /^(Bắt Đầu|Tiếp Tục) Công Phu\?$/u }).getByRole('button', { name: 'Bắt đầu 🙏' }).click();
     await expect(page.getByText('🙏 Đang tu tập')).toBeVisible();
-    await page.locator('.tt-practice__toggle').click();
+    await expect(page.locator('.tt-practice__toggle')).toHaveAttribute('aria-expanded', 'true');
     await page.getByRole('button', { name: '+1', exact: true }).click();
     await expect(page.getByText('Đã tụng 1 biến 🙏')).toBeVisible();
 

@@ -399,6 +399,7 @@ describe('browser session store', () => {
 for (const native of [false, true]) {
   it.each([
     () => new Response('unavailable', { status: 503 }),
+    () => new Response('<html>Cloudflare Error 1027</html>', { status: 429, headers: { 'content-type': 'text/html' } }),
     () => new Response('<html>challenge</html>', { status: 403, headers: { 'content-type': 'text/html' } }),
     () => Response.json({ ok: true }),
     () => new Response('{broken', { headers: { 'content-type': 'application/json' } }),

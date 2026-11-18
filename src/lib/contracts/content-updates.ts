@@ -10,6 +10,7 @@ export interface ContentUpdateItem {
   row: ContentRow;
 }
 export interface ContentCatalogPage {
+  chapterIndexVersion?: 1;
   items: ContentUpdateItem[];
   articlesNext: string | null;
   talksNext: string | null;

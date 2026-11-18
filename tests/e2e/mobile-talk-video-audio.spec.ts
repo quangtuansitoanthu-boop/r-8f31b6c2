@@ -68,3 +68,84 @@ test('mobile talk video follows one player and keeps the original audio album co
   await expect(audio.locator('.pt-as-btn-offline')).toBeVisible();
   expect(catalogs).toBe(1);
 });
+
+test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and preserves one player', async ({ page }, testInfo) => {
+  let catalogs = 0;
+  await page.addInitScript(() => {
+    let count = 0;
+    window.Audio = new Proxy(window.Audio, {
+      construct(target, args, newTarget) {
+        count += 1;
+        return Reflect.construct(target, args, newTarget);
+      },
+    });
+    Object.defineProperty(window, '__talkAudioInstances', { get: () => count });
+  });
+  const albumTitle = 'KINH ĐỊA TẠNG BỒ TÁT BỔN NGUYỆN';
+  await page.route('**/api/talks?**', route => {
+    catalogs += 1;
+    return route.fulfill({ json: [
+      { id: 'landscape-video', tieu_de: albumTitle, dien_gia: 'Vũ Tiến Dũng', visibility: 'public', tracks: [
+        { title: 'PHẨM 1 (PHẦN 1)', url: '/__landscape-video.mp4?track=1', media_type: 'video', aspect_ratio: '16:9' },
+        { title: 'PHẨM 1 (PHẦN 2)', url: '/__landscape-video.mp4?track=2', media_type: 'video', aspect_ratio: '16:9' },
+      ] },
+      { id: 'landscape-legacy-audio', tieu_de: 'ALBUM AUDIO CŨ', visibility: 'public', tracks: [
+        { title: 'Bài audio cũ', url: '/__landscape-video.mp4?audio=1' },
+      ] },
+    ] });
+  });
+  await page.route('**/api/album-plays', route => route.fulfill({ json: [] }));
+  await page.route('**/__landscape-video.mp4*', route => {
+    const range = route.request().headers().range?.match(/^bytes=(\d+)-(\d*)$/);
+    const start = range ? Number(range[1]) : 0;
+    const end = range?.[2] ? Math.min(Number(range[2]), media.length - 1) : media.length - 1;
+    return route.fulfill({ status: range ? 206 : 200, contentType: 'video/mp4', body: media.subarray(start, end + 1),
+      headers: { 'accept-ranges': 'bytes', ...(range ? { 'content-range': `bytes ${start}-${end}/${media.length}` } : {}) },
+    });
+  });
+  await page.goto('/phap-thoai');
+  await page.getByRole('button', { name: `Mở album ${albumTitle}`, exact: true }).click();
+  const album = page.getByRole('dialog', { name: albumTitle, exact: true });
+  await expect(album.locator('.pt-as-album-desc')).toContainText('Vũ Tiến Dũng');
+  await expect(album).not.toContainText(/Tiến Dũng AI|youtube\.com|Kênh nguồn/);
+  await expect(album.locator('.pt-as-video-poster')).toBeVisible();
+  await album.locator('.pt-as-track-list').getByRole('button', { name: 'Phát PHẨM 1 (PHẦN 1)', exact: true }).click();
+  const viewer = album.locator('figure.talk-video');
+  await expect(viewer).toHaveClass(/landscape/);
+  await expect(viewer).not.toHaveClass(/expanded/);
+  await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThan(.1);
+  await expect(viewer.locator('video')).toBeInViewport({ ratio: .9 });
+  const frame = await viewer.locator('video').boundingBox();
+  expect(frame).not.toBeNull();
+  expect(frame!.width / frame!.height).toBeCloseTo(16 / 9, 1);
+  await expect(viewer.getByRole('status').filter({ hasText: 'Bạn có thể khóa màn hình' })).toHaveCount(0);
+  const layout = album.locator('.pt-as-video-layout');
+  expect(await layout.evaluate(element => getComputedStyle(element).display)).toBe(page.viewportSize()!.width <= 799 ? 'block' : 'grid');
+  await viewer.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
+  await viewer.getByRole('slider').fill('5');
+  await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(4.5);
+  await page.screenshot({ path: testInfo.outputPath('landscape-video-inline.png') });
+  await viewer.getByRole('button', { name: 'Toàn màn hình', exact: true }).click();
+  await expect(viewer).toHaveClass(/expanded/);
+  if (page.viewportSize()!.width < page.viewportSize()!.height) {
+    await expect(viewer.locator('.video-stage')).toHaveCSS('transform', /^matrix\(0, 1, -1, 0,/);
+  }
+  await expect(viewer.getByRole('button', { name: 'Thu nhỏ', exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('landscape-video-fullscreen.png') });
+  await viewer.getByRole('button', { name: 'Quay lại', exact: true }).click();
+  await expect(viewer).not.toHaveClass(/expanded/);
+  await expect(album.locator('.pt-as-track-list')).toBeVisible();
+  await expect(viewer.locator('video')).toHaveCount(1);
+  await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(4.5);
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+  await album.locator('.pt-as-track-list').getByRole('button', { name: 'Phát PHẨM 1 (PHẦN 2)', exact: true }).click();
+  await expect(viewer.locator('video')).toHaveAttribute('aria-label', 'PHẨM 1 (PHẦN 2)');
+  await expect(viewer).not.toHaveClass(/expanded/);
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__talkAudioInstances'))).toBe(1);
+  await album.getByRole('button', { name: 'Quay lại', exact: true }).click();
+  await page.getByRole('button', { name: 'Mở album ALBUM AUDIO CŨ', exact: true }).click();
+  const legacyAudio = page.getByRole('dialog', { name: 'ALBUM AUDIO CŨ', exact: true });
+  await expect(legacyAudio.locator('video')).toHaveCount(0);
+  await expect(legacyAudio.locator('.pt-as-btn-offline')).toBeVisible();
+  expect(catalogs).toBe(1);
+});

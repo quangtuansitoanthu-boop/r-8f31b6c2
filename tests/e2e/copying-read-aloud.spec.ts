@@ -22,6 +22,7 @@ test('reference reading pauses, resumes without restarting and remains usable wh
   await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
   await page.getByRole('combobox', { name: 'Tốc độ đọc', exact: true }).selectOption({ value: '0.3' });
   await page.getByRole('button', { name: 'Đóng tùy chọn', exact: true }).click();
+  await page.getByRole('button', { name: 'Tùy chọn kinh mẫu', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Tự gõ bản chép của bạn', exact: true });
   await editor.focus();
   await page.getByRole('button', { name: 'Đọc để chép', exact: true }).click();
@@ -50,7 +51,7 @@ test('reference reading pauses, resumes without restarting and remains usable wh
   await page.getByRole('combobox', { name: 'Khoảng cách dòng', exact: true }).selectOption({ value: '1.9' });
   await settings.getByRole('button', { name: 'Đóng tùy chọn', exact: true }).click();
   await expect(editor).toHaveCSS('line-height', '38px');
-  await expect(page.locator('.editor-panel')).toHaveCSS('background-color', 'rgb(238, 237, 230)');
+  await expect(page.locator('.editor-panel')).toHaveCSS('background-color', 'rgb(232, 232, 232)');
   await page.reload();
   await expect(page.getByTestId('copying-page')).toHaveAttribute('data-paper', 'gray');
 });
@@ -58,6 +59,7 @@ test('reference reading pauses, resumes without restarting and remains usable wh
 for (const width of [375, 1440]) for (const dark of [false, true]) {
   test(`paper selection preserves writing and needs no cloud request (${width}, ${dark})`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.addInitScript(value => localStorage.setItem('tutam_dark_mode', value ? '1' : '0'), dark);
     const cloudRequests: string[] = [];
     page.on('request', request => { if (new URL(request.url()).pathname === '/api/practice/copying') cloudRequests.push(request.method()); });
@@ -66,10 +68,11 @@ for (const width of [375, 1440]) for (const dark of [false, true]) {
     await editor.pressSequentially('Nam mô');
     const before = await editor.textContent();
     await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
-    for (const [label, color] of [['Trắng', 'rgb(255, 255, 255)'], ['Kem', 'rgb(251, 244, 230)'], ['Xám', 'rgb(238, 237, 230)']]) {
+    for (const [label, palette, color] of [['Trắng', 'white', 'rgb(255, 255, 255)'], ['Kem', 'cream', 'rgb(250, 246, 238)'], ['Xám', 'gray', 'rgb(232, 232, 232)'], ['Tím', 'purple', 'rgb(238, 230, 250)'], ['Tối', 'dark', 'rgb(21, 18, 13)'], ['Tự động', 'cream', 'rgb(250, 246, 238)']]) {
       const choice = page.getByRole('button', { name: label, exact: true });
       await choice.click();
       await expect(choice).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('html')).toHaveAttribute('data-app-palette', palette);
       await expect(page.locator('.source-panel')).toHaveCSS('background-color', color);
       await expect(page.locator('.editor-panel')).toHaveCSS('background-color', color);
       expect(await editor.textContent()).toBe(before);

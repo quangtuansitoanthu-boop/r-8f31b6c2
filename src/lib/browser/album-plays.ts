@@ -1,5 +1,6 @@
 import { fetchWithSessionRefresh, getBrowserSession, hasUsableBrowserCsrf } from './session-csrf';
 import { fetchNativeJsonMutation, isHtmlResponse } from './native-api';
+import { isNativeApp } from './native-platform';
 import { createBrowserId } from './random-id';
 import { getBrowserSessionSnapshot, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
 
@@ -49,7 +50,15 @@ export function readCachedAlbumPlays(): AlbumPlayCount[] | undefined {
 }
 
 export async function fetchAlbumPlays(signal?: AbortSignal): Promise<AlbumPlayCount[]> {
-  const cachedCounts = () => readCachedAlbumPlays() ?? mergeAcknowledgedCounts([]);
+  const cachedCounts = async () => {
+    const cached = readCachedAlbumPlays();
+    if (cached) return cached;
+    if (isNativeApp()) {
+      const { default: bundled } = await import('$lib/data/offline-album-plays.json').catch(() => ({ default: [] }));
+      if (isAlbumPlayCounts(bundled)) return mergeAcknowledgedCounts(bundled);
+    }
+    return mergeAcknowledgedCounts([]);
+  };
   try {
     const saved = readCachedAlbumPlays();
     let lastSync = 0;

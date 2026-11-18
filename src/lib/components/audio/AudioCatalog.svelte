@@ -40,12 +40,18 @@
   const localeStore = getLocaleContext();
   const t = $derived(localeStore.t);
   const mediaText = $derived(talkVideoText[localeStore.current]);
+  const dreamStoryAlbumIds = new Set([
+    'pt_drive_69bc37dd604011a70e5c4e38337865a8',
+    'pt_drive_c435791b562e6f6e9d345b414df4a273',
+    'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4',
+  ]);
 
   export interface TalkTrack {
     title: string;
     url: string;
     duration_sec?: number;
     media_type?: 'video';
+    aspect_ratio?: '16:9';
   }
 
   export interface TalkAlbum {
@@ -112,6 +118,7 @@
   });
   let videoExpanded = $state(true);
   const selectedHasVideo = $derived(Boolean(selected?.tracks.some(track => track.media_type === 'video')));
+  const selectedLandscapeVideo = $derived(Boolean(selected?.tracks.some(track => track.media_type === 'video' && track.aspect_ratio === '16:9')));
   const selectedVideoTrack = $derived(selected?.id === $audioPlayer.album?.id
     && selected?.tracks[$audioPlayer.trackIndex]?.media_type === 'video'
     ? selected.tracks[$audioPlayer.trackIndex] : null);
@@ -291,7 +298,7 @@
     albumReturnFocus = trigger instanceof HTMLElement ? trigger : null;
     if (disposed || generation !== albumOpenGeneration) return;
     selected = album;
-    videoExpanded = true;
+    videoExpanded = !album.tracks.some(track => track.aspect_ratio === '16:9');
     if (selectedAlbumId !== album.id) {
       onSelectAlbum(album);
     }
@@ -368,7 +375,7 @@
 
   async function play(album: TalkAlbum, trackIndex = 0, resumeSeconds = 0, dismissPrompt = true): Promise<void> {
     if (dismissPrompt) clearResumePrompt();
-    if (album.tracks[trackIndex]?.media_type === 'video') videoExpanded = true;
+    if (album.tracks[trackIndex]?.media_type === 'video') videoExpanded = album.tracks[trackIndex]?.aspect_ratio !== '16:9';
     const player = await getAudioPlayer();
     await player.playTrack(mapped(album), trackIndex, resumeSeconds);
   }
@@ -815,7 +822,7 @@
     const openVideoAlbum = (event: Event) => {
       const albumId = (event as CustomEvent<{ albumId?: string }>).detail?.albumId;
       if (!albumId) return;
-      videoExpanded = true;
+      videoExpanded = !albums.find(item => item.id === albumId)?.tracks.some(track => track.aspect_ratio === '16:9');
       clearResumePrompt();
       if (selected?.id !== albumId) {
         const album = albums.find(item => item.id === albumId);
@@ -926,8 +933,8 @@
     offlineTrackCounts[selected.id] ?? 0,
     selectedTransfer,
   )}
-  <div class="album-overlay" class:video-full={videoIsFull} role="presentation" inert={loginModalOpen} aria-hidden={loginModalOpen ? 'true' : undefined}>
-    <div class="album-dialog" class:has-video={Boolean(selectedVideoTrack)} role="dialog" aria-modal={loginModalOpen ? 'false' : 'true'} aria-labelledby="album-title" tabindex="-1" bind:this={albumDialog}>
+  <div class="album-overlay" class:video-full={videoIsFull} class:compact-video-active={selectedLandscapeVideo && Boolean(selectedVideoTrack)} role="presentation" inert={loginModalOpen} aria-hidden={loginModalOpen ? 'true' : undefined}>
+    <div class="album-dialog" class:has-video={Boolean(selectedVideoTrack)} class:landscape-album={selectedLandscapeVideo} role="dialog" aria-modal={loginModalOpen ? 'false' : 'true'} aria-labelledby="album-title" tabindex="-1" bind:this={albumDialog}>
       <header class="pt-as-header" inert={videoIsFull}>
         <div class="pt-as-header-row1">
           <button class="pt-as-back" type="button" onclick={closeAlbum} aria-label={localeStore.current === 'en' ? 'Back' : 'Quay lại'}>
@@ -994,6 +1001,14 @@
         </div>
       </header>
 
+      {#if offlineNoticeVisible && dreamStoryAlbumIds.has(selected.id)}
+        <aside class="album-story-notice" aria-label={mediaText.storyNoticeTitle}>
+          <strong>{mediaText.storyNoticeTitle}</strong>
+          <p>{mediaText.storyNotice}</p>
+          <small>{mediaText.storyNoticeTimeout}</small>
+        </aside>
+      {/if}
+
       {#if offlineNoticeVisible && offlineStateReady && !isSelectedOnlineOnly && albumStatuses[selected.id] !== 'downloaded' && !offlineLookup.has(selected.id) && !busyModes[selected.id]}
         <aside class="album-offline-notice" aria-label={t.talks.offlineRecommendationTitle}>
           <span class="album-offline-hand" aria-hidden="true">👆</span>
@@ -1027,12 +1042,19 @@
         </div>
       </div>
 
+      <div class="pt-as-video-layout">
       {#if selectedVideoTrack}
         {#key selectedVideoTrack.url}
-          <TalkVideoViewer url={selectedVideoTrack.url} title={selectedVideoTrack.title} bind:expanded={videoExpanded} onBack={closeAlbum} />
+          <TalkVideoViewer url={selectedVideoTrack.url} title={selectedVideoTrack.title} landscape={selectedLandscapeVideo} bind:expanded={videoExpanded} onBack={closeAlbum} />
         {/key}
+      {:else if selectedLandscapeVideo}
+        <button class="pt-as-video-poster" type="button" onclick={() => play(selected!, 0)} aria-label={`${mediaText.play} ${selected.tracks[0]?.title ?? selected.tieu_de}`}>
+          {#if selectedArtwork.src}<img use:sessionCover={selectedArtwork.src} decoding="async" alt="" />{/if}
+          <span>{mediaText.play}</span>
+        </button>
       {/if}
       <div class="pt-as-track-list-wrap" inert={videoIsFull}>
+        {#if selectedLandscapeVideo}<h3 class="pt-as-video-list-title">{localeStore.current === 'en' ? 'Videos' : 'Danh sách video'} · {selected.tracks.length}</h3>{/if}
         <ol class="pt-as-track-list">
         {#each selected.tracks as track, index}
           <li class:active={$audioPlayer.album?.id === selected.id && $audioPlayer.trackIndex === index} class:is-playing={$audioPlayer.album?.id === selected.id && $audioPlayer.trackIndex === index && $audioPlayer.playing} class="pt-as-track-item">
@@ -1061,6 +1083,7 @@
         {#if downloadStatus[selected.id]}
           <p class="album-status" role="status">{downloadStatus[selected.id]}</p>
         {/if}
+      </div>
       </div>
     </div>
   </div>
@@ -1150,7 +1173,11 @@
 {/if}
 
 <style>
-  .album-offline-notice{position:relative;margin:calc(var(--space-page) / 2) var(--space-page);padding:calc(var(--space-page) / 2);background:var(--gold-light);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow);color:var(--text2);flex-shrink:0}
+  .album-offline-notice,.album-story-notice{position:relative;margin:calc(var(--space-page) / 2) var(--space-page);padding:calc(var(--space-page) / 2);background:var(--gold-light);border:1px solid var(--border);border-radius:var(--radius-control);box-shadow:var(--shadow);color:var(--text2);flex-shrink:0}
+  .album-story-notice{padding:var(--notice-padding);font-family:var(--font-reader)}
+  .album-story-notice strong{color:var(--text);font-size:var(--font-size-label)}
+  .album-story-notice p{margin:var(--notice-gap) 0;font-family:var(--font-reader);font-size:var(--font-size-body);line-height:1.6;text-align:justify;overflow-wrap:anywhere}
+  .album-story-notice small{font-size:var(--font-size-meta);line-height:1.5}
   .album-offline-notice p{margin:0;font-size:small;line-height:1.5;text-align:center}
   .album-offline-hand{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:large;pointer-events:none}
   .audio-offline-confirm{margin:auto;width:min(100% - var(--space-page) * 2, var(--practice-dialog-width));max-height:calc(100dvh - var(--space-page) * 2 - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;padding:var(--space-page);border:1px solid var(--dialog-surface-border,var(--border));border-radius:var(--radius-card);background:var(--dialog-surface-background,var(--card));color:var(--text);box-shadow:var(--dialog-surface-shadow,var(--shadow-xl));font:inherit}
@@ -1208,6 +1235,14 @@
   .pt-video-badge{display:inline-flex;padding:1px 6px;border-radius:var(--radius-control);background:var(--gold-muted);color:var(--brown);font-size:var(--font-size-meta);font-weight:700;white-space:nowrap}
   @media(max-width:600px){.has-video .pt-as-album-banner{display:none}}
   .album-dialog{display:flex;width:100%;height:100dvh;overflow:hidden;flex-direction:column;outline:0;background:var(--bg);animation:album-enter .32s cubic-bezier(.4,0,.2,1)}
+  .pt-as-video-layout{display:contents}
+  .landscape-album .pt-as-video-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);min-height:0;flex:1;gap:var(--space-page);padding:var(--space-page);overflow-y:auto;align-items:start}
+  .landscape-album .pt-as-album-banner{display:none}
+  .landscape-album .pt-as-track-list-wrap{overflow:visible;min-width:0;padding-bottom:var(--space-page)}
+  .pt-as-video-poster{position:relative;display:grid;place-items:center;aspect-ratio:16/9;width:100%;min-height:44px;border:0;border-radius:var(--radius-card);background:var(--video-surface);color:var(--video-ink);font:inherit;cursor:pointer;overflow:hidden}
+  .pt-as-video-poster img{position:absolute;height:100%;max-width:100%;object-fit:contain;opacity:.5}
+  .pt-as-video-poster span{z-index:1;padding:var(--space-page);border-radius:var(--radius-control);background:var(--gold);color:var(--on-gold)}
+  @media(max-width:799px){.landscape-album .pt-as-video-layout{display:block}.landscape-album .pt-as-track-list-wrap{margin-top:var(--space-page)}}
   .pt-card-action-btn{display:grid;width:34px;height:34px;flex-shrink:0;place-items:center;padding:0;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text2);cursor:pointer;font-size:15px;position:relative;z-index:2;transition:all .15s ease}
   .pt-card-action-btn:hover:not(:disabled){background:var(--bg2);border-color:var(--gold);color:var(--gold);transform:translateY(-1px)}
   .pt-card-action-btn:disabled{cursor:progress;opacity:.5}
@@ -1421,6 +1456,14 @@
   :global([data-narrow-screen='true']) .album-dialog{
     height:100%;
     max-height:100%;
+  }
+  .pt-as-video-list-title{margin:0 0 .5em;font-size:var(--font-size-body)}
+  :global(body:has(.compact-video-active) :is(.pt-mini-player,.pt-mp-restore-float)){display:none}
+  @media(max-width:768px){
+    :global(.qts-shell--audio-active) .album-overlay.compact-video-active{bottom:calc(56px + max(env(safe-area-inset-bottom, 0px), 6px))}
+  }
+  :global(:is([data-native-app='true'],[data-narrow-screen='true']) .qts-shell--audio-active) .album-overlay.compact-video-active{
+    bottom:calc(56px + max(env(safe-area-inset-bottom, 0px), 6px))
   }
   @media(prefers-reduced-motion:reduce){.album-dialog,.pt-card{animation:none}.pt-as-playing-bars i{animation:none;height:10px}}
 

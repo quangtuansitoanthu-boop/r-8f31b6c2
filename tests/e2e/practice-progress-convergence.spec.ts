@@ -66,8 +66,15 @@ test('practice chapter and scroll resume through typed cloud progress in an inde
       return input.contentKind === 'practice' && input.contentId === articleId
         && input.position.chapterId === '1' && input.position.scrollTop > 800;
     });
+    await page.context().setOffline(true);
     await page.mouse.move(720, 400);
     await page.mouse.wheel(0, 1200);
+    const progressKey = `quangtu_principal_v1:${encodeURIComponent(session.user.id)}:quangtu_reading_progress_v1`;
+    await expect.poll(() => page.evaluate(({ key, id }) => {
+      const records = JSON.parse(localStorage.getItem(key) ?? '[]') as ReadingProgressRecord[];
+      return records.find(row => row.contentId === id && row.contentKind === 'practice')?.position.scrollTop ?? 0;
+    }, { key: progressKey, id: articleId })).toBeGreaterThan(800);
+    await page.context().setOffline(false);
     const accepted = await saved;
     expect(accepted.ok()).toBe(true);
     const firstWrite = (await (await page.request.get(`/api/reading/progress/practice/${articleId}`)).json()).progress as ReadingProgressRecord;
@@ -92,6 +99,7 @@ test('practice chapter and scroll resume through typed cloud progress in an inde
       body: JSON.stringify({ articleId, firstWrite, restored: persisted.progress, scrollTop: await other.evaluate(() => window.scrollY) }, null, 2),
     });
   } finally {
+    await page.context().setOffline(false);
     // Unmount both writers before deleting this test's exact content and progress.
     await second.close();
     await page.close({runBeforeUnload:false});

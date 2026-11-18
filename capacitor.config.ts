@@ -18,23 +18,10 @@ const config: CapacitorConfig = {
     ],
   },
   server: {
+    // Keep the main WebView on bundled assets. Capacitor opens external pages
+    // separately, while API requests and media can still use remote URLs.
     cleartext: false,
-    androidScheme: 'https',
-    allowNavigation: [
-      'quangtu.vn',
-      '*.quangtu.vn',
-      'media.quangtu.vn',
-      'archive.org',
-      '*.archive.org',
-      // URL dự phòng – hoạt động miễn phí vĩnh viễn kể cả khi quangtu.vn hết hạn
-      'quangtu-web.quangtu-ansitoanthu.workers.dev',
-      'quangtu.vercel.app',
-      'accounts.google.com',
-      'drive.google.com',
-      '*.google.com',
-      '*.googleusercontent.com',
-      'appleid.apple.com'
-    ]
+    androidScheme: 'https'
   },
   plugins: {
     // API quangtu.vn không trả header CORS cho origin https://localhost của WebView,

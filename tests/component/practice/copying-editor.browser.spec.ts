@@ -86,6 +86,35 @@ it.each(['X', 'LỜI NGUYỆN TRƯỚC KHI TỤNG KINH\n' + 'Con thàmh tâm đ�
     await check(initial.slice(0, 1) + '?' + initial.slice(1) + '!');
   } finally { await browser.close(); }
 });
+it('continues the ghost on the same line as the draft when there is room', async () => {
+  const heading = 'LỜI NGUYỆN TRƯỚC KHI TỤNG KINH\n';
+  const prefix = 'Con thanh tam danh le, cui xin chu Phat tu bi';
+  setup({ initial: heading + prefix, showGhost: true, ghostRuns: [
+    { text: heading, bold: true, align: 'center', line: 0 },
+    { text: 'Con thành tâm đảnh lễ, cúi xin chư Phật từ bi chứng giám. Con tự biết thân tâm còn nhiều nghiệp chướng.', bold: false, align: 'justify', line: 1 },
+  ] });
+  const css = readFileSync('src/lib/components/RichCopyEditor.svelte', 'utf8').split('<style>')[1].split('</style>')[0].replace(/:global\(([^)]+)\)/g, '$1');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 375, height: 750 } });
+    await page.setContent('<style>' + css + '</style>' + document.querySelector('.rich-copy-container')!.outerHTML);
+    const positions = await page.evaluate(() => {
+      const box = document.querySelector<HTMLElement>('.rich-copy-container')!;
+      box.style.cssText += ';width:355px;height:450px;--copy-font-size:24px';
+      const line = (selector: string) => document.querySelector(selector + ' [data-copy-line="1"]')!;
+      const tail = line('#copy-text').querySelector('[data-copy-typed]')!.lastChild!;
+      const future = line('.rich-copy-ghost').lastChild!.firstChild!;
+      const range = document.createRange();
+      const measure = (node: Node, offset: number) => { range.setStart(node, offset); range.setEnd(node, offset + 1); return range.getBoundingClientRect(); };
+      const ink = measure(tail, tail.textContent!.length - 1);
+      const ghost = measure(future, future.textContent!.search(/\S/));
+      return { inkY: ink.y, ghostY: ghost.y, inkRight: ink.right, ghostLeft: ghost.left };
+    });
+    expect(positions.ghostY).toBe(positions.inkY);
+    expect(positions.ghostLeft).toBeGreaterThanOrEqual(positions.inkRight);
+  } finally { await browser.close(); }
+});
+
 it.each(['lời', 'lời'.normalize('NFD')])('preserves committed Vietnamese IME text %j and aligns its ghost at narrow and wide wraps', async committed => {
   const view = setup({ showGhost: true, ghostRuns: [
     { text: 'LỜI NGUYỆN TRƯỚC KHI TỤNG KINH', bold: false, align: 'center', line: 0 },
@@ -129,6 +158,38 @@ it.each(['lời', 'lời'.normalize('NFD')])('preserves committed Vietnamese IME
   view.editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
   flushSync(); expect(view.text()).toBe('');
 });
+it('places the caret inside the next paragraph when tracing ends on its separator', () => {
+  const heading = 'LỜI NGUYỆN\n';
+  const view = setup({ initial: heading, showGhost: true, ghostRuns: [
+    { text: heading, bold: true, align: 'center', line: 0 },
+    { text: 'Con thành tâm.', bold: false, align: 'justify', line: 2 },
+  ] });
+  setRichCopySelection(view.editor, heading.length, heading.length);
+  const anchor = window.getSelection()!.anchorNode as Text;
+  expect(anchor.parentElement?.closest('[data-copy-line]')?.getAttribute('data-copy-line')).toBe('2');
+  view.editor.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  anchor.appendData('Con');
+  view.editor.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: 'Con', bubbles: true }));
+  flushSync();
+  expect(view.text()).toBe(heading + 'Con');
+});
+
+it.each([['C', 'on', 'Con thành tâm.'], ['Con da b', 'iet', 'Con da biết rồi.']])('keeps a composed word together after %s when the keyboard inserts a block wrapper', async (initial, inserted, reference) => {
+  const view = setup({ initial, showGhost: true, ghostRuns: [{ text: reference, bold: false, align: 'left', line: 0 }] });
+  setRichCopySelection(view.editor, initial.length, initial.length);
+  view.editor.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  const fragment = document.createElement('div');
+  fragment.textContent = inserted;
+  view.editor.querySelector('[data-copy-line]')!.append(fragment);
+  expect(richCopyText(view.editor)).toBe(initial + '\n' + inserted);
+  view.editor.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: inserted, bubbles: true }));
+  view.editor.dispatchEvent(new CompositionEvent('compositionend', { data: inserted, bubbles: true }));
+  await new Promise(resolve => setTimeout(resolve, 0)); flushSync();
+  expect(view.text()).toBe(initial + inserted);
+  expect(richCopyText(view.editor)).toBe(initial + inserted);
+  expect(richCopySelection(view.editor)).toEqual([initial.length + inserted.length, initial.length + inserted.length]);
+});
+
 it('keeps an empty tracing caret at the first paragraph without future draft text', () => {
   const view = setup({ showGhost: true, ghostRuns: [...traceRuns, { text: 'Later paragraph', bold: false, align: 'left', line: 1 }] });
   expect(richCopyText(view.editor)).toBe('');

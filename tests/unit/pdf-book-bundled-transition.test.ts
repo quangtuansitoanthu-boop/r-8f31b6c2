@@ -18,6 +18,19 @@ it('upgraded app retires current bundled book with local files only; no catalog 
  expect(await retireBundledPdfBooks({ principalId: 'a', isCurrent: () => true }, new AbortController().signal, fetcher, [row], hash(row, chapters))).toEqual({ removed: ['Book'], retained: [] });
  expect(fetcher).toHaveBeenCalledOnce(); expect(io.retire).toHaveBeenCalledOnce();
 });
+it('checks bundled chapters for a historic CDN PDF aliased to the app media route', async () => {
+ const aliased = { ...row, pdf_url: '/api/media/pdfs/source.pdf' };
+ io.metadata.mockResolvedValue([{ ...record, sourceUrl: 'https://media.quangtu.vn/pdfs/source.pdf' }]);
+ const fetcher = vi.fn(async () => new Response('unavailable', { status: 503 }));
+ expect(await retireBundledPdfBooks({ principalId: 'a', isCurrent: () => true }, new AbortController().signal, fetcher, [aliased], hash(aliased, chapters))).toEqual({ removed: [], retained: ['Book'] });
+ expect(fetcher).toHaveBeenCalledOnce();
+ expect(io.retire).not.toHaveBeenCalled();
+ io.metadata.mockResolvedValue([{ ...record, sourceUrl: 'https://other.example/pdfs/source.pdf' }]);
+ fetcher.mockClear();
+ expect(await retireBundledPdfBooks({ principalId: 'a', isCurrent: () => true }, new AbortController().signal, fetcher, [aliased])).toEqual({ removed: [], retained: [] });
+ expect(fetcher).not.toHaveBeenCalled();
+ expect(io.retire).not.toHaveBeenCalled();
+});
 it('fresh user does no file probing, notifications or deletion', async () => {
  io.metadata.mockResolvedValue([]); const fetcher = vi.fn();
  expect(await retireBundledPdfBooks({ principalId: 'a', isCurrent: () => true }, new AbortController().signal, fetcher, [row], hash(row, chapters))).toEqual({ removed: [], retained: [] });

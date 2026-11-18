@@ -5,6 +5,26 @@ import { prepareVeganWeek } from '../../src/jobs/vegan-week';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('vegan week cache cleanup', () => {
+  it('upgrades a saved v5 rotation from the packaged file without contacting the media host', async () => {
+    const week = '2026-11-16';
+    const fresh = prepareVeganWeek(week, 5);
+    const { rotationRevision, ...legacy } = fresh;
+    const storage = new Map([['tutam:vegan-week:v1:' + week, JSON.stringify(legacy)]]);
+    const fetch = vi.fn(async () => Response.json(fresh));
+    vi.stubGlobal('location', {});
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    expect(needsVeganWeekUpdate(week)).toBe(true);
+    await expect(downloadVeganWeek(week)).resolves.toMatchObject({ rotationRevision });
+    expect(needsVeganWeekUpdate(week)).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('/vegan/weeks/v5/' + week + '.json', expect.anything());
+  });
+
   it('keeps the old week offline and replaces it after a valid regional download', async () => {
     const week = '2026-11-30';
     const entries: Record<string, string> = {

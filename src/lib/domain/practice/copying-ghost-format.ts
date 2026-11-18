@@ -1,3 +1,4 @@
+import { withoutCopyNotes } from './scripture-copying';
 import type { CopySourceLine } from './copying-formatting';
 import type { TypedRun } from './copying-typed-format';
 
@@ -25,13 +26,45 @@ export function formatGhostRuns(source: CopySourceLine[]): TypedRun[] {
       }
     }
   });
-  return runs;
+  const sourceText = runs.map(run => run.text).join('');
+  const masked = withoutCopyNotes(sourceText, '\0');
+  if (masked === sourceText) return runs;
+  // Trim spacing introduced around a removed note while retaining paragraph breaks.
+  const omitted = new Set<number>();
+  // A line occupied entirely by guidance must not leave a second separator.
+  for (const match of masked.matchAll(/(^|\r?\n)[ \t\0]*\0[ \t\0]*(?=\r?\n|$)/gu)) {
+    const paragraphEnd = match.index + match[0].length;
+    const separator = masked.slice(paragraphEnd, paragraphEnd + 2).startsWith('\r\n') ? 2 : 1;
+    const end = Math.min(masked.length, paragraphEnd + separator);
+    const start = paragraphEnd === masked.length ? match.index : match.index + match[1].length;
+    for (let index = start; index < end; index++) omitted.add(index);
+  }
+  for (const match of masked.matchAll(/\0+(?:[ \t]*\0+)*/gu)) {
+    let start = match.index;
+    let end = start + match[0].length;
+    if (start === 0 || /\s/u.test(masked[start - 1])) {
+      while (/[ \t]/u.test(masked[end] ?? '')) end++;
+    }
+    if (end === masked.length || /[.,!?;:…\r\n。！？]/u.test(masked[end])) {
+      while (start > 0 && /[ \t]/u.test(masked[start - 1])) start--;
+    }
+    for (let index = start; index < end; index++) omitted.add(index);
+  }
+  let offset = 0;
+  return runs.flatMap(run => {
+    const text = run.text.split('').filter((_, index) => !omitted.has(offset + index)).join('');
+    offset += run.text.length;
+    return text ? [{ ...run, text }] : [];
+  });
 }
 
 /** Share raw draft glyph metrics with the ghost; this never grants tracing eligibility. */
 export function alignGhostRuns(runs: TypedRun[], typed: string): TypedRun[] | null {
   const key = (text: string) => text.normalize('NFC').toLocaleLowerCase('vi');
   const canonical = runs.map(run => run.text).join('');
+  const masked = withoutCopyNotes(typed, '\0');
+  const hasNotes = masked !== typed;
+  const compact = (value: string) => value.replace(/\s+/gu, ' ').trim();
   const prefix = key(typed);
   if (!canonical) return typed ? null : runs;
   const sourceEnd = (text: string, normalizedLength: number) => {
@@ -46,7 +79,19 @@ export function alignGhostRuns(runs: TypedRun[], typed: string): TypedRun[] | nu
     }
     return text.length;
   };
-  const canonicalEnd = sourceEnd(canonical, prefix.length);
+  let canonicalEnd = sourceEnd(canonical, prefix.length);
+  if (hasNotes && !canonical.startsWith(typed)) {
+    const typedBody = compact(key(masked.replaceAll('\0', '')));
+    const referenceBody = compact(key(canonical));
+    if (referenceBody.startsWith(typedBody)) {
+      canonicalEnd = 0;
+      while (compact(key(canonical.slice(0, canonicalEnd))).length < typedBody.length) canonicalEnd++;
+      if (/\s$/u.test(typed) && /\s/u.test(canonical[canonicalEnd] ?? '')) canonicalEnd++;
+      const remaining = clipGhostRuns(runs, canonicalEnd);
+      const first = runs[0];
+      return [{ ...first, text: typed }, ...remaining];
+    }
+  }
   let offset = 0, consumed = 0;
   const aligned = runs.map(run => {
     const count = Math.max(0, Math.min(run.text.length, canonicalEnd - offset));

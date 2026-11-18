@@ -5,6 +5,7 @@ import authSchema from '../../migrations/0002-auth-and-session-schema.sql?raw';
 import memberStatusSchema from '../../migrations/0026-member-status.sql?raw';
 import activitySchema from '../../migrations/0017-user-activity-foundations.sql?raw';
 import { createReadingActivityClient } from '../../src/lib/browser/reading-activity-client.ts';
+import { createPracticeReaderProgressClient } from '../../src/lib/browser/practice-reader-progress.ts';
 import { createReadingActivityService } from '../../src/lib/server/services/reading-activity.ts';
 import { ServerInputError } from '../../src/lib/server/errors.ts';
 
@@ -41,6 +42,69 @@ function deferred() {
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 }
+
+it('restores an offline practice position after reopening and syncs it in both directions between devices', async () => {
+  const makeStorage = () => {
+    const values = new Map();
+    return {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    };
+  };
+  const service = createReadingActivityService({ env, principal: { appUserId: session.user.id } });
+  const fetcher = async (path, init) => {
+    if (init.method === 'PUT') {
+      try {
+        return Response.json(await service.writeProgress(JSON.parse(init.body)));
+      } catch (cause) {
+        if (!(cause instanceof ServerInputError)) throw cause;
+        return Response.json({ error: { details: cause.details } }, { status: cause.status });
+      }
+    }
+    const [, kind, id] = /\/api\/reading\/progress\/([^/]+)\/([^/]+)/u.exec(path);
+    return Response.json(await service.getProgress(kind, id));
+  };
+  const storageA = makeStorage();
+  let offline = true;
+  const transportA = async (...args) => {
+    if (offline) throw new TypeError('offline');
+    return fetcher(...args);
+  };
+  const open = (transport, storage) => {
+    const client = createPracticeReaderProgressClient(transport, storage);
+    client.setSession(session);
+    return client;
+  };
+  const first = open(transportA, storageA);
+  first.schedule({ articleId: 'practice-book', chapterIndex: 2, scrollTop: 420, articleTitle: '', chapterTitle: '' });
+  await expect(first.flush()).rejects.toThrow('offline');
+  first.destroy();
+  const reopened = open(transportA, storageA);
+  await expect(reopened.load('practice-book')).resolves.toMatchObject({ chapIdx: 2, scrollTop: 420 });
+  offline = false;
+  await expect(reopened.flush()).resolves.toBe(1);
+  const second = open(fetcher, makeStorage());
+  await expect(second.load('practice-book')).resolves.toMatchObject({ chapIdx: 2, scrollTop: 420 });
+  second.schedule({ articleId: 'practice-book', chapterIndex: 3, scrollTop: 71, articleTitle: '', chapterTitle: '' });
+  await expect(second.flush()).resolves.toBe(1);
+  await expect(reopened.load('practice-book')).resolves.toMatchObject({ chapIdx: 3, scrollTop: 71 });
+  expect((await service.getProgress('practice', 'practice-book')).progress).toMatchObject({
+    revision: 2, position: { chapterId: '3', scrollTop: 71 },
+  });
+
+  offline = true;
+  reopened.save({ articleId: 'practice-book', chapterIndex: 3, scrollTop: 205, articleTitle: '', chapterTitle: '' });
+  second.save({ articleId: 'practice-book', chapterIndex: 3, scrollTop: 150, articleTitle: '', chapterTitle: '' });
+  await expect(second.flush()).resolves.toBe(1);
+  offline = false;
+  await expect(reopened.load('practice-book')).resolves.toMatchObject({ chapIdx: 3, scrollTop: 205 });
+  // One reconnect flush rebases a known conflict and retries once.
+  await expect(reopened.flush()).resolves.toBe(1);
+  await expect(second.load('practice-book')).resolves.toMatchObject({ chapIdx: 3, scrollTop: 205 });
+  reopened.destroy();
+  second.destroy();
+});
 
 it('drains a failed-before-commit predecessor after another record advances the device sequence', async () => {
   const values = new Map();

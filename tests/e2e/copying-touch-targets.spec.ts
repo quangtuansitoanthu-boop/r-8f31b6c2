@@ -20,9 +20,9 @@ for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width: 390, height: 430 });
     await expect(page.locator('.copy-writing')).toHaveClass(/keyboard-open/);
 
-    const toolbarButtons = page.locator('.writing-bar button:visible');
+    const toolbarButtons = page.locator('.source-heading button:visible');
     expect(await toolbarButtons.count()).toBeGreaterThanOrEqual(3);
-    const sourceToggle = page.locator('.source-toggle');
+    const sourceToggle = page.getByRole('button', { name: 'Tùy chọn kinh mẫu', exact: true });
     await expect(sourceToggle).toBeVisible();
 
     for (const button of [...await toolbarButtons.all(), sourceToggle]) {

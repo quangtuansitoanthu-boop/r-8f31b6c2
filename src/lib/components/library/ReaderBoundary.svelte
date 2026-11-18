@@ -180,10 +180,14 @@
 
   const filteredChapters = $derived.by(() => {
     const q = tocSearch.trim().toLowerCase();
-    if (!q) return chapters.map((chapter, index) => ({ chapter, index }));
+    const entries = chapters.map((chapter, index) => ({ chapter, index }));
+    if (article?.id?.replace(/^book_/u, '') === 'tuyen-tap-phap-facebook-quang-tu') {
+      // Only the table of contents is reordered. Reader navigation keeps the original chapter index.
+      entries.sort((a, b) => Number(hasChapterVideo(b.chapter)) - Number(hasChapterVideo(a.chapter)));
+    }
+    if (!q) return entries;
     const isVideoFilter = q === 'video' || q === 'có video';
-    return chapters
-      .map((chapter, index) => ({ chapter, index }))
+    return entries
       .filter(({ chapter, index }) => {
         if (!chapter) return false;
         if (isVideoFilter && hasChapterVideo(chapter)) return true;
@@ -1541,7 +1545,7 @@
       <div class={`reader-scroll bg-${background}`} role="region" aria-label={localeStore.current === 'en' ? 'Reading content' : 'Nội dung bài đọc'} bind:this={scrollArea} onscroll={()=>onReaderScroll()} onwheel={()=>{if(autoScrollActive)stopAutoScroll()}} ontouchstart={()=>{if(autoScrollActive)stopAutoScroll()}}>
         {#if showPdf}
           {#key article.id}
-            <PdfCanvasReader targetAnnotationId={requestedAnnotationId} url={article.pdfUrl} articleId={article.id} title={article.title} category={article.category} categoryIcon={categoryIcon(article.category)} author={article.author} dateLabel={formatVietnamDateWithWeekday(article.publishedAt, localeStore.current)} {viewCount} authenticated={session.authenticated} session={activitySession} currentArticle={article} {articles} onShare={share} onNotify={notify} onOpenArticle={onOpen} onViewerScroll={handlePdfViewerScroll} onClose={close} />
+            <PdfCanvasReader targetAnnotationId={requestedAnnotationId} url={article.pdfUrl} articleId={article.id} title={article.title} category={article.category} categoryIcon={categoryIcon(article.category)} author={article.author} dateLabel={formatVietnamDateWithWeekday(article.publishedAt, localeStore.current)} {viewCount} authenticated={session.authenticated} session={activitySession} currentArticle={article} {articles} onShare={share} onNotify={notify} onOpenArticle={onOpen} onViewerScroll={handlePdfViewerScroll} />
           {/key}
         {:else}
           <article class="reader-body" style={`font-size:${fontSize}px`}>

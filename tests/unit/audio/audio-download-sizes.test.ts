@@ -12,15 +12,17 @@ const catalog = bundledCatalog.map(album => ({
   ...album,
   tracks: (typeof album.tracks === 'string' ? JSON.parse(album.tracks) : album.tracks) as CatalogTrack[],
 }));
-const downloadableAlbums = catalog.filter(album => album.visibility === 'public'
-  && !isOnlineOnlyAudioAlbum(album.tieu_de, album.dien_gia));
+const driveTrackPath = /^\/api\/audio\/drive\/[A-Za-z0-9_-]{5,200}$/u;
+const downloadableDriveAlbums = catalog.filter(album => album.visibility === 'public'
+  && !isOnlineOnlyAudioAlbum(album.tieu_de, album.dien_gia)
+  && album.tracks.length > 0 && album.tracks.every(track => driveTrackPath.test(track.url)));
 const manifestAlbums: Record<string, Record<string, number>> = bundledSizes.albums;
 
 describe('bundled audio download size catalog', () => {
-  it('covers exactly the public downloadable catalog without publishing private or unrelated albums', () => {
-    expect(downloadableAlbums.length).toBeGreaterThan(0);
-    expect(Object.keys(manifestAlbums).sort()).toEqual(downloadableAlbums.map(album => album.id).sort());
-    for (const album of downloadableAlbums) {
+  it('covers exactly the public downloadable Drive albums', () => {
+    expect(downloadableDriveAlbums.length).toBeGreaterThan(0);
+    expect(Object.keys(manifestAlbums).sort()).toEqual(downloadableDriveAlbums.map(album => album.id).sort());
+    for (const album of downloadableDriveAlbums) {
       expect(Object.keys(manifestAlbums[album.id]).sort(), album.id)
         .toEqual(album.tracks.map(track => track.url).sort());
     }
@@ -31,7 +33,7 @@ describe('bundled audio download size catalog', () => {
       let total = 0;
       expect(Object.keys(tracks).length, albumId).toBeGreaterThan(0);
       for (const [url, bytes] of Object.entries(tracks)) {
-        expect(url, albumId).toMatch(/^\/api\/audio\/drive\/[A-Za-z0-9_-]{5,200}$/u);
+        expect(url, albumId).toMatch(driveTrackPath);
         expect(Number.isSafeInteger(bytes), `${albumId}: ${url}`).toBe(true);
         expect(bytes, `${albumId}: ${url}`).toBeGreaterThan(0);
         total += bytes;

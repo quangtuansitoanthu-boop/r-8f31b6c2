@@ -36,6 +36,11 @@ export function setRichCopySelection(root: HTMLElement, start: number, end: numb
         prefix.setEnd(node, 0);
         const start = richCopyText(prefix.cloneContents()).length;
         const size = node.textContent?.length ?? 0;
+        if (offset === start + size && node.textContent?.endsWith('\n')) {
+          const nextParagraph = node.parentElement?.closest('[data-copy-line]')?.nextElementSibling;
+          const nextText = nextParagraph?.querySelector('[data-copy-paragraph-start]')?.firstChild;
+          if (nextText) return [nextText, 0];
+        }
         if (offset >= start && offset <= start + size) return [node, offset - start];
       } else if (node instanceof HTMLBRElement && !node.hasAttribute('data-copy-placeholder')) {
         prefix.setEndBefore(node);

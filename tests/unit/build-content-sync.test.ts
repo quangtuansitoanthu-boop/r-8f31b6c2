@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -13,6 +13,28 @@ const book = { kind: 'article', mode: 'full', version: 'a'.repeat(64), row: { id
 const talk = { kind: 'talk', mode: 'shell', version: 'b'.repeat(64), row: { id: 'talk', dien_gia: 'Latest speaker', tracks: [] } };
 const read = (root: string, file: string) => JSON.parse(readFileSync(path.join(root, file), 'utf8'));
 
+it('uses a scoped index for bundled text and detects a deleted chapter without a changed book version', async () => {
+  const root = temporary();
+  const other = { ...chapter, id: 'c2', so_thu_tu: 1 };
+  let rows = [chapter, other];
+  const fetcher = vi.fn(async (url: URL) => {
+    expect(url.pathname).toBe('/api/content-updates');
+    switch (url.searchParams.get('action')) {
+      case 'chapter-index':
+        expect(url.searchParams.get('ids')).toBe('book');
+        return json(rows.map(({ noi_dung: _body, ...metadata }) => metadata));
+      case 'article': return json({ article: book.row, chapters: rows, next: null });
+      default: return json({ items: [book, talk, { ...book, mode: 'shell', row: { id: 'pdf', tieu_de: 'PDF' } }],
+        articlesNext: null, talksNext: null, chapterIndexVersion: 1 });
+    }
+  });
+  expect((await syncOfflineContent({ root, fetcher })).requests).toBe(3);
+  expect((await syncOfflineContent({ root, fetcher })).requests).toBe(2);
+  rows = [chapter];
+  expect((await syncOfflineContent({ root, fetcher })).requests).toBe(3);
+  expect(read(root, 'static/offline-data/chapters/book.json')).toEqual([chapter]);
+});
+
 it('syncs complete web content, shares catalog sources and only re-reads changed chapters', async () => {
   const root = temporary();
   const fetcher = vi.fn(async (input: URL) => input.pathname.endsWith('tap_noi_dung') ? json([chapter])
@@ -26,6 +48,19 @@ it('syncs complete web content, shares catalog sources and only re-reads changed
   chapter.updated_at = '2026-11-02';
   expect((await syncOfflineContent({ root, fetcher })).requests).toBe(3);
   chapter.updated_at = '2026-11-01';
+});
+
+it('bundles public album play totals with one catalog-independent read', async () => {
+  const root = temporary();
+  mkdirSync(path.join(root, 'src/lib/data'), { recursive: true });
+  writeFileSync(path.join(root, 'src/lib/data/offline-talks.json'), JSON.stringify([{ id: 'legacy' }]));
+  const fetcher = vi.fn(async (input: URL) => {
+    if (input.pathname === '/api/album-plays') return json([{ albumId: 'talk', playCount: 12 }, { albumId: 'legacy', playCount: 5 }, { albumId: 'other', playCount: 3 }]);
+    if (input.pathname.endsWith('tap_noi_dung')) return json([]);
+    return json({ items: [talk], articlesNext: null, talksNext: null });
+  });
+  expect((await syncOfflineContent({ root, fetcher, includeAlbumPlays: true })).requests).toBe(3);
+  expect(read(root, 'src/lib/data/offline-album-plays.json')).toEqual([{ albumId: 'talk', playCount: 12 }, { albumId: 'legacy', playCount: 5 }]);
 });
 
 it('leaves the previous bundle intact if a chapter download is incomplete', async () => {

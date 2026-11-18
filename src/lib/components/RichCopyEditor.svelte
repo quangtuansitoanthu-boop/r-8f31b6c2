@@ -13,6 +13,8 @@
   let ghostElement = $state<HTMLDivElement>();
   let paperScrollTop = $state(0);
   let composing = $state(false);
+  let compositionReference = '';
+  const compositionKey = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replaceAll('đ', 'd');
   let compositionCommitTimer: ReturnType<typeof setTimeout> | undefined;
   let selecting = $state(false);
   let pendingSelection: [number, number] | null = null;
@@ -37,7 +39,7 @@
     const context = editingContext;
     if (context === previousEditingContext) return;
     previousEditingContext = context;
-    undoStack = []; redoStack = []; beforeEdit = null;
+    undoStack = []; redoStack = []; beforeEdit = null; compositionReference = '';
     pendingSelection = null; rememberedSelection = null;
     if (compositionCommitTimer !== undefined) {
       clearTimeout(compositionCommitTimer); compositionCommitTimer = undefined;
@@ -172,6 +174,16 @@
   function changed(event: Event) {
     if (!element) return;
     let next = richCopyText(element);
+    const previous = beforeEdit?.value;
+    if (compositionReference && previous !== undefined && next.startsWith(previous) && !compositionReference.startsWith(compositionKey(next))) {
+      // Some mobile IMEs wrap a word fragment in a DIV. Remove the resulting
+      // separator only when the appended text still traces the same reference.
+      const joined = previous + next.slice(previous.length).replace(/\n/gu, '');
+      if (joined !== next && compositionReference.startsWith(compositionKey(joined))) {
+        next = joined;
+        if (!composing) pendingSelection = [next.length, next.length];
+      }
+    }
     if (!composing && next.length > maxlength) {
       next = next.slice(0, maxlength);
     }
@@ -182,7 +194,10 @@
       clearTimeout(compositionCommitTimer); compositionCommitTimer = undefined;
       composing = false; changed(new Event('compositionend'));
     }
-    beforeEdit = snapshot(); composing = true; oncomposing(true);
+    beforeEdit = snapshot();
+    const atEnd = beforeEdit.selection.every(offset => offset === beforeEdit?.value.length);
+    compositionReference = showGhost && atEnd && canonicalGhost.startsWith(beforeEdit.value) ? compositionKey(canonicalGhost) : '';
+    composing = true; oncomposing(true);
   }
   function endComposition(event: CompositionEvent) {
     if (!composing) return;
@@ -192,7 +207,7 @@
     if (compositionCommitTimer !== undefined) clearTimeout(compositionCommitTimer);
     compositionCommitTimer = setTimeout(() => {
       compositionCommitTimer = undefined;
-      composing = false; changed(event); oncomposing(false);
+      composing = false; changed(event); compositionReference = ''; oncomposing(false);
     }, 0);
   }
   function before(event: InputEvent) {
@@ -207,7 +222,7 @@
     // and edits within the text retain the browser's normal selection behavior.
     const tracing = showGhost && traceCanonical && canonicalGhost && canonicalGhost.startsWith(value)
       && selection?.[0] === value.length && selection[1] === value.length;
-    if (tracing) {
+    if (tracing && event.data !== '(' && event.data !== '（') {
       if (event.inputType === 'deleteContentBackward') {
         event.preventDefault();
         const next = nextGhostTraceText(canonicalGhost, value, { isBackspace: true });

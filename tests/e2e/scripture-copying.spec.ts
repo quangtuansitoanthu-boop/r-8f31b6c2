@@ -20,7 +20,7 @@ test('leaving and reopening during composition does not leave passage navigation
   await beginScriptureCopying(page);
   await page.locator('#copy-block').selectOption({ value: '1' });
   await expect(page.locator('#copy-block')).toHaveValue('1');
-  await expect(page.locator('#copy-source-title')).toContainText('2/');
+  await expect(page.locator('#copy-block option:checked')).toContainText(/^2\s*\//u);
 });
 
 test('passage select keeps the requested value through input and change events', async ({ page }, testInfo) => {
@@ -45,7 +45,7 @@ test('passage select keeps the requested value through input and change events',
   try {
     await select.selectOption({ value: '1' });
     await expect(select).toHaveValue('1');
-    await expect(page.locator('#copy-source-title')).toContainText('2/');
+    await expect(select.locator('option:checked')).toContainText(/^2\s*\//u);
   } finally {
     const diagnostic = await page.evaluate(() => ({
       events: (window as Window & { __copySelectDiagnostic?: unknown[] }).__copySelectDiagnostic,
@@ -68,12 +68,12 @@ for (const form of ['NFC', 'NFD'] as const) {
     await editor.press('Backspace');
     await expect(editor).toHaveText('');
     await page.getByRole('button', { name: 'Đoạn sau', exact: true }).click();
-    await expect(page.locator('#copy-source-title')).toContainText('2/');
+    await expect(page.locator('#copy-block option:checked')).toContainText(/^2\s*\//u);
     await editor.click();
     await editor.press('ControlOrMeta+Z');
     await expect(editor).toHaveText('');
     await page.locator('#copy-block').selectOption({ value: '0' });
-    await expect(page.locator('#copy-source-title')).toContainText('1/');
+    await expect(page.locator('#copy-block option:checked')).toContainText(/^1\s*\//u);
     await expect(editor).toHaveText('');
     await page.reload();
     await beginScriptureCopying(page);
@@ -240,7 +240,7 @@ test('an archived cloud chapter is shown without relabelling it as the new book 
   await page.getByRole('button', { name: 'Xem bản đã lưu trên hệ thống' }).click();
   await page.getByRole('button', { name: 'Mở bản này' }).click();
   await acceptAppConfirm(page, 'Mở bản hệ thống để tiếp tục?');
-  await expect(page.getByText('Đây là bản của lượt trước. Chỉ mở để xem, không thay bản đang chép hoặc cộng lại công phu.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Đây là bản của lượt trước. Chỉ mở để xem, không thay bản đang chép hoặc cộng lại công phu.', { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.locator('.archive-preview')).not.toBeEmpty();
   await page.getByRole('button', { name: 'Đóng tùy chọn', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Tự gõ bản chép của bạn', exact: true })).toHaveText('');
@@ -305,15 +305,18 @@ for (const width of [375, 1440]) test(`idle completion respects composition and 
   await input.dispatchEvent('compositionend');
   await expect(page.locator('#copy-block')).toHaveValue('1');
   await expect(input).toBeFocused();
-  await input.evaluate((element, value) => {
-    element.textContent = value;
-    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
-  }, normalizeCopyText(book.chapters[0].blocks[1]));
+  // Skip the parenthetical-only note so the second edit arms auto-advance.
+  await page.locator('#copy-block').selectOption({ value: '2' });
+  await expect(page.locator('#copy-block')).toHaveValue('2');
+  await input.focus();
+  const nextPassage = normalizeCopyText(book.chapters[0].blocks[2]);
+  await page.keyboard.insertText(nextPassage);
+  await expect(input).toHaveAttribute('data-empty', 'false');
   await page.getByRole('button', { name: 'Đổi kinh hoặc phẩm', exact: true }).click();
   await page.waitForTimeout(750);
   await beginScriptureCopying(page);
-  await expect(page.locator('#copy-block')).toHaveValue('1');
-  await expect(input).not.toBeEmpty();
+  await expect(page.locator('#copy-block')).toHaveValue('2');
+  await expect(input).toHaveAttribute('data-empty', 'false');
 });
 
 test('finishing a passage with Enter advances once and preserves the completed draft', async ({ page }) => {
@@ -331,7 +334,7 @@ test('finishing a passage with Enter advances once and preserves the completed d
   }, completed);
   await expect(page.locator('#copy-block')).toHaveValue('1');
   await expect(input).toHaveText('');
-  await expect(page.locator('#copy-source-title small')).toHaveText(`2/${book.chapters[0].blocks.length}`);
+  await expect(page.locator('#copy-block option:checked')).toContainText(`2 / ${book.chapters[0].blocks.length}`);
   await expect(input).toBeFocused();
   await input.pressSequentially('Bản chép đoạn tiếp theo');
   await expect(page.getByText('Đã lưu trên máy', { exact: true })).toBeVisible();
@@ -341,7 +344,7 @@ test('finishing a passage with Enter advances once and preserves the completed d
   await expect(page.locator('#copy-block')).toHaveValue('1');
   await expect(input).toHaveText('Bản chép đoạn tiếp theo');
   await page.locator('#copy-block').selectOption({ value: '0' });
-  await expect(page.locator('#copy-source-title small')).toHaveText(`1/${book.chapters[0].blocks.length}`);
+  await expect(page.locator('#copy-block option:checked')).toContainText(`1 / ${book.chapters[0].blocks.length}`);
   await expect(input).toContainText(completed);
   expect(requests).toEqual([]);
 });
@@ -426,7 +429,8 @@ test('copying keeps drafts locally and never saves until an authenticated explic
   await page.evaluate(() => { window.dispatchEvent(new Event('online')); document.dispatchEvent(new Event('visibilitychange')); });
   expect(copyRequests).toEqual([]);
   await page.getByRole('button', { name: 'Rà soát đoạn này' }).click();
-  await expect(page.getByRole('region', { name: 'Vị trí cần sửa' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Vị trí cần sửa' })).toBeVisible();
+  await page.getByRole('button', { name: 'Đóng rà soát', exact: true }).click();
   await input.dispatchEvent('paste');
   await expect(input).toHaveText('Nam mo Phat');
   await page.getByRole('button', { name: 'Lưu lên hệ thống', exact: true }).click();
@@ -460,7 +464,7 @@ test('authenticated save acknowledges exactly the submitted snapshot and restore
   await page.getByRole('button', { name: 'Mở bản này' }).first().click();
   await acceptAppConfirm(page, 'Mở bản hệ thống để tiếp tục?');
   await acceptAppConfirm(page, 'Đã tải được bản hệ thống. Thay bản đang chép trên máy bằng bản này?');
-  await expect(page.getByText('Đã mở bản hệ thống trên thiết bị này.')).toBeVisible();
+  await expect(page.getByText('Đã mở bản hệ thống trên thiết bị này.').filter({ visible: true })).toBeVisible();
   await expect(input).toHaveText('Nam mo');
   expect(writes).toHaveLength(1);
 });
@@ -507,7 +511,7 @@ test('login keeps the guest draft separate until the user explicitly adopts and 
   await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
   await page.getByRole('button', { name: 'Giữ bản trên máy thành lượt chép riêng' }).click();
   await acceptAppConfirm(page, 'Giữ nguyên nội dung trên máy thành một lượt chép riêng?');
-  await expect(page.getByText('Đã giữ thành lượt riêng trên máy. Chưa gửi lên hệ thống.')).toBeVisible();
+  await expect(page.getByText('Đã giữ thành lượt riêng trên máy. Chưa gửi lên hệ thống.').filter({ visible: true })).toBeVisible();
   await expect(input).toHaveText('Ban chep khach');
   expect(requests).toEqual(['PUT']);
 });

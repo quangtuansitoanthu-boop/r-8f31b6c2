@@ -6,6 +6,11 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const config = 'tests/e2e/wrangler.sveltekit.jsonc';
+const port = Number(process.env.TUTAM_E2E_RUNTIME_PORT || '8787');
+if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+  throw new Error('TUTAM_E2E_RUNTIME_PORT must be an integer between 1024 and 65535');
+}
+const origin = `http://localhost:${port}`;
 const prebuilt = process.env.TUTAM_E2E_PREBUILT === '1';
 if (prebuilt) {
   const worker = path.join(root, 'dist-sveltekit', '_worker.js');
@@ -48,13 +53,16 @@ if (process.env.TUTAM_E2E_DEV_API === '1') {
   await startLocalDevRuntime({
     config: path.join(root, config),
     persistence,
+    port,
+    origin,
+    assets: path.join(root, 'dist-sveltekit'),
     cleanup: () => rmSync(persistence, { recursive: true, force: true }),
   });
 } else {
 const server = spawn(process.execPath, [
   path.join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js'),
   'dev', '--local', '--config', config, '--persist-to', persistence,
-  '--port', '8787', '--ip', '127.0.0.1'
+  '--port', String(port), '--ip', '127.0.0.1', '--var', `APP_ORIGIN:${origin}`
 ], { cwd: root, env: process.env, stdio: 'inherit' });
 
 let stopping = false;

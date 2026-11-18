@@ -2,6 +2,7 @@ import { canAccessAudioAlbum, getOfflineTrack, type OfflineAudioAccess } from '.
 import { isContentAvailable } from './ios-content-policy';
 import { NativeTalkAudio, hasNativeTalkAudio, cacheNativeTalk, MEDITATION_AUDIO_ALBUM_ID, ROSARY_AUDIO_ALBUM_ID, type NativeAudioState } from './native-talk-audio';
 import { resolveApiUrl } from './native-api';
+import publicTalkStreams from '$lib/data/public-talk-streams.json';
 import { createAlbumPlayReporter } from './album-plays';
 import { createPracticeEvidenceController, type PracticeEvidenceHandle } from './practice-evidence-controller';
 import {
@@ -71,6 +72,8 @@ export interface AudioPlayerSnapshot {
 
 const RETRY_DELAYS = [2_000, 4_000, 6_000, 8_000] as const;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2] as const;
+const BAO_UNG_HIEN_DOI_ALBUM_ID = 'pt_bao_ung_hien_doi';
+const PUBLIC_TALK_STREAMS: Record<string, Record<string, string>> = publicTalkStreams;
 
 export type AudioPlayerSession = Omit<PracticeSessionClientSession, 'user'> & {
   user: null | { id: string; role?: string };
@@ -143,6 +146,10 @@ export class AudioPlayerController {
   private listeners = new Set<(snapshot: AudioPlayerSnapshot) => void>();
   private reportAlbumPlay = createAlbumPlayReporter();
   private retryTimer?: ReturnType<typeof setTimeout>;
+  private sourceTimeout?: ReturnType<typeof setTimeout>;
+  private fallbackStage = 0;
+  private fallbackTrack?: AudioTrack;
+  private wantsPlayback = false;
   private pendingMetadataResume?: () => void;
   private pendingResumeTarget?: { generation: number; seconds: number };
   private pendingSeekTarget?: number;
@@ -263,12 +270,30 @@ export class AudioPlayerController {
       if (!state?.album || generation !== this.loadGeneration) return;
       if (!isContentAvailable(state.album)) { audio.removeAttribute('src'); return; }
       if ([MEDITATION_AUDIO_ALBUM_ID, ROSARY_AUDIO_ALBUM_ID].includes(state.album.id)) return;
-      this.snapshot = { ...this.snapshot, album: state.album, trackIndex: state.trackIndex,
+      let recoveredAlbum = state.album;
+      const sources = PUBLIC_TALK_STREAMS[state.album.id];
+      if (sources && state.album.visibility !== 'private') {
+        // Native recovery stores the actual URL. Keep progress and downloads keyed by the catalog URL.
+        const archiveFirst = state.album.id === BAO_UNG_HIEN_DOI_ALBUM_ID;
+        const tracks = state.album.tracks.map(track => {
+          const match = Object.entries(sources).find(([id, archive]) => track.url === archive || track.url === this.publicDriveUrl(id));
+          if (!match) return track;
+          const original = { ...track, url: archiveFirst ? match[1] : `/api/audio/drive/${match[0]}` };
+          if (track === state.album?.tracks[state.trackIndex]) {
+            this.fallbackTrack = original;
+            this.fallbackStage = track.url === match[1] ? 1 : 2;
+          }
+          return original;
+        });
+        recoveredAlbum = { ...state.album, visibility: 'public', tracks };
+      }
+      this.snapshot = { ...this.snapshot, album: recoveredAlbum, trackIndex: state.trackIndex,
         currentTime: state.position, duration: state.duration, playing: state.playWhenReady,
         speed: state.speed, repeat: state.repeat ?? 0, volume: state.volume,
         sleepTimerRemainingMs: state.sleepRemainingMs, sleepTimerEndOfTrack: state.sleepAtEnd };
+      this.wantsPlayback = state.playWhenReady;
       audio.adopt(state);
-      this.reportAlbumPlay.select(state.album.id, state.album.tracks[state.trackIndex]?.url ?? '');
+      this.reportAlbumPlay.select(state.album.id, this.snapshot.album?.tracks[state.trackIndex]?.url ?? '');
       this.emit();
     } catch { /* No active native session to restore. */ }
   }
@@ -349,6 +374,10 @@ export class AudioPlayerController {
     const access: OfflineAudioAccess = { session: this.session, album, isCurrent: () => generation === this.loadGeneration };
     if (this.audio instanceof NativeTalkAudio && !await canAccessAudioAlbum(album, access).catch(() => false)) return false;
     if (generation !== this.loadGeneration) return false;
+    this.clearPublicSourceTimeout();
+    this.wantsPlayback = false;
+    this.fallbackStage = 0;
+    this.fallbackTrack = undefined;
     this.releasePracticePlayback();
     this.finishDharmaTalkEvidence();
     this.pendingSeekTarget = undefined;
@@ -414,8 +443,10 @@ export class AudioPlayerController {
         this.audio.muted = this.snapshot.muted;
       } catch {
         if (generation !== this.loadGeneration) return false;
-        this.patch({ playing: false, error: 'Không thể mở trình phát nền. Vui lòng thử lại.' });
-        return false;
+        if (!this.publicSource() || !this.audio.error) {
+          this.patch({ playing: false, error: 'Không thể mở trình phát nền. Vui lòng thử lại.' });
+          return false;
+        }
       }
     }
     if (generation !== this.loadGeneration) return false;
@@ -443,8 +474,12 @@ export class AudioPlayerController {
 
   async play(): Promise<void> {
     if (!this.audio.src) return;
+    this.wantsPlayback = true;
     const generation = this.loadGeneration;
     const intent = this.playbackIntentGeneration;
+    const source = this.audio.src;
+    if (this.audio.error && this.tryPublicSourceFallback()) return;
+    this.armPublicSourceTimeout();
     if (this.seekPreparation) {
       await this.seekPreparation;
       if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration) return;
@@ -453,7 +488,9 @@ export class AudioPlayerController {
       if (this.audio.ended) this.seek(0);
       await this.audio.play();
     } catch (cause) {
-      if (generation !== this.loadGeneration || (cause instanceof Error && cause.name === 'AbortError')) return;
+      if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src
+        || (cause instanceof Error && cause.name === 'AbortError')) return;
+      if (!(cause instanceof Error && cause.name === 'NotAllowedError') && this.tryPublicSourceFallback()) return;
       this.patch({
         playing: false,
         error: this.snapshot.retry > 0 ? this.snapshot.error
@@ -463,7 +500,7 @@ export class AudioPlayerController {
       });
       return;
     }
-    if (generation !== this.loadGeneration) return;
+    if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src) return;
     const target = this.pendingResumeTarget;
     if (target?.generation === this.loadGeneration) {
       this.seek(target.seconds);
@@ -472,6 +509,8 @@ export class AudioPlayerController {
   }
 
   pause(): void {
+    this.wantsPlayback = false;
+    this.clearPublicSourceTimeout();
     this.playbackIntentGeneration += 1;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
@@ -612,6 +651,8 @@ export class AudioPlayerController {
    * opening the album again can still offer to resume.
    */
   close(): void {
+    this.wantsPlayback = false;
+    this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.finishDharmaTalkEvidence();
     this.loadGeneration += 1;
@@ -641,6 +682,8 @@ export class AudioPlayerController {
   }
 
   destroy(): void {
+    this.wantsPlayback = false;
+    this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.finishDharmaTalkEvidence();
     this.reportAlbumPlay.reset();
@@ -786,6 +829,7 @@ export class AudioPlayerController {
         const index = (event as CustomEvent<number>).detail;
         const album = this.snapshot.album;
         if (!album?.tracks[index] || index === this.snapshot.trackIndex) return;
+        this.clearPublicSourceTimeout();
         this.finishDharmaTalkEvidence();
         this.clearPendingResume();
         this.pendingSeekTarget = undefined;
@@ -847,13 +891,18 @@ export class AudioPlayerController {
     });
     this.audio.addEventListener('playing', () => {
       if (this.isPracticeAudio()) return;
+      this.clearPublicSourceTimeout();
       if (this.snapshot.album) void this.reportAlbumPlay.playing();
       this.resumeDharmaTalkEvidence();
       this.patch({ retry: 0, error: this.practiceEvidenceNotice });
     });
-    this.audio.addEventListener('waiting', () => this.suspendDharmaTalkEvidence());
+    this.audio.addEventListener('waiting', () => {
+      this.suspendDharmaTalkEvidence();
+      if (!this.isPracticeAudio()) this.armPublicSourceTimeout();
+    });
     this.audio.addEventListener('ended', () => {
       if (this.isPracticeAudio()) return;
+      this.clearPublicSourceTimeout();
       this.reportAlbumPlay.ended();
       this.finishDharmaTalkEvidence();
       // Android advances/repeats its complete playlist without waking WebView.
@@ -912,8 +961,93 @@ export class AudioPlayerController {
     return true;
   }
 
+  private publicSource() {
+    const { album, trackIndex } = this.snapshot;
+    const track = album?.tracks[trackIndex];
+    if (album?.visibility !== 'public' || !track || track.media_type === 'video' || this.objectUrl) return;
+    const sources = PUBLIC_TALK_STREAMS[album.id];
+    if (!sources) return;
+    const proxyId = /^\/api\/audio\/drive\/([\w-]+)$/u.exec(track.url)?.[1];
+    const id = proxyId ?? (album.id === BAO_UNG_HIEN_DOI_ALBUM_ID
+      ? Object.keys(sources).find(key => sources[key] === track.url)
+      : undefined);
+    const archive = id && sources[id];
+    if (id && archive) return { album, track, id, archive, trackIndex };
+  }
+
+  private armPublicSourceTimeout(): void {
+    if (!this.wantsPlayback || this.sourceTimeout || !this.publicSource()) return;
+    this.sourceTimeout = setTimeout(() => {
+      this.sourceTimeout = undefined;
+      if (!this.tryPublicSourceFallback()) {
+        this.wantsPlayback = false;
+        this.audio.pause();
+        this.patch({ playing: false, error: 'Không thể phát bài — vui lòng kiểm tra kết nối mạng.' });
+      }
+    }, 8_000);
+  }
+
+  private clearPublicSourceTimeout(): void {
+    clearTimeout(this.sourceTimeout);
+    this.sourceTimeout = undefined;
+  }
+
+  private publicDriveUrl(id: string): string {
+    return `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
+  }
+
+  private tryPublicSourceFallback(): boolean {
+    if (!this.wantsPlayback) return false;
+    const source = this.publicSource();
+    if (!source) return false;
+    if (this.fallbackTrack !== source.track) {
+      this.fallbackTrack = source.track;
+      // Bản Báo Ứng Hiện Đời đã dùng Archive làm URL gốc.
+      this.fallbackStage = source.track.url === source.archive ? 1 : 0;
+    }
+    if (this.fallbackStage >= 2) return false;
+    this.clearPublicSourceTimeout();
+    const stage = ++this.fallbackStage;
+    const url = stage === 1 ? source.archive : this.publicDriveUrl(source.id);
+    const generation = this.loadGeneration;
+    const intent = this.playbackIntentGeneration;
+    const position = this.pendingSeekTarget ?? (this.audio.currentTime || this.snapshot.currentTime);
+    const audio = this.audio;
+    const isCurrent = () => generation === this.loadGeneration && intent === this.playbackIntentGeneration
+      && stage === this.fallbackStage && this.snapshot.album === source.album && this.snapshot.trackIndex === source.trackIndex;
+    const switchSource = async () => {
+      if (audio instanceof NativeTalkAudio) {
+        const tracks = source.album.tracks.map((track, index) => index === source.trackIndex ? { ...track, url } : track);
+        await audio.setQueue({ ...source.album, tracks }, source.trackIndex, position);
+        if (!isCurrent()) return;
+        audio.setRepeat(this.snapshot.repeat);
+        audio.playbackRate = this.snapshot.speed;
+        audio.volume = this.snapshot.volume;
+        audio.muted = this.snapshot.muted;
+        audio.setSleep(this.snapshot.sleepTimerRemainingMs, this.snapshot.sleepTimerEndOfTrack);
+      } else {
+        this.pendingSeekTarget = position > 0 ? position : undefined;
+        audio.src = url;
+      }
+      await this.play();
+    };
+    void switchSource().catch(() => {
+      if (isCurrent() && !this.tryPublicSourceFallback()) {
+        this.patch({ playing: false, error: 'Không thể phát bài — vui lòng kiểm tra kết nối mạng.' });
+      }
+    });
+    return true;
+  }
+
   private handleError(): void {
     if (!this.audio.error || this.audio.error.code === MediaError.MEDIA_ERR_ABORTED) return;
+    if (this.tryPublicSourceFallback()) return;
+    if (this.publicSource() && this.fallbackStage >= 2) {
+      this.clearPublicSourceTimeout();
+      this.wantsPlayback = false;
+      this.patch({ playing: false, retry: 0, error: 'Không thể phát bài — vui lòng kiểm tra kết nối mạng.' });
+      return;
+    }
     console.error('[AudioPlayer] Audio playback error:', {
       code: this.audio.error.code,
       message: this.audio.error.message,
@@ -1076,6 +1210,8 @@ export class AudioPlayerController {
   }
 
   private stopPlaybackForPrincipalChange(): void {
+    this.wantsPlayback = false;
+    this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.loadGeneration += 1;
     clearTimeout(this.retryTimer);

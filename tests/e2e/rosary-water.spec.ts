@@ -34,7 +34,8 @@ for (const width of [375, 1440]) {
           });
           return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
         };
-        const foreground = luminance(style.color); const background = luminance(style.backgroundColor);
+        const foreground = luminance(style.color);
+        const background = luminance(getComputedStyle(element, '::before').backgroundColor);
         return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
       });
       expect(contrast).toBeGreaterThanOrEqual(4.5);
@@ -49,7 +50,8 @@ for (const width of [375, 1440]) {
       const record = (request: import('@playwright/test').Request) => { if (new URL(request.url()).pathname.startsWith('/api/')) api.push(request.url()); };
       page.on('request', record);
       // Bắt đầu ở nước, đi qua chuỗi hạt: không trở thành một lần niệm.
-      await page.mouse.move(box!.x + 20, y);
+      const waterEdge = x - 84;
+      await page.mouse.move(waterEdge, y);
       await page.mouse.down();
       await expect(water).toHaveAttribute('data-water-active', 'true');
       await page.mouse.move(x, y - 70, { steps: 8 });
@@ -61,9 +63,9 @@ for (const width of [375, 1440]) {
       await page.screenshot({ path: `.artifacts/rosary-water-${width}-${dark ? 'dark' : 'light'}.png` });
       await expect(water).toHaveAttribute('data-water-active', 'false');
       // Bắt đầu ở hạt, đi ra nước: vẫn đếm đúng một lần (hướng mặc định lên).
-      await page.mouse.move(x, y);
+      await page.mouse.move(x - 60, y);
       await page.mouse.down();
-      await page.mouse.move(box!.x + 20, y - 80, { steps: 8 });
+      await page.mouse.move(waterEdge, y - 80, { steps: 8 });
       await page.mouse.up();
       await expect(count).toHaveText(String(initial + 1));
       await expect(water).toHaveAttribute('data-water-active', 'true');

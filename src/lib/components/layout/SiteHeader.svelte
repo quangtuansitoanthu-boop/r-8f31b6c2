@@ -14,6 +14,7 @@
     backLabel?: string;
     onBack?: () => void;
     title?: string;
+    preserveTitleCase?: boolean;
   }
 
   interface Props {
@@ -87,7 +88,7 @@
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
       <span class="tt-back-label">{practiceHeader.active ? (practiceHeader.backLabel ?? t.header.back) : t.header.back}</span>
     </button>
-    <div class="tt-topbar-title" style:text-transform={practiceHeader.active ? 'uppercase' : undefined}>{practiceHeader.active ? (practiceHeader.title ?? t.header.readArticle) : t.header.practiceMode}</div>
+    <div class="tt-topbar-title" style:text-transform={practiceHeader.active && !practiceHeader.preserveTitleCase ? 'uppercase' : undefined}>{practiceHeader.active ? (practiceHeader.title ?? t.header.readArticle) : t.header.practiceMode}</div>
     <div class="tt-topbar-actions">
       <button class="tt-theme-btn" type="button" onclick={onThemeToggle} title={t.header.themeToggle} aria-label={t.header.themeToggle}>{theme === 'dark' ? '☀️' : '🌙'}</button>
       <NotificationBell {session} />

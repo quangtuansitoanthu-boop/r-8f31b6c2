@@ -10,7 +10,7 @@ for (const [mode, palette, scheme, paper] of [
   ['0', 'purple', 'light', 'rgb(238, 230, 250)'],
   ['1', 'purple', 'light', 'rgb(28, 24, 18)'],
   ['auto', 'purple', 'dark', 'rgb(28, 24, 18)'],
-  ['auto', 'purple', 'light', 'rgb(255, 255, 255)'],
+  ['auto', 'purple', 'light', 'rgb(250, 246, 238)'],
 ] as const) {
   test(`home calendar follows ${mode}/${palette}/${scheme} in the card, week and month`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
@@ -32,7 +32,7 @@ for (const [mode, palette, scheme, paper] of [
     await expect(selectedWeek).toHaveCSS('background-image', 'none');
     const selectedColor = await selectedWeek.evaluate(el => {
       const sample = document.createElement('span');
-      sample.style.backgroundColor = 'color-mix(in srgb, var(--text) 14%, var(--card))';
+      sample.style.backgroundColor = 'var(--gold-muted)';
       el.append(sample);
       const expected = getComputedStyle(sample).backgroundColor;
       sample.remove();

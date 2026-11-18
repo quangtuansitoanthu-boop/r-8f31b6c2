@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { ArrowLeft, Expand, ListVideo, Smartphone } from '@lucide/svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { talkVideoText } from '$lib/i18n/talk-video';
@@ -9,8 +9,9 @@
   import { publicMediaFallback } from '$lib/browser/public-media-fallback';
   import { resolveApiUrl } from '$lib/browser/native-api';
   import { getOfflineTrack } from '$lib/browser/offline-audio-database';
+  import { setImmersiveFullscreen } from '$lib/browser/native-fullscreen';
 
-  let { url, title, expanded = $bindable(true), onBack }: { url: string; title: string; expanded?: boolean; onBack: () => void } = $props();
+  let { url, title, landscape = false, expanded = $bindable(true), onBack }: { url: string; title: string; landscape?: boolean; expanded?: boolean; onBack: () => void } = $props();
   const localeStore = getLocaleContext();
   const text = $derived(talkVideoText[localeStore.current === 'en' ? 'en' : 'vi']);
   let video = $state<HTMLVideoElement | null>(null);
@@ -20,11 +21,36 @@
   let hintVisible = $state(false);
   let listButton = $state<HTMLButtonElement | null>(null);
   let expandButton = $state<HTMLButtonElement | null>(null);
+  let figure = $state<HTMLElement | null>(null);
+  let immersiveOwned = $state(false);
+  let loading = $state(true);
+  let retryCount = $state(0);
+
+  async function enterFullscreen(): Promise<void> {
+    expanded = true;
+    await tick();
+    if (!mounted) return;
+    immersiveOwned = true;
+    await setImmersiveFullscreen(true, figure);
+  }
+
+  function shrink(): void { expanded = false; }
+
+  function retryVideo(): void {
+    unavailable = false;
+    loading = true;
+    retryCount += 1;
+    video?.load();
+  }
 
   onMount(() => {
     mounted = true;
     let cancelled = false;
     let localUrl: string | undefined;
+    const fullscreenChanged = () => {
+      if (landscape && immersiveOwned && !document.fullscreenElement) { immersiveOwned = false; expanded = false; }
+    };
+    document.addEventListener('fullscreenchange', fullscreenChanged);
     async function loadSource(): Promise<void> {
       const saved = await getOfflineTrack(url, { album: $audioPlayer.album ?? undefined }).catch(() => null);
       if (cancelled) return;
@@ -33,9 +59,19 @@
     }
     void loadSource();
     return () => {
+      mounted = false;
       cancelled = true;
+      document.removeEventListener('fullscreenchange', fullscreenChanged);
+      if (immersiveOwned) void setImmersiveFullscreen(false);
       if (localUrl) URL.revokeObjectURL(localUrl);
     };
+  });
+
+  $effect(() => {
+    if (!expanded && immersiveOwned) {
+      immersiveOwned = false;
+      void setImmersiveFullscreen(false);
+    }
   });
 
   $effect(() => {
@@ -43,7 +79,7 @@
   });
 
   $effect(() => {
-    if (!mounted || !expanded) { hintVisible = false; return; }
+    if (!mounted || !expanded || landscape) { hintVisible = false; return; }
     hintVisible = true;
     const timer = setTimeout(() => { hintVisible = false; }, 5_000);
     return () => clearTimeout(timer);
@@ -51,6 +87,7 @@
 
   $effect(() => {
     const surface = video;
+    void retryCount;
     if (!mounted || !surface) return;
     let cancelled = false;
     let dispose: (() => void) | undefined;
@@ -70,17 +107,22 @@
   }
 </script>
 
-<figure class="talk-video" class:expanded>
+<figure bind:this={figure} class="talk-video" class:expanded class:landscape>
+  <div class="video-stage">
+  <div class="video-media">
   <video bind:this={video} src={videoSource || undefined} muted playsinline preload="metadata" aria-label={title}
+    onloadeddata={() => { loading = false; }} onwaiting={() => { loading = true; }} onplaying={() => { loading = false; }}
     onerror={() => {
       const fallback = videoSource.startsWith('https://media.quangtu.vn/') ? publicMediaFallback(videoSource) : undefined;
       if (fallback) videoSource = fallback;
-      else unavailable = true;
+      else { unavailable = true; loading = false; }
     }}></video>
+  {#if landscape && !expanded}<button class="video-expand" bind:this={expandButton} type="button" onclick={() => void enterFullscreen()} aria-label={text.enterFullscreen} title={text.enterFullscreen}><Expand size={20} aria-hidden="true" /></button>{/if}
+  </div>
   {#if expanded}
     <div class="video-topbar">
-      <button type="button" onclick={onBack}><ArrowLeft size={20} aria-hidden="true" />{text.back}</button>
-      <button bind:this={listButton} type="button" onclick={() => { expanded = false; }}><ListVideo size={20} aria-hidden="true" />{text.list}</button>
+      <button type="button" onclick={landscape ? shrink : onBack}><ArrowLeft size={20} aria-hidden="true" />{text.back}</button>
+      <button bind:this={listButton} type="button" onclick={shrink}><ListVideo size={20} aria-hidden="true" />{landscape ? text.exitFullscreen : text.list}</button>
     </div>
     {#if hintVisible}
       <div class="background-hint" role="status">
@@ -88,10 +130,15 @@
         <div><strong>{text.backgroundHint}</strong><small>{text.hintTimeout}</small></div>
       </div>
     {/if}
-    {#if unavailable}<p class="video-error" role="status">{text.unavailable}</p>{/if}
+    {#if unavailable && !landscape}<p class="video-error" role="status">{text.unavailable}</p>{/if}
   {/if}
-  <figcaption>
-    {#if expanded}
+  <div class="video-caption">
+    {#if landscape}
+      {#if unavailable}
+        <p role="status">{text.videoUnavailable}</p><button type="button" onclick={retryVideo}>{text.retry}</button>
+      {:else if loading}<p role="status">{text.loading}</p>{/if}
+      <VideoTransport {title} compact={!expanded} />
+    {:else if expanded}
       <VideoTransport {title} />
     {:else}
       <button bind:this={expandButton} type="button" onclick={() => { expanded = true; }}><Expand size={18} aria-hidden="true" />{text.fullscreen}</button>
@@ -101,17 +148,31 @@
       <progress max={$audioPlayer.duration || 1} value={$audioPlayer.currentTime} aria-label={text.seek}></progress>
       {#if unavailable}<p role="status">{text.unavailable}</p>{/if}
     {/if}
-  </figcaption>
+  </div>
+  </div>
 </figure>
 
 <style>
   .talk-video { display: grid; grid-template-columns: minmax(0, 35%) minmax(0, 1fr); flex: none; margin: .5em; border: 1px solid var(--border2); border-radius: var(--radius-card); overflow: hidden; background: var(--bg2); }
+  .video-stage { display: contents; }
+  .landscape .video-stage { display: block; position: relative; block-size: 100%; }
+  .landscape:not(.expanded) { display: block; margin: 0; background: var(--bg); }
+  .video-media { display: contents; }
+  .landscape:not(.expanded) .video-media { display: block; position: relative; }
+  .video-expand { position: absolute; inset-block-end: .5em; inset-inline-end: .5em; padding: 0; }
+  @media (orientation: portrait) and (pointer: coarse), (orientation: portrait) and (max-width: 799px) {
+    .landscape.expanded .video-stage { position: absolute; inset: 50% auto auto 50%; inline-size: 100dvh; block-size: 100dvw; transform: translate(-50%, -50%) rotate(90deg); }
+  }
+  .landscape:not(.expanded) video { aspect-ratio: 16 / 9; block-size: auto; }
+  .landscape .video-caption > p { color: inherit; padding: var(--space-page); }
+  .landscape:not(.expanded) .video-caption { display: block; padding: 0; }
+
   video { display: block; inline-size: 100%; block-size: min(25dvh, 14rem); object-fit: contain; background: var(--video-surface); }
-  figcaption { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .5em; min-inline-size: 0; padding: .75em; }
+  .video-caption { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .5em; min-inline-size: 0; padding: .75em; }
   button { display: inline-flex; align-items: center; justify-content: center; gap: .5em; min-block-size: 44px; min-inline-size: 44px; padding: .5em .75em; border: 1px solid var(--border2); border-radius: 999px; background: var(--bg); color: var(--text); font: inherit; font-size:var(--font-size-label); cursor: pointer; touch-action: manipulation; }
   button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
-  figcaption > button { align-self: flex-end; }
-  figcaption > strong { color: var(--text); font-size:var(--font-size-body); line-height: 1.4; overflow-wrap: anywhere; }
+  .video-caption > button { align-self: flex-end; }
+  .video-caption > strong { color: var(--text); font-size:var(--font-size-body); line-height: 1.4; overflow-wrap: anywhere; }
   .playing-label { color: var(--brown); font-size:var(--font-size-meta); }
   .time-label { color: var(--muted); font-size: .75em; font-variant-numeric: tabular-nums; }
   progress { inline-size: 100%; block-size: .35em; accent-color: var(--gold); }
@@ -120,12 +181,12 @@
   .expanded video { inline-size: 100%; block-size: 100%; }
   .video-topbar { position: absolute; top: max(.75em, var(--app-safe-top, env(safe-area-inset-top, 0px))); right: max(.75em, env(safe-area-inset-right, 0px)); left: max(.75em, env(safe-area-inset-left, 0px)); display: flex; justify-content: space-between; gap: .5em; }
   .video-topbar button { border-color: color-mix(in srgb, var(--video-ink) 50%, transparent); color: var(--video-ink); background: color-mix(in srgb, var(--video-surface) 70%, transparent); }
-  .expanded figcaption { position: absolute; inset-inline: 0; bottom: 0; display: block; padding: 0; }
+  .expanded .video-caption { position: absolute; inset-inline: 0; bottom: 0; display: block; padding: 0; }
   .background-hint { position: absolute; top: calc(max(.75em, var(--app-safe-top, env(safe-area-inset-top, 0px))) + 54px); inset-inline: .75em; display: flex; align-items: center; gap: .75em; padding: .75em; border: 1px solid var(--gold); border-radius: var(--radius-control); background: color-mix(in srgb, var(--video-surface) 90%, transparent); color: var(--video-ink); pointer-events: none; }
   .background-hint :global(svg) { flex: none; }
   .background-hint strong { display: block; font-size:var(--font-size-body); line-height: 1.4; }
   .background-hint small { display: block; margin-top: .3em; font-size:var(--font-size-meta); opacity: .8; }
   .video-error { position: absolute; top: 35%; inset-inline: 1em; padding: .75em; color: var(--video-ink); background: var(--video-surface); }
-  @media (max-width: 600px) { figcaption { gap: .35em; padding: .5em; } }
+  @media (max-width: 600px) { .video-caption { gap: .35em; padding: .5em; } }
   @media (orientation: landscape) and (max-height: 500px) { .background-hint { max-inline-size: 25em; } }
 </style>

@@ -1,10 +1,18 @@
 import { fetchPublicMedia } from './public-media-fallback';
-import { isVeganWeek, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_PACKAGE_MAX_BYTES, vietnamWeek, type VeganWeek } from '$lib/contracts/vegan-week';
+import { isVeganWeek, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_ROTATION_REVISION, VEGAN_PACKAGE_MAX_BYTES, vietnamWeek, type VeganWeek } from '$lib/contracts/vegan-week';
 
 const prefix = 'tutam:vegan-week:v1:';
+const bundledRotationWeeks = new Set(['2026-11-09', '2026-11-16', '2026-11-23']);
+
+function needsBundledRotation(week: string, saved: VeganWeek): boolean {
+  return bundledRotationWeeks.has(week) && saved.version === ROTATING_VEGAN_VERSION
+    && (saved.rotationRevision ?? 0) < VEGAN_ROTATION_REVISION;
+}
+
 export function needsVeganWeekUpdate(week: string, saved = readVeganWeek(week)): boolean {
   if (!saved) return true;
   if (week >= REGIONAL_VEGAN_FIRST_WEEK && saved.version !== ROTATING_VEGAN_VERSION) return true;
+  if (needsBundledRotation(week, saved)) return true;
   if (saved.recipes?.some(r => r.steps?.some(s => /\{\d+\}/u.test(s)))) {
     return true;
   }
@@ -69,6 +77,9 @@ export function downloadVeganWeek(week: string): Promise<VeganWeek> {
         }
       }
 
+      // The revision for these weeks is bundled in the app. Keep an older
+      // usable pack if the local file is unavailable without polling the CDN.
+      if (!data && saved && needsBundledRotation(week, saved)) return saved;
       if (!data) {
         const response = await fetchPublicMedia('https://media.quangtu.vn/vegan/weeks/v' + version + '/' + encodeURIComponent(week) + '.json', {
           credentials: 'omit',

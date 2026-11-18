@@ -39,7 +39,8 @@ test.describe('homepage and guide parity', () => {
     const inner = footer.locator('.qts-footer__inner');
     const logo = footer.locator('.qts-footer__brand img');
     await footer.scrollIntoViewIfNeeded();
-    await expect(footer).toHaveCSS('background-color', 'rgb(62, 44, 26)');
+    const paletteBackground = await page.locator('html').evaluate(root => getComputedStyle(root).backgroundColor);
+    await expect(footer).toHaveCSS('background-color', paletteBackground);
     await expect(footer).toHaveCSS('border-top-width', '1px');
     expect(await logo.boundingBox()).toMatchObject({ width: 36, height: 36 });
 
@@ -99,14 +100,12 @@ test.describe('homepage and guide parity', () => {
   });
 
   test('homepage exposes the shared shell, hero, search, public catalog and footer', async ({ page }) => {
-    const presenceResponse = page.waitForResponse((response) => response.url().includes('/api/presence') && response.request().method() === 'POST');
     await page.goto('/kinh-sach');
-    expect((await presenceResponse).status()).toBe(200);
+    await settleClient(page);
     await expect(page).toHaveURL(/\/kinh-sach$/);
     await expect(page.getByRole('navigation', { name: 'Tu tập Phật pháp' })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Kho Kinh Sách/i })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Tìm kiếm bài viết' })).toBeVisible();
-    expect((await presenceResponse).ok()).toBe(true);
     await expect(page.getByRole('button', { name: 'Đọc ngay Bài viết kiểm thử E2E' })).toBeVisible();
     await page.goto('/huong-dan');
     await expect(page.getByRole('contentinfo')).toContainText('Tu tập');

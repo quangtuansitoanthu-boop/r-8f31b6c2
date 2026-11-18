@@ -1,10 +1,18 @@
 import { expect, test } from '@playwright/test';
 
 test('practice entry cards have distinct readable palettes in both themes and viewport sizes', async ({ page }, testInfo) => {
+  await page.goto('/');
+  const homeBanner = page.locator('.pbb-compact--vegan');
+  await expect(homeBanner).toBeVisible();
+  const bannerPalette = await homeBanner.evaluate(element => {
+    const style = getComputedStyle(element);
+    return { ink: style.color, stops: style.backgroundImage.match(/(?:rgba?|color)\([^)]*\)/g) };
+  });
   await page.goto('/tu-tap');
   await expect(page.locator('a[href="/tu-tap/chep-danh-hieu"]')).toBeVisible();
+  await expect(page.locator('a.tt-mode-card--vegan[href="/tu-tap/an-chay"]')).toBeVisible();
   const cards = page.locator('.tt-modes-grid > .tt-mode-card');
-  await expect(cards).toHaveCount(16);
+  await expect(cards).toHaveCount(17);
   for (const card of await cards.all()) await expect(card).toBeEnabled();
   for (const width of [375, 1440]) for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width, height: 844 });
@@ -35,11 +43,13 @@ test('practice entry cards have distinct readable palettes in both themes and vi
         const mode = element.classList.contains('tt-mode-card--eight-precepts')
           ? 'eight-precepts'
           : [...element.classList].find(name => name.startsWith('tt-mode-card--'))?.slice('tt-mode-card--'.length);
-        return { mode, title: element.querySelector('.tt-mode-title')?.textContent, background: style.backgroundImage, contrast: Math.min(...ratios) };
+        return { mode, title: element.querySelector('.tt-mode-title')?.textContent, background: style.backgroundImage,
+          ink: style.color, stops: colors, contrast: Math.min(...ratios) };
       });
     });
     expect(palettes.every(palette => palette.mode)).toBe(true);
-    expect(new Set(palettes.map(palette => palette.mode)).size).toBe(16);
+    expect(palettes.find(palette => palette.mode === 'vegan')).toMatchObject(bannerPalette);
+    expect(new Set(palettes.map(palette => palette.mode)).size).toBe(17);
     const backgroundFamilies = new Map<string, string[]>();
     for (const palette of palettes) {
       const family = backgroundFamilies.get(palette.background) ?? [];

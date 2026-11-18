@@ -21,6 +21,21 @@ import {
 } from '../../src/lib/server/domain/content.ts';
 
 describe('server domain compatibility', () => {
+  it('preserves video and landscape metadata without changing legacy audio tracks', () => {
+    const normalized = normalizeWrite('phap_thoai', tableDefinition('phap_thoai'), {
+      tracks: [
+        { title: 'Video', url: '/api/audio/drive/video-file-12345', media_type: 'video', aspect_ratio: '16:9', duration_sec: 10.4 },
+        { title: 'Audio', url: '/api/audio/drive/audio-file-12345', aspect_ratio: '16:9', duration_sec: 21 },
+        { title: 'Other', url: '/api/audio/drive/other-file-12345', media_type: 'unknown', aspect_ratio: 'javascript:bad' },
+      ],
+    }, { role: 'admin' });
+    expect(JSON.parse(normalized.tracks)).toEqual([
+      { title: 'Video', url: '/api/audio/drive/video-file-12345', media_type: 'video', aspect_ratio: '16:9', duration_sec: 10 },
+      { title: 'Audio', url: '/api/audio/drive/audio-file-12345', duration_sec: 21 },
+      { title: 'Other', url: '/api/audio/drive/other-file-12345' },
+    ]);
+  });
+
   it('matches legacy HTML sanitization for article content', () => {
     const dirty = '<h2 onclick="steal()">Kinh</h2><script>alert(1)</script>' +
       '<a href="jav&#x61;script:alert(1)">x</a><img src="covers/a.webp" onerror="x">' +

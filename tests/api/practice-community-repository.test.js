@@ -203,6 +203,36 @@ describe('practice community repository', () => {
     });
   });
 
+  it('skips repeated campaign aggregate reads while preserving viewer membership', async () => {
+    const repository = createPracticeCommunityRepository(env);
+    const campaignId = 'campaign-budget';
+    await repository.createCampaign({
+      id: campaignId, title: 'Cùng tinh tấn', description: '', metric: 'count',
+      goal_value: 1000, starts_at: now(0), ends_at: now(10), status: 'active', created_by: 'admin-a',
+      created_at: now(0), updated_at: now(0),
+    });
+    await repository.joinCampaign(campaignId, 'owner-a', now(1));
+    for (let logId = 1; logId <= 32; logId += 1) {
+      await repository.recordManualCampaignContribution({
+        campaignId, ownerId: 'owner-a', logId, count: 2, type: 'Niệm danh hiệu',
+        date: now(1), now: now(1), metric: 'count',
+      });
+    }
+    const cold = await repository.listCampaigns(false, now(2), 'owner-a');
+    const warm = await repository.listCampaigns(false, now(2), 'owner-b');
+    expect(cold.results).toMatchObject([{ id: campaignId, joined: 1, member_count: 1, contribution_value: 64 }]);
+    expect(warm.results).toMatchObject([{ id: campaignId, joined: 0, member_count: 1, contribution_value: 64 }]);
+    console.info('Campaign D1 rows read (cold/warm):', cold.meta.rows_read, warm.meta.rows_read);
+    expect(warm.meta.rows_read).toBeLessThan(cold.meta.rows_read / 2);
+    await repository.leaveCampaign(campaignId, 'owner-a', now(3));
+    const afterLeave = await repository.listCampaigns(false, now(4), 'owner-a');
+    expect(afterLeave.results).toMatchObject([{ joined: 0, member_count: 0, contribution_value: 64 }]);
+    await repository.deleteManualCampaignContribution('owner-a', campaignId, 1);
+    expect((await repository.listCampaigns(false, now(4), 'owner-b')).results)
+      .toMatchObject([{ joined: 0, member_count: 0, contribution_value: 62 }]);
+    expect((await repository.listCampaigns(false, now(11), 'owner-b')).results).toEqual([]);
+  });
+
   it('counts each accepted session once for joined active campaigns', async () => {
     const community = createPracticeCommunityRepository(env);
     const sessions = createPracticeSessionRepository(env);

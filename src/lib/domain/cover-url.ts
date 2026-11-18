@@ -14,6 +14,8 @@
 import bookCoverOverrides from '$lib/data/book-cover-overrides.json';
 
 const MEDIA_ORIGIN = 'https://media.quangtu.vn';
+const WEB_ORIGIN = 'https://quangtu.vn';
+const staticCovers = new Set(Object.values(bookCoverOverrides));
 
 function splitPositionSuffix(raw: string): { base: string; suffix: string } {
   const marker = raw.lastIndexOf('#pos=');
@@ -80,6 +82,14 @@ export function normalizeCoverSrc(raw: unknown): string {
  */
 export function coverRemoteFallback(src: string | null | undefined): string {
   const raw = String(src ?? '').trim();
+  const coverPath = raw.replace(/^https:\/\/(?:media\.)?quangtu\.vn(?=\/)/u, '')
+    .replace(/^\/?api\/media\/covers\//u, '/covers/')
+    .replace(/^covers\//u, '/covers/');
+  const { base: staticPath, suffix: staticPosition } = splitPositionSuffix(coverPath);
+  const [file] = staticPath.split('?');
+  if (staticCovers.has(file) && raw !== WEB_ORIGIN + staticPath + staticPosition) {
+    return WEB_ORIGIN + staticPath + staticPosition;
+  }
   const trimmed = /^\/?api\/media\/covers\//iu.test(raw) ? normalizeCoverSrc(raw) : raw;
   if (!trimmed) return '';
   const { base, suffix } = splitPositionSuffix(trimmed);

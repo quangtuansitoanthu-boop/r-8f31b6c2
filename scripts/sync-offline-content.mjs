@@ -9,7 +9,7 @@ const safeId = id => typeof id === 'string' && /^[\w.-]+$/u.test(id);
 const PRIMARY_ORIGIN = 'https://quangtu.vn';
 const WORKER_ORIGIN = 'https://quangtu-web.quangtu-ansitoanthu.workers.dev';
 
-export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch } = {}) {
+export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch, includeAlbumPlays = false } = {}) {
   const snapshot = randomUUID();
   const read = (file, fallback) => fs.existsSync(path.join(root, file))
     ? JSON.parse(fs.readFileSync(path.join(root, file), 'utf8')) : fallback;
@@ -70,10 +70,12 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
   }
   const items = [];
   const query = {};
+  let scopedChapterIndex = true;
   for (let pageNumber = 0; ; pageNumber++) {
     if (pageNumber >= 1000) throw new Error('Catalog pagination exceeded');
     const page = await json(query);
     if (!Array.isArray(page.items)) throw new Error('Invalid catalog');
+    scopedChapterIndex &&= page.chapterIndexVersion === 1;
     items.push(...page.items);
     for (const name of ['articles', 'talks']) {
       const next = page[`${name}Next`];
@@ -86,10 +88,19 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
     if (page.articlesNext === null && page.talksNext === null) break;
   }
   if (new Set(items.map(item => `${item.kind}:${item.row?.id}`)).size !== items.length) throw new Error('Duplicate catalog IDs');
-  // Legacy data adapter không phân trang offset; tuyệt đối không lặp lại trang đầu.
-  const chapterIndex = await json({ select: 'id,bai_viet_id,so_thu_tu,updated_at', order: 'id.asc', limit: '5000' }, '/api/data/tap_noi_dung');
+  const fullArticleIds = items.filter(item => item.kind === 'article' && item.mode !== 'shell').map(item => item.row?.id);
+  if (fullArticleIds.some(id => !safeId(id))) throw new Error('Invalid catalog article ID');
+  const useScopedIndex = scopedChapterIndex && fullArticleIds.length <= 200 && fullArticleIds.join(',').length <= 6000;
+  // Older Workers omit the capability and still serve the guarded legacy index.
+  const chapterIndex = useScopedIndex
+    ? fullArticleIds.length ? await json({ action: 'chapter-index', ids: fullArticleIds.join(',') }) : []
+    : await json({ select: 'id,bai_viet_id,so_thu_tu,updated_at', order: 'id.asc', limit: '5000' }, '/api/data/tap_noi_dung');
   if (!Array.isArray(chapterIndex) || chapterIndex.length >= 5000
     || new Set(chapterIndex.map(row => row.id)).size !== chapterIndex.length) throw new Error('Incomplete chapter index: server pagination required');
+  if (useScopedIndex) {
+    const ids = new Set(fullArticleIds);
+    if (chapterIndex.some(row => !ids.has(row.bai_viet_id))) throw new Error('Invalid scoped chapter index');
+  }
   console.log(`Web snapshot: ${items.length} catalog items, ${chapterIndex.length} chapter revisions.`);
   const previous = read('src/lib/data/offline-content-versions.json', {});
   const existing = new Map(read('src/lib/data/offline-bundled-articles.json', []).map(row => [row.id, row]));
@@ -289,6 +300,11 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
     for (const section of revision.unchanged) section.sha256 = hash(section.index);
   }
   if (revisions.length) staged.set(revisionFile, revisions);
+  // Keep the app's editorial description when refreshing the shared catalog snapshot.
+  const spiritMissionId = 'tt_1781081372340_1_xqcxo';
+  const spiritMission = articles.get(spiritMissionId);
+  const spiritMissionSummary = read('src/lib/data/offline-books-vi.json', {})[spiritMissionId]?.summary;
+  if (spiritMission && spiritMissionSummary) spiritMission.tom_tat = spiritMissionSummary;
   for (const [id, version] of Object.entries(versions)) {
     version.content = digest([articles.get(id), staged.get(`static/offline-data/chapters/${id}.json`)
       ?? read(`static/offline-data/chapters/${id}.json`, [])]);
@@ -297,6 +313,17 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
   for (const file of ['src/lib/data/offline-bundled-articles.json', 'static/offline-bundled-articles.json']) staged.set(file, [...articles.values()]);
   for (const file of ['src/lib/data/offline-talks.json', 'static/offline-data/talks.json']) staged.set(file, [...talks.values()]);
   staged.set('src/lib/data/offline-content-versions.json', versions);
+  if (includeAlbumPlays) {
+    const counts = await json({}, '/api/album-plays');
+    if (!Array.isArray(counts) || counts.some(row => !safeId(row?.albumId)
+      || !Number.isSafeInteger(row.playCount) || row.playCount < 0)
+      || new Set(counts.map(row => row.albumId)).size !== counts.length) {
+      throw new Error('Invalid album play totals');
+    }
+    // The totals endpoint already filters visibility. Retain matching legacy albums
+    // still shipped in the local catalog as well as entries in the update index.
+    staged.set('src/lib/data/offline-album-plays.json', counts.filter(row => talks.has(row.albumId)));
+  }
   // Không ghi bundle dở khi mạng lỗi hoặc web thay đổi giữa các trang.
   for (const [file, value] of staged) {
     const target = path.join(root, file);
@@ -309,5 +336,5 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  await syncOfflineContent();
+  await syncOfflineContent({ includeAlbumPlays: true });
 }

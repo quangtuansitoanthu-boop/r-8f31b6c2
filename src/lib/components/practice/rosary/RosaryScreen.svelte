@@ -27,6 +27,7 @@
 
   interface Props {
     routineControls?: Snippet;
+    feedback?: Snippet;
     count: number;
     customPhrases?: CustomRosaryPhraseItem[];
     customText?: string;
@@ -63,6 +64,7 @@
 
   let {
     routineControls,
+    feedback,
     count,
     customPhrases = [],
     customText = '',
@@ -362,6 +364,7 @@
     {:else}
       <button class="tt-rosary__count-button" type="button" disabled={!manualCounting} aria-describedby={!canCount ? 'tt-rosary-phrase' : undefined} onclick={() => { if (!manualCounting) return; if (beadController) beadController.roll(1); else onDelta(1); }}>{localizeUi("Niệm một hạt")}</button>
     {/if}
+    {@render feedback?.()}
   </section>
   </dialog>
 {/if}

@@ -79,6 +79,35 @@ it('keeps the new API public-read only and no-store while rejecting unsupported 
   expect((await call('https://test/api/content-updates?action=estimate&ids=bad%27')).status).toBe(400);
 });
 
+it('reads scoped chapter revisions in one indexed query and excludes draft parents', async () => {
+  const fixture = `INSERT INTO baiviet(id,tieu_de,danh_muc,trang_thai)
+    VALUES ('book','Book','SÁCH','Hoàn thành'), ('draft','Draft','SÁCH','Bản nháp'), ('other','Other','SÁCH','Hoàn thành');
+    INSERT INTO tap_noi_dung(bai_viet_id,so_thu_tu,noi_dung,updated_at) VALUES ('book',1,'Text','2026-11-17'), ('draft',1,'Private','2026-11-17');
+    WITH RECURSIVE numbers(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM numbers WHERE i < 80)
+    INSERT INTO tap_noi_dung(bai_viet_id,so_thu_tu,noi_dung) SELECT 'other',i,'Other' FROM numbers;`;
+  await env.DB.batch(fixture.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => env.DB.prepare(sql)));
+  const legacy = await env.DB.prepare(`SELECT id,bai_viet_id,so_thu_tu,updated_at FROM tap_noi_dung
+    WHERE EXISTS (SELECT 1 FROM baiviet a WHERE a.id=tap_noi_dung.bai_viet_id AND a.trang_thai='Hoàn thành')
+    ORDER BY id LIMIT 5000`).all();
+  const calls = [];
+  const measured = { ...env, DB: { prepare(sql) {
+    return { bind(...args) { return { async all() {
+      const result = await env.DB.prepare(sql).bind(...args).all();
+      calls.push(result.meta);
+      return result;
+    } }; } };
+  } } };
+  const response = await handleApiRequest({
+    request: new Request('https://test/api/content-updates?action=chapter-index&ids=book,draft'),
+    locals: { env: measured, migrationSealed: true, session: null },
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual([expect.objectContaining({ bai_viet_id: 'book', so_thu_tu: 1, updated_at: '2026-11-17' })]);
+  expect(calls).toHaveLength(1);
+  console.info('Chapter index D1 rows read (legacy/scoped):', legacy.meta.rows_read, calls[0].rows_read);
+  expect(calls[0].rows_read).toBeLessThan(legacy.meta.rows_read / 2);
+});
+
 it('measures bounded local D1 rows for estimates using existing parent/chapter indexes', async () => {
   await env.DB.prepare("INSERT INTO baiviet(id,tieu_de,danh_muc,trang_thai,noi_dung) VALUES('book','Book','SÁCH','Hoàn thành','A')").run();
   for (let index = 0; index < 12; index++) await env.DB.prepare("INSERT INTO tap_noi_dung(bai_viet_id,so_thu_tu,noi_dung) VALUES('book',?,'B')").bind(index).run();

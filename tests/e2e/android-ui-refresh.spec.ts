@@ -6,8 +6,20 @@ test('greeting, calendar, and a single quote follow the requested order', async 
   const action = page.locator('.home-greeting-header .greeting-btn');
   await expect(action).toBeVisible();
   await expect(page.locator('.home-container > :first-child')).toHaveClass(/\bhome-greeting-header\b/);
-  await expect(page.locator('.home-container > :nth-child(2)')).toHaveClass(/\bpbb-compact\b/);
-  await expect(page.locator('.home-container > :nth-child(3)')).toHaveClass(/\bhome-calendar\b/);
+  const giftBanner = page.locator('.home-container > :nth-child(2)');
+  const veganBanner = page.getByRole('link', { name: 'Lịch ăn chay đủ dinh dưỡng', exact: true });
+  await expect(giftBanner).toHaveClass(/\bpbb-compact\b/);
+  await expect(page.locator('.home-container > :nth-child(3)')).toHaveClass(/\bpbb-compact--vegan\b/);
+  await expect(page.locator('.home-container > :nth-child(4)')).toHaveClass(/\bhome-calendar\b/);
+  for (const width of [320, 375, 1440]) for (const theme of ['light', 'dark']) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const gift = (await giftBanner.boundingBox())!;
+    const vegan = (await veganBanner.boundingBox())!;
+    expect(vegan).toMatchObject({ x: gift.x, width: gift.width, height: gift.height });
+    expect(vegan.y - gift.y - gift.height).toBeCloseTo(12, 0);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.home-calendar + .home-daily-reminders + .daily-dhammapada-card')).toHaveCount(1);
   await expect(page.locator('.daily-dhammapada-card')).toHaveCount(1);
   await expect(page.locator('.home-continue')).toHaveCount(0);
@@ -16,6 +28,13 @@ test('greeting, calendar, and a single quote follow the requested order', async 
     const rect = element.getBoundingClientRect();
     return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
   })).toBe(true);
+  await veganBanner.click();
+  await expect(page).toHaveURL(/\/tu-tap\/an-chay$/u);
+  await expect(page.getByRole('heading', { name: 'Lịch ăn chay đủ dinh dưỡng', exact: true })).toBeVisible();
+  await expect(page.locator('.vegan .heading a')).toHaveCount(0);
+  await page.locator('.qts-route-topbar').getByRole('button', { name: 'Quay lại', exact: true }).click();
+  await expect(page).toHaveURL('/');
+  await expect(veganBanner).toBeVisible();
 });
 
 test('feast portraits are date-specific while ordinary days use scenery and justified reminders', async ({page}) => {

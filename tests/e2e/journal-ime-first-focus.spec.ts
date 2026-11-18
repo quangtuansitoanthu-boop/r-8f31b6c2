@@ -8,6 +8,9 @@ for(const width of [411,900])for(const dark of [false,true]){
     await page.goto('/tu-tap');await settleClient(page);
     await page.evaluate(()=>{document.documentElement.dataset.nativeApp='true';});
     await page.locator('.tt-mode-card--reflection').click();
+    const guideToggle = page.locator('.guide-toggle-button');
+    await expect(guideToggle).toHaveAttribute('aria-expanded', 'true');
+    await guideToggle.click();
     const fields=page.locator('.personal-journal .journal-columns textarea');
     for(const index of [0,1]){
       await page.setViewportSize({width,height:814});

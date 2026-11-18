@@ -32,6 +32,7 @@
     practiceCount: number;
     practiceHtml: string;
     practiceTitle: string;
+    routineContext?: string;
     showChapterNavigation: boolean;
     totalChapters: number;
     onAutoScrollToggle: () => void;
@@ -71,6 +72,7 @@
     practiceCount,
     practiceHtml,
     practiceTitle,
+    routineContext,
     showChapterNavigation,
     totalChapters,
     onAutoScrollToggle,
@@ -171,7 +173,14 @@
 <section use:nativeSystemBarsSurface class="tt-practice practice-theme" data-practice={article.category} data-bg={resolvedPracticeBackground} aria-label={t.title}>
   <header class="ttp-header">
     <button class="ttp-back" type="button" aria-label={t.confirmExitPracticeBtn} title={t.confirmExitPracticeBtn} onclick={onExit}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7" /></svg></button>
-    <strong class="ttp-header-title">{article.title}</strong>
+    {#if routineContext}
+      <div class="ttp-routine-title">
+        <span class="ttp-routine-context">{routineContext}</span>
+        <strong class="ttp-header-title">{article.title}</strong>
+      </div>
+    {:else}
+      <strong class="ttp-header-title">{article.title}</strong>
+    {/if}
     <span class="ttp-header-badge" aria-live="polite">
       {practiceCount > 0 ? t.chantedCountBadge.replace('{count}', String(practiceCount)) : t.practiceSessionBadge}
     </span>
@@ -257,6 +266,7 @@
     onCountChange={countAndRestart}
     {onFabPositionSave}
     {onPanelToggle}
+    {onExit}
     onJump={jumpWithinChapter}
     {onSelectMeditationTrack}
     {onStopMeditationMusic}
@@ -295,6 +305,8 @@
   .ttp-header{position:fixed;z-index:650;top:0;right:0;left:0;display:flex;height:58px;align-items:center;gap:12px;padding:0 16px;border-bottom:1.5px solid var(--border2);background:var(--bg);box-shadow:var(--shadow);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
   .ttp-back{flex-shrink:0;padding:4px 8px;border:0;border-radius:6px;background:none;color:var(--gold);cursor:pointer;font:400 22px/1 var(--font-app);transition:background .15s}.ttp-back:hover{background:var(--gold-light)}
   .ttp-header-title{overflow:hidden;flex:1;color:var(--text2);font-size:13px;font-weight:600;text-align:center;text-overflow:ellipsis;white-space:nowrap}.ttp-header-badge{flex-shrink:0;padding:3px 10px;border:1px solid var(--gold-muted);border-radius:12px;background:var(--gold-light);color:var(--gold);font-size:11px;font-weight:700;white-space:nowrap}
+  .ttp-routine-title{display:grid;min-width:0;flex:1;text-align:center;color:var(--text2)}
+  .ttp-routine-context{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--font-size-meta)}
   .ttp-reader-bar{position:fixed;z-index:645;top:58px;right:0;left:0;display:flex;overflow-x:auto;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid var(--border2);background:var(--bg2);scrollbar-width:none}.ttp-reader-bar::-webkit-scrollbar{display:none}
   .ttp-rbar-label{flex-shrink:0;color:var(--muted);font-size:11px;white-space:nowrap}.ttp-rbar-btn{flex-shrink:0;padding:4px 9px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg2);color:var(--text2);cursor:pointer;font:600 13px/1.4 var(--font-app);white-space:nowrap;transition:border-color .15s,color .15s,background .15s}.ttp-rbar-btn:hover,.ttp-rbar-btn.active{border-color:var(--gold);color:var(--gold)}
   .ttp-rbar-sep{width:1px;height:18px;flex-shrink:0;background:var(--border2)}.ttp-rbar-fs{min-width:38px;color:var(--text2);font-size:13px;text-align:center}

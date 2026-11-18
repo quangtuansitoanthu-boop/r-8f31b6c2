@@ -111,10 +111,10 @@ for (const dark of [false, true]) {
     await settleClient(page);
     await page.locator('.personal-add-first-btn').click();
     await page.locator('#pem-input-title').fill('Lễ cá nhân kiểm thử 18/11');
-    await page.getByRole('tab', { name: /Nhập theo Dương lịch/ }).click();
+    await page.getByRole('button', { name: 'Dương lịch', exact: true }).click();
     await page.locator('#pem-solar-day').selectOption('18');
     await page.locator('#pem-solar-month').selectOption('11');
-    await page.locator('#pem-solar-freq').selectOption('yearly');
+    await page.locator('#pem-solar-freq').getByRole('button', { name: 'Hàng năm', exact: true }).click();
     await page.locator('.pem-form button[type="submit"]').click();
     await page.locator('.pem-close-btn').click();
     const calendar = page.locator('.weekly-lunar-strip');

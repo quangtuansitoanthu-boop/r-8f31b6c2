@@ -3,6 +3,7 @@
   import { afterNavigate, goto, pushState, replaceState } from '$app/navigation';
   import { page } from '$app/state';
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { Leaf } from '@lucide/svelte';
   import HomeGreetingHeader from '$lib/components/home/HomeGreetingHeader.svelte';
   import PhapBaoBanner from '$lib/components/phap-bao/PhapBaoBanner.svelte';
   import WeeklyLunarStrip from '$lib/components/home/WeeklyLunarStrip.svelte';
@@ -22,6 +23,7 @@
   import { invalidateArticleState, serverStateKeys } from '$lib/browser/server-state';
   import { getSessionContext, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
+  import { veganUi } from '$lib/i18n/vegan-ui';
   import { createSessionContentGuard } from '$lib/browser/session-content-guard';
   import type { PageSessionDTO } from '$lib/server/auth/types';
   import type { ReadingProgressRecord } from '$lib/browser/reading-activity-client';
@@ -173,7 +175,7 @@
     }
   }
 
-  let checkedInitialUrl = false;
+  let checkedInitialUrl = $state(false);
   $effect(() => {
     if (checkedInitialUrl || (!articles.length && articlesQuery.isPending)) return;
     if (typeof window === 'undefined') return;
@@ -365,6 +367,11 @@
 <div class="home-container">
   <HomeGreetingHeader />
   <PhapBaoBanner compact />
+  <a class="pbb-compact pbb-compact--vegan" href="/tu-tap/an-chay" data-sveltekit-preload-data="off">
+    <span class="pbb-compact-icon" aria-hidden="true"><Leaf size={22} /></span>
+    <span class="pbb-compact-title">{veganUi[localeStore.current === 'en' ? 'en' : 'vi'].title}</span>
+    <span class="pbb-compact-arrow" aria-hidden="true">→</span>
+  </a>
   <section id="home-calendar" class="home-calendar" aria-label={localeStore.current === 'en' ? 'Buddhist calendar' : 'Lịch Phật giáo'}>
     <BuddhistDailyArtCard currentDate={activeDate} />
     <WeeklyLunarStrip bind:selectedDate={activeDate} />
@@ -410,13 +417,15 @@
 
 <style>
   .home-container {
+    --home-section-gap: 24px;
     max-width: 960px;
     margin: 0 auto;
     padding: 20px 20px 48px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: var(--home-section-gap);
   }
+  .pbb-compact--vegan{margin-block-start:calc(12px - var(--home-section-gap))}
   .home-calendar{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:start;gap:20px}
   .home-calendar :global(.weekly-lunar-strip){align-self:stretch;justify-content:space-between}
   .admin-notice {
@@ -436,8 +445,8 @@
   @media (max-width: 768px) {
     .home-calendar{grid-template-columns:minmax(0,1fr);gap:16px}
     .home-container {
+      --home-section-gap: 20px;
       padding: 20px 16px 36px;
-      gap: 20px;
     }
     .admin-notice {
       right: 16px;

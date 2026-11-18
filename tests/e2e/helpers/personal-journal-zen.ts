@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { settleClient } from '../runtime-helpers';
+import { isDataApiPath, settleClient } from '../runtime-helpers';
 
 function journalCase(width: number, dark: boolean, locale: 'vi' | 'en', fallback = false) {
   test(`journal full-screen writing preserves drafts and modality (${width}, ${dark ? 'dark' : 'light'}, ${locale}, ${fallback ? 'fallback' : 'native dialog'})`, async ({ page }, info) => {
@@ -23,15 +23,17 @@ function journalCase(width: number, dark: boolean, locale: 'vi' | 'en', fallback
     const requests: string[] = [];
     await page.route('**/api/**', route => {
       const path = new URL(route.request().url()).pathname;
-      requests.push(path);
+      if (isDataApiPath(path)) requests.push(path);
       return route.fulfill({ json: path === '/api/session'
         ? { authenticated: false, user: null, csrfToken: null, expiresAt: null }
         : path === '/api/presence' ? { enabled: false, activeCount: 0 } : [] });
     });
-    const presence = page.waitForResponse(response => new URL(response.url()).pathname === '/api/presence');
-    await page.goto('/tu-tap', { waitUntil: 'domcontentloaded' }); await presence;
+    await page.goto('/tu-tap', { waitUntil: 'domcontentloaded' });
     await settleClient(page);
     await page.locator('.tt-mode-card--reflection').click();
+    const guideToggle = page.locator('.guide-toggle-button');
+    await expect(guideToggle).toHaveAttribute('aria-expanded', 'true');
+    await guideToggle.click();
     const journal = page.locator('.personal-journal');
     const opener = journal.locator('.zen-open-btn').first();
     await expect(opener).toBeVisible();

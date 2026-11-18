@@ -26,6 +26,19 @@ it('does not retry absolute remote images through another CDN', () => {
   expect(coverRemoteFallback('https://media.quangtu.vn/covers/remote.webp')).toBe('');
 });
 
+it('uses the web static host for the verified covers that are absent from R2', () => {
+  for (const cover of [
+    'tu-tap-1780910773084-20261022.webp',
+    'an-sy-khuyen-nguoi-niem-phat-20261022.webp',
+    'luan-hoi-du-ky-20261022.webp',
+  ]) {
+    const path = `/covers/${cover}?v=1#pos=top`;
+    expect(coverRemoteFallback(path)).toBe(`https://quangtu.vn${path}`);
+    expect(coverRemoteFallback(`https://media.quangtu.vn${path}`)).toBe(`https://quangtu.vn${path}`);
+    expect(coverRemoteFallback(`https://quangtu.vn${path}`)).toBe('');
+  }
+});
+
 it('uses refreshed book covers for legacy catalog URLs and removes old crop positions', () => {
   for (const prefix of ['covers/', '/covers/', '/api/media/covers/', 'https://media.quangtu.vn/covers/']) {
     expect(normalizeCoverSrc(`${prefix}1783263779955_v6sks.webp#pos=45%25%2081%25`))

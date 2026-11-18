@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
-import { loginAsAdmin, settleClient } from './runtime-helpers';
+import { isDataApiPath, loginAsAdmin, settleClient } from './runtime-helpers';
 
 const loopbackHosts = ['localhost', '127.0.0.1', '[::1]'];
 
@@ -52,7 +52,7 @@ for (const width of [375, 1440]) for (const dark of [false, true]) for (const lo
     await expect(calendar).toHaveAttribute('aria-expanded', 'false');
     const apiRequests: string[] = [];
     page.on('request', request => {
-      if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
+      if (isDataApiPath(new URL(request.url()).pathname)) apiRequests.push(request.url());
     });
     await calendar.focus();
     await page.keyboard.press('Enter');

@@ -21,6 +21,7 @@
     onSelectMeditationTrack: (track: MeditationTrack) => void;
     onStopMeditationMusic: () => void;
     onToggleMo: () => void;
+    onExit: () => void;
   }
 
   let {
@@ -37,7 +38,8 @@
     onJump,
     onSelectMeditationTrack,
     onStopMeditationMusic,
-    onToggleMo
+    onToggleMo,
+    onExit
   }: Props = $props();
 
   const localeStore = getLocaleContext();
@@ -56,11 +58,6 @@
   function togglePanel(): void {
     if (panelOpen) toggleButtonElement?.focus({ preventScroll: true });
     onPanelToggle();
-  }
-
-  function jump(edge: 'top' | 'bottom'): void {
-    onJump(edge);
-    togglePanel();
   }
 
   function toggleMusicMenu(event: MouseEvent): void {
@@ -172,10 +169,10 @@
     </div>
 
     <div class="ttr-jump-row">
-      <button class="ttr-side-btn ttr-jump-btn" type="button" aria-label={t.jumpToTop} disabled={!jumpReady} onclick={() => jump('top')}>
+      <button class="ttr-side-btn ttr-jump-btn" type="button" aria-label={t.jumpToTop} disabled={!jumpReady} onclick={() => onJump('top')}>
         <span aria-hidden="true">↑</span> {t.jumpTop}
       </button>
-      <button class="ttr-side-btn ttr-jump-btn" type="button" aria-label={t.jumpToBottom} disabled={!jumpReady} onclick={() => jump('bottom')}>
+      <button class="ttr-side-btn ttr-jump-btn" type="button" aria-label={t.jumpToBottom} disabled={!jumpReady} onclick={() => onJump('bottom')}>
         <span aria-hidden="true">↓</span> {t.jumpBottom}
       </button>
     </div>
@@ -282,15 +279,18 @@
         </RosarySelect>
       {/if}
     </div>
+    <button class="ttr-finish" type="button" onclick={onExit}>{localeStore.current === 'en' ? 'End' : 'Kết thúc'}</button>
   </div>
 </div>
 
 <style>
+  .ttr-finish{min-height:var(--touch-target-size);padding-inline:var(--space-page);border:1px solid var(--gold);border-radius:var(--radius-card);background:var(--gold-light);color:var(--brown);font:inherit;font-weight:700;cursor:pointer}
+  .ttr-finish:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .ttr-fabs{position:fixed;z-index:660;top:50%;left:12px;display:flex;align-items:center;flex-direction:column;gap:8px;cursor:grab;touch-action:none;user-select:none;transform:translateY(-50%);opacity:.5;transition:opacity .25s cubic-bezier(.4,0,.2,1)}
   .ttr-fabs.panel-open,.ttr-fabs.menu-open{opacity:1!important}
   :global(.ttr-fabs.dragging){cursor:grabbing!important;transition:none!important;opacity:1!important}:global(.ttr-fabs.dragging) .ttr-toggle-btn{animation:none;transform:scale(1.08)}
   @media(hover:hover){.ttr-fabs:hover,.ttr-fabs:focus-within{opacity:1}}
-  .ttr-toggle-btn{display:flex;width:46px;height:46px;flex-shrink:0;align-items:center;justify-content:center;padding:0;border:2px solid var(--gold);border-radius:50%;outline:0;background:linear-gradient(135deg,var(--gold-light) 0%,var(--gold-muted) 100%);box-shadow:0 4px 16px color-mix(in srgb,var(--gold) 25%,transparent);cursor:grab;animation:ttr-practice-pulse 3s ease-in-out infinite;transition:transform .2s,box-shadow .2s}
+  .ttr-toggle-btn{display:flex;width:46px;height:46px;flex-shrink:0;align-items:center;justify-content:center;padding:0;border:2px solid var(--gold);border-radius:50%;outline:0;background:linear-gradient(135deg,var(--gold-light) 0%,var(--gold-muted) 100%);box-shadow:0 4px 16px color-mix(in srgb,var(--gold) 25%,transparent);cursor:grab;position:relative;transition:transform .2s,box-shadow .2s}
   .ttr-toggle-btn:active{cursor:grabbing}.ttr-toggle-btn.expanded{border-color:var(--brown);box-shadow:0 4px 20px color-mix(in srgb,var(--gold) 50%,transparent);animation:none}.ttr-toggle-svg{width:28px;height:28px;pointer-events:none}
   .ttr-panel{display:flex;overflow:visible;max-height:0;align-items:center;flex-direction:column;gap:8px;opacity:0;visibility:hidden;pointer-events:none;cursor:default;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}.ttr-panel.open{max-height:450px;opacity:1;visibility:visible;pointer-events:auto}
   .ttr-counter-row{display:flex;align-items:center;gap:4px}.ttr-side-btn,.ttr-action-fab{display:flex;width:46px;height:46px;flex-shrink:0;align-items:center;justify-content:center;padding:0;border:1.5px solid var(--gold);border-radius:50%;outline:0;background:var(--gold-light);box-shadow:0 2px 10px color-mix(in srgb,var(--gold) 15%,transparent);cursor:pointer;transition:background .15s,border-color .15s,box-shadow .18s,transform .15s}
@@ -316,11 +316,11 @@
   .tt-music-menu__item.active .tt-music-menu__num{background:var(--gold);color:#fff}
   .tt-music-menu__item-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tt-music-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;margin-left:auto;flex-shrink:0}
-  .tt-music-bars .bar{width:3px;border-radius:2px;background:var(--gold);animation:sound-wave 1s ease-in-out infinite alternate}
-  .tt-music-bars .bar1{height:5px;animation-delay:.1s}
-  .tt-music-bars .bar2{height:13px;animation-delay:.35s}
-  .tt-music-bars .bar3{height:8px;animation-delay:.2s}
-  @keyframes sound-wave{0%{height:4px}100%{height:14px}}
+  .tt-music-bars .bar{width:3px;height:14px;transform-origin:bottom;border-radius:2px;background:var(--gold);animation:sound-wave 1s ease-in-out infinite alternate}
+  .tt-music-bars .bar1{animation-delay:.1s}
+  .tt-music-bars .bar2{animation-delay:.35s}
+  .tt-music-bars .bar3{animation-delay:.2s}
+  @keyframes sound-wave{0%{transform:scaleY(.2857)}100%{transform:scaleY(1)}}
   .tt-music-menu__footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)}
   .tt-music-menu__stop-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:7px 10px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:var(--font-size-label);font-weight:600;transition:all .15s}
   .tt-music-menu__stop-btn:hover{border-color:#dc3545;background:rgba(220,53,69,.08);color:#dc3545}
@@ -332,8 +332,16 @@
   :global([data-theme='dark']) .tt-music-menu{background:#1e1a14;border-color:color-mix(in srgb,var(--gold) 30%,transparent);box-shadow:0 12px 36px rgba(0,0,0,.6)}
   :global([data-theme='dark']) .tt-music-menu__item{border-color:color-mix(in srgb,var(--gold) 20%,transparent);background:rgba(255,255,255,.04);color:var(--text)}
   :global([data-theme='dark']) .tt-music-menu__item.active{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold2);border-color:var(--gold)}
-  @keyframes ttr-practice-pulse{0%,100%{box-shadow:0 4px 16px color-mix(in srgb,var(--gold) 25%,transparent),0 0 0 0 color-mix(in srgb,var(--gold) 20%,transparent)}50%{box-shadow:0 4px 20px color-mix(in srgb,var(--gold) 40%,transparent),0 0 0 8px rgba(200,150,62,0)}}
+  /* A separate composited halo avoids repainting the reading surface every frame. */
+  .ttr-toggle-btn::after{position:absolute;inset:0;border:2px solid var(--gold);border-radius:inherit;content:'';pointer-events:none;animation:ttr-practice-pulse 3s ease-out infinite}
+  .ttr-toggle-btn.expanded::after,:global(.ttr-fabs.dragging) .ttr-toggle-btn::after{display:none}
+  @keyframes ttr-practice-pulse{0%,100%{transform:scale(1);opacity:0}20%{opacity:.2}75%{transform:scale(1.32);opacity:0}}
+  @media(prefers-reduced-motion:reduce){.ttr-toggle-btn::after{display:none}}
   .ttr-toggle-btn,.ttr-side-btn,.ttr-count-num,.tt-music-menu__title{font-family:var(--font-app)}
   @media(max-width:600px){.ttr-fabs{left:6px}.tt-music-menu{width:230px}}
+  @media(max-height:360px){
+    .ttr-panel.open{max-height:calc(100vh - var(--touch-target-size) - var(--space-page)*2);max-height:calc(100dvh - var(--touch-target-size) - var(--space-page)*2);overflow:auto;overscroll-behavior:contain;touch-action:pan-y;padding-inline:calc(var(--radius-sm)/3)}
+    .ttr-panel.open>*{flex-shrink:0}
+  }
   @media(prefers-reduced-motion:reduce){.ttr-toggle-btn{animation:none}.ttr-panel,.ttr-side-btn,.ttr-action-fab,.tt-music-menu{transition:none}.tt-music-bars .bar{animation:none}}
 </style>

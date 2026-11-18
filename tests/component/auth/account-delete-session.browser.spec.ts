@@ -6,7 +6,12 @@ import { beginNativeAuthMutation, isNativeAuthMutationActive } from '$lib/browse
 const mocks = vi.hoisted(() => ({ csrf: vi.fn(), request: vi.fn(), logout: vi.fn(), clearLocal: vi.fn(), clearBrowser: vi.fn(), apple: vi.fn(), native: vi.fn(() => false) }));
 vi.mock('$app/state', () => ({ page: { url: new URL('http://localhost/ca-nhan?tab=account') } }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/browser/session-csrf', () => ({ requireBrowserCsrf: mocks.csrf, fetchWithSessionRefresh: mocks.request }));
+vi.mock('$lib/browser/session-csrf', () => ({
+  requireBrowserCsrf: mocks.csrf,
+  fetchWithSessionRefresh: (url: RequestInfo | URL, init?: RequestInit) => url === '/api/practice/progress'
+    ? Promise.resolve(Response.json({ badges: [], streaks: { current: 0, longest: 0 } }))
+    : mocks.request(url, init),
+}));
 vi.mock('$lib/browser/native-auth', () => ({ logoutNativeAuth: mocks.logout, loginWithGoogleNative: vi.fn(), loginWithAppleNative: vi.fn(), authorizeAppleAccountDeletion: mocks.apple }));
 vi.mock('$lib/browser/native-platform', () => ({ isNativeApp: mocks.native, nativePlatform: () => mocks.native() ? 'ios' : 'web' }));
 vi.mock('$lib/stores/session.svelte', async importOriginal => ({

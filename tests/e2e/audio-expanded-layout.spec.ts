@@ -19,14 +19,8 @@ for (const viewport of [{ width: 375, height: 667 }, { width: 320, height: 568 }
     await page.goto('/phap-thoai');
     await settleClient(page);
     await page.locator('.pt-card').filter({ hasText: 'Pháp thoại kiểm thử E2E' }).getByRole('button', { name: /^Phát album / }).click();
-    const notice = page.locator('[data-practice-sync-status]');
-    await expect(notice).toBeVisible();
-    await expect.poll(async () => {
-      const banner = await notice.boundingBox();
-      const player = await page.locator('.pt-mini-player').boundingBox();
-      return Boolean(banner && player && banner.y + banner.height <= player.y);
-    }).toBe(true);
-    expect((await notice.boundingBox())!.height).toBeLessThan(viewport.height / 2);
+    await expect(page.locator('.pt-mini-player')).toBeVisible();
+    await expect(page.locator('[data-practice-sync-status]')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('pending-sync-and-player.png') });
     await page.getByRole('button', { name: 'Mở rộng trình phát Pháp Thoại', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Chi tiết trình phát Pháp Thoại', exact: true });

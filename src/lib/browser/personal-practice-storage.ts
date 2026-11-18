@@ -65,6 +65,12 @@ export function createPersonalPracticeStorage(storage: StorageLike, principalId:
       replaceSettings({ ...settings, routines });
       return routines;
     },
+    deleteRoutine(id: string): DailyRoutine[] {
+      const settings = readSettings();
+      const routines = settings.routines.filter(routine => routine.id !== id);
+      if (routines.length === settings.routines.length) return routines;
+      return replaceSettings({ ...settings, routines }).routines;
+    },
     getNickname(): string { return readSettings().nickname; },
     saveNickname(value: string): string {
       const nickname = value.trim();

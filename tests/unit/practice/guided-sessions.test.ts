@@ -289,9 +289,9 @@ describe('rosary session evidence', () => {
     state = result.state;
     for (let count = 1; count < 18; count += 1) {
       result = acceptRosaryInteraction(state, count * 400);
+      expect(result.completedCycle).toBe(count === 8);
       state = result.state;
     }
-    expect(result.completedCycle).toBe(true);
     expect(rosaryGoalProgress(state)).toBe(1);
   });
 });

@@ -59,13 +59,15 @@ export function getSessionCover(source: string): Promise<string> {
 }
 
 export function offlineImageRemoteSource(source: string): string {
+  const fallback = coverRemoteFallback(source);
+  if (fallback.startsWith('https://quangtu.vn/covers/')) return fallback;
   try {
     const url = new URL(source, 'https://quangtu.vn');
     if (url.hostname === 'quangtu.vn' && url.pathname.startsWith('/api/media/')) {
       return `https://media.quangtu.vn/${url.pathname.slice('/api/media/'.length)}${url.search}`;
     }
   } catch { /* URL cũ vẫn đi theo resolver bìa hiện có. */ }
-  return coverRemoteFallback(source) || source;
+  return fallback || source;
 }
 
 async function loadCoverBlob(source: string, signal?: AbortSignal, requireFresh = false): Promise<Blob> {

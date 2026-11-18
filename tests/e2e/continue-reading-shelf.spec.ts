@@ -7,12 +7,10 @@ test(`library disclosure keeps search and Top 10 stable without refetching at ${
   await page.setViewportSize({ width, height: 844 });
   await page.addInitScript((mode) => localStorage.setItem('tutam_dark_mode', mode === 'dark' ? '1' : '0'), theme);
   if (width === 375 && theme === 'light') await loginAsMember(page);
-  const presenceResponse = page.waitForResponse(response => response.url().includes('/api/presence') && response.request().method() === 'POST');
   await page.goto('/kinh-sach');
   await settleClient(page);
   await expect(page.locator('.articles-grid')).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('.continue-reading')).toHaveAttribute('aria-busy', 'false');
-  expect((await presenceResponse).ok()).toBe(true);
   // Chờ cả session refresh khởi động trước khi đo riêng chi phí tương tác UI.
   await page.waitForLoadState('networkidle');
   const disclosure = page.locator('details.library-disclosure');

@@ -34,6 +34,22 @@ describe('formatGhostRuns', () => {
     expect(fullText).toContain('Nguyện tâm thanh tịnh! Lời kinh vô lượng.');
   });
 
+  it('omits nested reference notes and keeps the ghost tail after an optional typed note', () => {
+    const reference = formatGhostRuns(copyingSentences(['Nam mô (3 lần (đọc chậm)) Phật.'], 0));
+    expect(reference.map(run => run.text).join('')).toBe('Nam mô Phật.');
+    const typed = 'Nam mô (3 lần) ';
+    expect(formatGhostRuns(copyingSentences(['Nam mô Phật (3 lần).'], 0)).map(run => run.text).join('')).toBe('Nam mô Phật.');
+    const aligned = alignGhostRuns(reference, typed)!;
+    expect(aligned.map(run => run.text).join('')).toBe(typed + 'Phật.');
+    expect(alignGhostRuns(aligned, typed)?.map(run => run.text).join('')).toBe(typed + 'Phật.');
+  });
+
+  it('omits a standalone instruction without leaving a blank paragraph', () => {
+    const heading = 'LỜI NGUYỆN TRƯỚC KHI TỤNG KINH';
+    const source = copyingSentences([heading + '\n(Nên thắp hương)\nCon thành tâm đảnh lễ.'], 0);
+    expect(formatGhostRuns(source).map(run => run.text).join('')).toBe(heading + '\nCon thành tâm đảnh lễ.');
+  });
+
   it('handles empty sentences gracefully', () => {
     expect(formatGhostRuns([])).toEqual([]);
   });

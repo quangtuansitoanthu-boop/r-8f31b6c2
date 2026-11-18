@@ -6,9 +6,9 @@ import { ServerInputError } from '../errors';
 import { createContentUpdatesRepository, UPDATE_PAGE_SIZE, type CatalogCursor } from '../repositories/content-updates-repository';
 
 function row(value: D1ResultRow): ContentRow { return { ...value, id: String(value.id) }; }
-export function contentUpdateIds(value: string | null): string[] {
+export function contentUpdateIds(value: string | null, max = 40): string[] {
   const ids = [...new Set((value ?? '').split(',').filter(Boolean))];
-  if (!ids.length || ids.length > 40 || ids.some(id => !/^[\p{L}\p{N}_.:-]{1,200}$/u.test(id))) {
+  if (!ids.length || ids.length > max || ids.some(id => !/^[\p{L}\p{N}_.:-]{1,200}$/u.test(id))) {
     throw new ServerInputError(400, 'invalid_content_ids', 'Danh sách nội dung không hợp lệ.');
   }
   return ids;
@@ -45,8 +45,9 @@ export function createContentUpdatesService(env: CloudflareEnvLike) {
         return { items, next: source.length > UPDATE_PAGE_SIZE && last ? JSON.stringify([last.created_at ?? null, String(last.id)]) : null };
       };
       const [articles, talks] = await Promise.all([read('article'), read('talk')]);
-      return { items: [...articles.items, ...talks.items], articlesNext: articles.next, talksNext: talks.next };
+      return { items: [...articles.items, ...talks.items], articlesNext: articles.next, talksNext: talks.next, chapterIndexVersion: 1 };
     },
+    chapterIndex: (ids: string[]) => repository.chapterIndex(ids),
     async estimate(ids: string[]): Promise<ContentSize[]> {
       return (await repository.estimate(ids)).map(value => ({ id: String(value.id), bytes: Number(value.bytes) || 0,
         chapters: Number(value.chapters), illustrated: Boolean(value.illustrated) }));

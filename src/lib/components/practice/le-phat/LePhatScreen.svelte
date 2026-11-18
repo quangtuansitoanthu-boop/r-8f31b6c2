@@ -474,18 +474,11 @@
   {#if isPracticing}
     <div
       class="lp-fullscreen-screen"
-      class:lp-fullscreen-screen--routine={Boolean(routineControls)}
       role="region"
       aria-label={isEn ? 'Fullscreen Prostration Space' : 'Không gian lễ lạy toàn màn hình'}
       ontouchstart={handleTouchStart}
       ontouchend={handleTouchEnd}
     >
-      {#if routineControls}
-        <div class="lp-routine-controls">
-          {@render routineControls()}
-        </div>
-      {/if}
-      <div class="lp-fullscreen-actions">
       <!-- Nút quay về màn hình chuẩn bị ở góc trái -->
       <button
         type="button"
@@ -505,8 +498,6 @@
       >
         {t.finish}
       </button>
-
-      </div>
 
       <!-- Tôn tượng Phật Bồ Tát trang nghiêm toàn màn hình -->
       <button type="button" class="lp-fullscreen-portrait-wrap" onclick={handleProstrate} aria-label={t.tapToBow}>
@@ -554,7 +545,7 @@
   <!-- 2. MÀN HÌNH CHUẨN BỊ (CHỌN PHẬT & DROPDOWN ÂM THANH GỌN GÀNG)    -->
   <!-- ════════════════════════════════════════════════════════════════ -->
   {:else}
-    <section class="lp practice-theme" data-practice="bowing" aria-label={t.bowingTitle}>
+    <section class="lp practice-theme" class:lp--routine={Boolean(routineControls)} data-practice="bowing" aria-label={t.bowingTitle}>
 
       <!-- HEADER -->
       <header class="lp__header">
@@ -585,6 +576,8 @@
           </button>
         </div>
       </header>
+
+      {@render routineControls?.()}
 
       <!-- MAIN BODY -->
       <main class="lp__main">
@@ -908,39 +901,13 @@
     animation: lp-fadein .25s ease-out;
   }
 
-  .lp-fullscreen-actions { display: contents; }
-  .lp-fullscreen-screen--routine {
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    align-items: stretch;
-    justify-content: stretch;
-    padding-top: var(--app-safe-top, env(safe-area-inset-top, 0px));
-    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
-    overflow-y: auto;
-  }
-  .lp-routine-controls { min-width: 0; cursor: auto; }
-  .lp-fullscreen-screen--routine .lp-fullscreen-actions {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--radius-sm);
-    padding: var(--radius-sm) var(--space-page);
-  }
-  .lp-fullscreen-screen--routine :is(.lp-fullscreen-back-btn, .lp-fullscreen-finish-btn, .lp-fullscreen-portrait-wrap, .lp-fullscreen-info-bar) {
-    position: relative;
-    inset: auto;
-  }
-  .lp-fullscreen-screen--routine :is(.lp-fullscreen-back-btn, .lp-fullscreen-finish-btn) { min-height: 44px; }
-  .lp-fullscreen-screen--routine .lp-fullscreen-portrait-wrap { min-height: 0; }
-  .lp-fullscreen-screen--routine .lp-fullscreen-img { object-fit: contain; object-position: center; }
-  .lp-fullscreen-screen--routine .lp-fullscreen-backdrop { display: none; }
-
   /* Nút Quay lại ở góc trái trên cùng */
   .lp-fullscreen-back-btn {
     position: absolute;
     top: calc(16px + env(safe-area-inset-top, 0px));
     left: calc(16px + env(safe-area-inset-left, 0px));
     z-index: 50;
-    min-height: 40px;
+    min-height: var(--touch-target-size);
     padding: 0 18px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -966,7 +933,7 @@
     top: calc(16px + env(safe-area-inset-top, 0px));
     right: calc(16px + env(safe-area-inset-right, 0px));
     z-index: 50;
-    min-height: 40px;
+    min-height: var(--touch-target-size);
     padding: 0 20px;
     border-radius: 999px;
     border: 1px solid #ffd700;
@@ -1111,6 +1078,7 @@
     overflow: hidden;
     animation: lp-fadein .24s ease-out;
   }
+  .lp--routine { grid-template-rows: auto auto minmax(0, 1fr) auto; }
   .lp::before {
     position: absolute; z-index: -1; inset: 0;
     background-image:

@@ -24,22 +24,27 @@ test('Nguyện xin stays in one reference paragraph without changing the saved d
   const requests: string[] = [];
   page.on('request', request => { if (new URL(request.url()).pathname === '/api/practice/copying') requests.push(request.method()); });
   await open(page);
-  const typed = normalizeCopyText(book.chapters[0].blocks[0]).split('nguyện xin')[0].trimEnd() + ' xin các vị gia hộ cho con:';
+  const prayerText = 'Nguyện xin các vị gia hộ cho con:';
+  const prayerBlock = book.chapters[0].blocks.findIndex((text: string) => text.includes(prayerText));
+  expect(prayerBlock).toBeGreaterThanOrEqual(0);
+  await page.locator('#copy-block').selectOption(String(prayerBlock));
+  const prefix = book.chapters[0].blocks[prayerBlock].split(prayerText)[0];
+  const typed = normalizeCopyText(prefix) + ' xin các vị gia hộ cho con:';
   await editorFor(page).pressSequentially(typed);
-  const prayer = editorFor(page).locator('[data-copy-line="4"]');
+  const prayer = page.locator('#copy-source-text .source-line').filter({ hasText: prayerText });
   for (const width of [375, 1440]) for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
-    await expect(prayer).toHaveText('nguyện xin các vị gia hộ cho con:');
+    await expect(prayer).toContainText(prayerText);
     await expect(prayer).toHaveCSS('text-align', 'justify');
     await prayer.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `test-results/copying-prayer-${width}-${theme}.png` });
   }
-  await expect.poll(() => localText(page)).toBe(typed);
+  await expect.poll(() => localText(page, prayerBlock)).toBe(typed);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await beginScriptureCopying(page);
-  await expect(prayer).toHaveText('nguyện xin các vị gia hộ cho con:');
-  expect(await localText(page)).toBe(typed);
+  await expect(prayer).toContainText(prayerText);
+  expect(await localText(page, prayerBlock)).toBe(typed);
   expect(requests).toEqual([]);
 });
 
@@ -50,17 +55,55 @@ test('native Android shell keeps navigation hidden and reserves the status-bar i
   await page.evaluate(() => { document.documentElement.dataset.nativeApp = 'true'; document.documentElement.style.setProperty('--app-safe-top', '48px'); });
   await beginScriptureCopying(page);
   await expect.soft(page.getByRole('navigation', { name: 'Điều hướng nhanh' })).toBeHidden();
-  const header = await page.locator('.writing-bar').boundingBox();
+  const header = await page.locator('.source-heading').boundingBox();
   expect.soft(header!.y).toBeGreaterThanOrEqual(48);
 });
-test('fullscreen and compact mobile settings preserve the continuous draft', async ({ page }) => {
+
+test('native iOS keeps the copying workspace inside the safe area without WebKit fullscreen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/tu-tap/chep-kinh', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('start-copying')).toBeEnabled();
+  await page.evaluate(() => {
+    // Install the bridge after the local web fixture finishes loading its draft.
+    Object.assign(window, { webkit: { messageHandlers: { bridge: {} } } });
+    document.documentElement.dataset.nativeApp = 'true';
+    document.documentElement.style.setProperty('--app-safe-top', '59px');
+    document.documentElement.dataset.fullscreenRequested = 'false';
+    Object.defineProperty(document, 'fullscreenEnabled', { value: true });
+    Object.defineProperty(document.documentElement, 'requestFullscreen', {
+      value: async () => { document.documentElement.dataset.fullscreenRequested = 'true'; },
+    });
+  });
+  await beginScriptureCopying(page);
+  await expect(page.getByTestId('copying-page')).toHaveClass(/\bcopy-ios\b/);
+  await expect(page.locator('html')).toHaveAttribute('data-fullscreen-requested', 'false');
+  const back = page.getByRole('button', { name: 'Đổi kinh hoặc phẩm', exact: true });
+  expect((await back.boundingBox())!.y).toBeGreaterThanOrEqual(59);
+  await editorFor(page).pressSequentially('Nam mô Phật');
+  await expect.poll(() => localText(page)).toBe('Nam mô Phật');
+  await page.getByRole('button', { name: 'Rà soát đoạn này', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Rà soát đoạn này', exact: true })).toBeVisible();
+});
+
+test('fullscreen and compact mobile settings preserve the draft and default to pages', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tu-tap/chep-kinh');
   await beginScriptureCopying(page);
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+  await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
   await page.getByRole('button', { name: 'Thoát toàn màn hình', exact: true }).click();
+  await page.getByRole('button', { name: 'Đóng tùy chọn', exact: true }).click();
+  const editorOptions = page.locator('.editor-tools-trigger');
+  await expect(editorOptions).toHaveAccessibleName('Tùy chọn');
+  await editorOptions.click();
+  await expect(editorOptions).toHaveAccessibleName('Thu gọn');
+  await expect(page.locator('#copy-editor-tools')).toBeVisible();
+  await editorOptions.click();
+  await expect(editorOptions).toHaveAccessibleName('Tùy chọn');
+  await expect(page.locator('#copy-editor-tools')).toBeHidden();
+  await editorOptions.click();
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
-  await expect(page.getByRole('button', { name: 'Cuộn liên tục', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Cuộn liên tục', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await editorFor(page).pressSequentially('Nam mô Địa Tạng Bồ Tát');
   await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
   await page.locator('#mobile-copy-font').selectOption('mali');
@@ -126,16 +169,16 @@ async function open(page: Page) {
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
   await page.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
 }
-async function localText(page: Page) {
-  return page.evaluate(() => new Promise<string>((resolve, reject) => {
+async function localText(page: Page, block = 0) {
+  return page.evaluate(block => new Promise<string>((resolve, reject) => {
     const request = indexedDB.open('tutam-scripture-copying-v1');
     request.onsuccess = () => {
       const db = request.result, transaction = db.transaction('drafts');
       const read = transaction.objectStore('drafts').getAll();
-      transaction.oncomplete = () => { resolve(read.result.find(row => row.sutraId === 'dia-tang' && row.chapter === 1)?.texts[0] ?? ''); db.close(); };
+      transaction.oncomplete = () => { resolve(read.result.find(row => row.sutraId === 'dia-tang' && row.chapter === 1)?.texts[block] ?? ''); db.close(); };
       transaction.onerror = () => reject(transaction.error);
     };
-  }));
+  }), block);
 }
 
 test('switching from a late passage to a shorter chapter never mixes old draft layout or throws 500', async ({ page }) => {
@@ -159,7 +202,9 @@ test('a locally saved copy does not block any main navigation tab', async ({ pag
   await open(page);
   await editorFor(page).pressSequentially('Nam mô Phật');
   await expect.poll(() => localText(page)).toBe('Nam mô Phật');
-  await page.getByRole('button', { name: 'Lưu lên hệ thống', exact: true }).click();
+  await page.getByRole('button', { name: 'Tùy chọn và bản đã lưu', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Cài đặt chép kinh', exact: true })
+    .getByRole('button', { name: 'Lưu lên hệ thống', exact: true }).click();
   await expect(page).toHaveURL(/\/ca-nhan\?tab=account/);
   await page.goto('/tu-tap/chep-kinh');
   const dialogs: string[] = [];
@@ -188,24 +233,24 @@ test('reference follows a long imperfect copy, returns with the caret, and revie
   const typed = longImperfectDraft();
   await editorFor(page).pressSequentially(typed);
   await expect.poll(() => localText(page)).toBe(typed);
-  await expect(page.getByRole('region', { name: 'Vị trí cần sửa' })).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Vị trí cần sửa' })).toHaveCount(0);
   const source = page.locator('#copy-source-text');
   await expect(source.locator('.source-line').first()).toHaveCSS('text-align', 'center');
   await expect(source.locator('.source-line').first().locator('strong').first()).toBeVisible();
-  await expect(source.locator('.source-line').nth(2)).toHaveCSS('text-align', 'justify');
   await expect.poll(() => source.evaluate(node => node.scrollTop)).toBeGreaterThan(50);
-  await expect(source.locator('.source-word--current')).toContainText('đổi');
+  await expect(source.locator('.source-word--current')).toContainText(/ni/i);
   expect(await source.evaluate(node => (node as HTMLElement & { scrollCalls: number }).scrollCalls)).toBeLessThan(40);
-  while (await page.getByRole('button', { name: 'Trang gõ trước', exact: true }).count() && await page.getByRole('button', { name: 'Trang gõ trước', exact: true }).isEnabled()) {
-    await page.getByRole('button', { name: 'Trang gõ trước', exact: true }).click();
-  }
+  await page.locator('.editor-tools-trigger').click();
+  const previousPage = page.getByRole('button', { name: 'Trang gõ trước', exact: true });
+  await expect(previousPage).toBeVisible();
+  while (await previousPage.isEnabled()) await previousPage.click();
   await editorFor(page).press('Control+Home');
   await expect.poll(() => source.evaluate(node => node.scrollTop)).toBeLessThan(5);
   await page.getByRole('button', { name: 'Rà soát đoạn này', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Vị trí cần sửa' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Rà soát đoạn này', exact: true })).toBeFocused();
+  await expect(page.getByRole('list', { name: 'Vị trí cần sửa' })).toBeVisible();
   await page.getByRole('button', { name: 'Đóng rà soát', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Vị trí cần sửa' })).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Vị trí cần sửa' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Rà soát đoạn này', exact: true })).toBeFocused();
   expect(await localText(page)).toBe(typed);
 });
 
@@ -214,7 +259,6 @@ test('writing pages reflow across fonts, viewport changes and reload without rew
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   const typed = longImperfectDraft();
-  await page.getByRole('button', { name: 'Cuộn liên tục', exact: true }).click();
   await editorFor(page).pressSequentially(typed);
   await expect.poll(() => localText(page)).toBe(typed);
   for (const font of ['mali', 'hipsteria', 'autogate', 'brignola', 'reader']) {
@@ -235,8 +279,8 @@ test('writing pages reflow across fonts, viewport changes and reload without rew
   }
   await page.reload({ waitUntil: 'domcontentloaded' });
   await beginScriptureCopying(page);
-  await expect(page.getByRole('button', { name: 'Cuộn liên tục', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Cuộn liên tục', exact: true }).click();
+  await page.locator('.editor-tools-trigger').click();
+  await expect(page.getByRole('button', { name: 'Cuộn liên tục', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => Number((await page.locator('.editor-pages output').textContent())!.split('/')[1])).toBeGreaterThan(1);
   await expect.poll(async () => editorFor(page).evaluate(node => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
   expect(await localText(page)).toBe(typed);
@@ -272,19 +316,19 @@ test('ghost input without keyup follows the committed caret and backward correct
   const editor = editorFor(page);
   await editor.click();
   // Touch keyboards may deliver beforeinput without a physical keyup event.
-  for (const expected of ['L', 'LỜ', 'LỜI', 'LỜI ', 'LỜI N']) {
+  for (const expected of ['T', 'TỊ', 'TỊN', 'TỊNH', 'TỊNH ', 'TỊNH K']) {
     await editor.evaluate(node => node.dispatchEvent(new InputEvent('beforeinput', {
       inputType: 'insertText', data: 'x', bubbles: true, cancelable: true
     })));
     await expect(editor).toHaveText(expected);
   }
   const activeWord = page.locator('#copy-source-text .source-word--current');
-  await expect(activeWord).toHaveText('NGUYỆN');
+  await expect(activeWord).toHaveText('KHẨU');
   await editor.press('Home');
-  await expect(activeWord).toHaveText('LỜI');
+  await expect(activeWord).toHaveText('TỊNH');
   await editor.press('End');
-  await expect(activeWord).toHaveText('NGUYỆN');
-  await expect.poll(() => localText(page)).toBe('LỜI N');
+  await expect(activeWord).toHaveText('KHẨU');
+  await expect.poll(() => localText(page)).toBe('TỊNH K');
   expect(requests).toEqual([]);
 });
 
@@ -309,7 +353,8 @@ test('ghost text tracing preserves reference visibility and synchronizes font ch
   // Ghost text layer appears
   const ghostLayer = page.locator('.rich-copy-ghost');
   await expect(ghostLayer).toBeVisible();
-  expect(await ghostLayer.textContent()).toContain('phước mỏng trí cạn');
+  await expect(ghostLayer).toContainText('TỊNH KHẨU NGHIỆP CHƠN NGÔN');
+  await expect(ghostLayer).not.toContainText('(3 lần)');
   await expect.poll(() => ghostLayer.evaluate(ghost => {
     const container = ghost.closest('.rich-copy-container')!;
     const ink = container.querySelector('#copy-text')!;
@@ -318,14 +363,16 @@ test('ghost text tracing preserves reference visibility and synchronizes font ch
   })).toEqual([0, 1, 2]);
 
   // The reader can independently collapse and reopen the reference.
-  await page.getByRole('button', { name: 'Thu gọn', exact: true }).click();
+  await page.getByRole('button', { name: 'Tùy chọn kinh mẫu', exact: true }).click();
+  await page.locator('#copy-source-tools').getByRole('button', { name: 'Thu gọn', exact: true }).click();
   await expect(page.locator('#copy-source-text')).toBeHidden();
   await page.getByRole('button', { name: 'Hiện kinh mẫu', exact: true }).click();
   await expect(page.locator('#copy-source-text')).toBeVisible();
   await expect(ghostBtn).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Thu gọn', exact: true }).click();
+  await page.locator('#copy-source-tools').getByRole('button', { name: 'Thu gọn', exact: true }).click();
 
   // Verify font change synchronizes to ghost layer
+  await page.locator('.editor-tools-trigger').click();
   const display = page.locator('.compact-editor-display');
   await display.getByRole('combobox', { name: 'Phông chữ', exact: true }).selectOption('mali');
   await expect(ghostLayer).toHaveCSS('font-family', /CopyMali/);
@@ -334,7 +381,7 @@ test('ghost text tracing preserves reference visibility and synchronizes font ch
   const editor = page.locator('#copy-text');
   await editor.click();
   await editor.pressSequentially('abc');
-  await expect(editor).toHaveText(/^LỜI/);
+  await expect(editor).toHaveText(/^TỊN/);
   await page.evaluate(() => document.fonts.ready);
   const glyphDisplacement = () => page.evaluate(() => {
     const ink = document.querySelector('#copy-text')!;
@@ -355,7 +402,7 @@ test('ghost text tracing preserves reference visibility and synchronizes font ch
 
   // Backspace steps back one character
   await editor.press('Backspace');
-  await expect(editor).toHaveText(/^LỜ$/);
+  await expect(editor).toHaveText(/^TỊ$/);
 
   await page.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
   // Verify responsiveness and no overflow on 320px and 375px
@@ -370,21 +417,45 @@ test('ghost text tracing preserves reference visibility and synchronizes font ch
   }
 
   // Reload preserves the device preference and only the real typed draft.
-  await expect.poll(() => localText(page)).toBe('LỜ');
+  await expect.poll(() => localText(page)).toBe('TỊ');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('tt_copy_ghost_v1'))).toBe('1');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await beginScriptureCopying(page);
   await expect(ghostBtn).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#copy-source-text')).toBeVisible();
-  await expect(editor).toHaveText('LỜ');
-  expect(await localText(page)).toBe('LỜ');
+  await expect(editor).toHaveText('TỊ');
+  expect(await localText(page)).toBe('TỊ');
 
   // Turn OFF ghost text
   await ghostBtn.click();
   await expect(ghostBtn).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('.rich-copy-ghost')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('tt_copy_ghost_v1'))).toBe('0');
-  expect(await localText(page)).toBe('LỜ');
+  expect(await localText(page)).toBe('TỊ');
   await expect(page.locator('#copy-source-text')).toBeVisible();
   await expect.poll(paperBackground).toMatch(/linear-gradient/);
+});
+
+test('review keeps both actions visible while ten issues scroll on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await open(page);
+  const source = normalizeCopyText(book.chapters[0].blocks[0]).split(' ');
+  const prefix = source.slice(0, 26).map((word, index) => index % 2 === 0 && index < 20 ? 'saitừ' : word).join(' ');
+  await editorFor(page).fill(prefix);
+  const trigger = page.getByRole('button', { name: 'Rà soát đoạn này', exact: true });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Rà soát đoạn này', exact: true });
+  await expect(dialog.getByText('10 vị trí cần rà soát')).toBeVisible();
+  const entries = dialog.getByRole('listitem');
+  await expect(entries).toHaveCount(10);
+  const footer = dialog.locator('footer');
+  const before = await footer.boundingBox();
+  await entries.last().getByRole('button').scrollIntoViewIfNeeded();
+  await expect.poll(() => dialog.locator('.copy-review-body').evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  expect(await footer.boundingBox()).toEqual(before);
+  await expect(dialog.getByRole('button', { name: 'Đóng', exact: true })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: 'Về chỗ cần sửa', exact: true })).toBeInViewport();
+  await dialog.getByRole('button', { name: 'Về chỗ cần sửa', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(editorFor(page)).toBeFocused();
 });

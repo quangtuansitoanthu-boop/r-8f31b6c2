@@ -8,8 +8,11 @@
   import { meditationTabCopy } from '$lib/i18n/ui-copy';
   import { quoteCardCopy } from '$lib/i18n/quote-card';
   import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
+  import { Award } from '@lucide/svelte';
+  import { createQuery } from '@tanstack/svelte-query';
   import { getGuideNavigationCopy } from '$lib/i18n/guide-navigation';
   import { getSessionContext, clearLocalSession, clearBrowserSession, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
   import { getThemeContext } from '$lib/stores/theme.svelte';
@@ -24,6 +27,10 @@
     logoutNativeAuth,
   } from '$lib/browser/native-auth';
   import { fetchWithSessionRefresh, requireBrowserCsrf } from '$lib/browser/session-csrf';
+  import { fetchPracticeProgress, PRACTICE_PROGRESS_QUERY_POLICY } from '$lib/browser/practice-community';
+  import { serverStateKeys } from '$lib/browser/server-state';
+  import { getBadgeTitle, getPracticeIdentity } from '$lib/domain/practice/progress-achievements';
+  import '$lib/components/practice/community/avatar-rings.css';
   import { resolveApiUrl } from '$lib/browser/native-api';
   import { triggerHaptic } from '$lib/utils/haptics';
   import { doctrinalGuideSections } from '$lib/content/guide-doctrinal-content';
@@ -69,6 +76,14 @@
   let recoveryBusy = $state(false);
   let recoveryError = $state('');
   const accountPrincipal = $derived(session.authenticated ? session.user?.id ?? null : null);
+  const progressQuery = createQuery(() => ({
+    ...PRACTICE_PROGRESS_QUERY_POLICY,
+    queryKey: serverStateKeys.practiceCommunity.progress(accountPrincipal ?? 'anonymous'),
+    queryFn: ({ signal }) => fetchPracticeProgress(fetchWithSessionRefresh, signal),
+    enabled: browser && currentTab === 'account' && Boolean(accountPrincipal) && sessionStore.verification === 'verified',
+  }));
+  const accountProgress = $derived(accountPrincipal ? progressQuery.data : undefined);
+  const { highestBadge, avatarBadge, title: rank } = $derived(getPracticeIdentity(accountProgress, localeStore.current === 'en'));
 
   async function recoverAccount(provider: 'google' | 'apple') {
     if (recoveryBusy || !recoveryOnline) return;
@@ -826,7 +841,7 @@
       <section class="cn-card cn-subpage-card">
         <div class="cn-profile-box">
           <div class="cn-profile-header">
-            <div class="cn-avatar-col">
+            <div class={`cn-avatar-col avatar-ring ${avatarBadge ? `avatar-ring--${avatarBadge.id}` : ''}`}>
               {#if session.user?.avatarUrl && !avatarFailed}
                 <img
                   src={session.user.avatarUrl}
@@ -841,6 +856,11 @@
                 </div>
               {:else}
                 <div class="cn-avatar-placeholder">👤</div>
+              {/if}
+              {#if avatarBadge}
+                <span class="cn-avatar-award" role="img" aria-label={getBadgeTitle(avatarBadge, localeStore.current === 'en')}>
+                  <Award aria-hidden="true" size={23} strokeWidth={2.2} />
+                </span>
               {/if}
             </div>
 
@@ -865,6 +885,9 @@
                   <p class="cn-user-display-name">
                     <span class="cn-user-dn-label">Email:</span> {session.user.email}
                   </p>
+                {/if}
+                {#if rank}
+                  <p class="cn-practice-rank" class:earned={Boolean(highestBadge)}>{rank}</p>
                 {/if}
               {:else}
                 <h2 class="cn-user-name">{t.profile.welcome}</h2>
@@ -2120,17 +2143,38 @@
     width: 100%;
   }
 
-  .cn-avatar-col {
+  .cn-avatar-col.avatar-ring {
+    --ring-size: 68px;
+    --ring-core-size: 62px;
     flex-shrink: 0;
   }
 
   .cn-avatar-img, .cn-avatar-placeholder {
-    width: 60px;
-    height: 60px;
+    position: relative;
+    z-index: 2;
+    width: var(--ring-core-size);
+    height: var(--ring-core-size);
     border-radius: 50%;
     object-fit: cover;
     display: block;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .cn-avatar-award {
+    position: absolute;
+    right: -6px;
+    bottom: -4px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--card);
+    border-radius: 50%;
+    background: var(--ring-paper);
+    color: var(--ring-ink);
+    box-shadow: inset 0 0 0 1px var(--ring-metal);
   }
 
   .cn-avatar-placeholder {
@@ -2191,6 +2235,25 @@
 
   .cn-user-dn-label {
     font-weight: 600;
+  }
+
+  .cn-practice-rank {
+    box-sizing: border-box;
+    align-self: flex-start;
+    max-width: 100%;
+    margin: 4px 0 0;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--gold-light);
+    color: var(--brown);
+    font-size: var(--font-size-label);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .cn-practice-rank.earned {
+    border-color: var(--gold);
   }
 
   .cn-status-indicator {
@@ -3072,9 +3135,9 @@
     .cn-card {
       padding: 16px;
     }
-    .cn-avatar-img, .cn-avatar-placeholder {
-      width: 52px;
-      height: 52px;
+    .cn-avatar-col.avatar-ring {
+      --ring-size: 62px;
+      --ring-core-size: 56px;
     }
     .cn-user-greeting {
       font-size: var(--font-size-body);

@@ -55,6 +55,7 @@ interface TalkTrackRow {
   url?: unknown;
   duration_sec?: unknown;
   media_type?: unknown;
+  aspect_ratio?: unknown;
 }
 
 interface TalkAlbumRow {
@@ -319,6 +320,7 @@ function normalizeTracks(value: unknown): TalkAlbum['tracks'] {
       title,
       url,
       ...(row.media_type === 'video' ? { media_type: 'video' as const } : {}),
+      ...(row.media_type === 'video' && row.aspect_ratio === '16:9' ? { aspect_ratio: '16:9' as const } : {}),
       ...(Number.isFinite(duration) && duration! >= 0 ? { duration_sec: Math.round(duration!) } : {})
     }];
   });
@@ -447,10 +449,25 @@ async function fetchScopedTalkAlbums(fetcher: typeof fetch, scope: TalkCatalogSc
   }
   if (cachedRows && cachedRows.length > 0) {
     if (isNativeApp()) {
-      const additions = new Set(['pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4', 'pt_drive_c435791b562e6f6e9d345b414df4a273']);
+      const baoUngAlbumId = 'pt_bao_ung_hien_doi';
+      const needsBaoUngCover = (row: CachedTalkAlbumRow) => {
+        if (row.id !== baoUngAlbumId) return false;
+        const cover = normalizeCoverSrc(row.anh_dai_dien).split('#')[0];
+        return !cover || cover === '/covers/bao-ung-hien-doi-tap-1-20261022.webp';
+      };
+      const additions = new Set([
+        'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4',
+        'pt_drive_c435791b562e6f6e9d345b414df4a273',
+        'pt_drive_0cbcd85f1caa5411a50fb3edf38156d3',
+        baoUngAlbumId,
+      ]);
       for (const row of cachedRows) additions.delete(String(row.id));
-      if (additions.size) {
+      if (additions.size || cachedRows.some(needsBaoUngCover)) {
         const bundledRows = await getOfflineTalks();
+        const packagedCover = bundledRows.find(row => row.id === baoUngAlbumId)?.anh_dai_dien;
+        if (packagedCover) {
+          cachedRows = cachedRows.map(row => needsBaoUngCover(row) ? { ...row, anh_dai_dien: packagedCover } : row);
+        }
         const missing = bundledRows.filter(row => additions.has(String(row.id)));
         if (missing.length) {
           // Bổ sung metadata đóng gói ngay, ghi cache sau khi đã có danh sách.

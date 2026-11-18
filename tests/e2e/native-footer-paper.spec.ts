@@ -7,6 +7,19 @@ async function settleClient(page: Page): Promise<void> {
   await page.locator('html').evaluate(element => { element.dataset.nativeApp = 'true'; });
 }
 
+async function useBundledBooks(page: Page): Promise<void> {
+  // These two books are shipped with the app and are absent from the local web database.
+  await page.addInitScript(() => {
+    Object.assign(window, {
+      CapacitorCustomPlatform: { name: 'android' },
+      Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android', Plugins: {} },
+    });
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    localStorage.setItem('tutam_locale', 'vi');
+  });
+  await page.route('**/api/**', route => route.abort());
+}
+
 for (const [paper, theme, background, ink] of [
   ['white', '1', 'rgb(255, 255, 255)', 'rgb(28, 26, 21)'],
   ['cream', '1', 'rgb(250, 246, 238)', 'rgb(58, 46, 26)'],
@@ -143,6 +156,7 @@ for (const [theme, paper, color] of [
   ['1', 'purple', 'rgb(238, 230, 250)'],
 ] as const) {
   test(`normal book ${paper} paper persists and synchronizes the app theme ${theme}`, async ({ page }) => {
+    await useBundledBooks(page);
     await page.setViewportSize({ width: 375, height: 814 });
     await page.addInitScript(value => { if (localStorage.getItem('tutam_dark_mode') === null) localStorage.setItem('tutam_dark_mode', value); }, theme);
     await page.goto('/?article=tt_1781528855960'); await settleClient(page);
@@ -177,6 +191,7 @@ for (const [theme, paper, color] of [
 
 
 test('purple book paper also themes the table of contents and reader actions', async ({ page }) => {
+  await useBundledBooks(page);
   await page.setViewportSize({ width: 375, height: 814 });
   await page.addInitScript(() => {
     localStorage.setItem('tutam_locale', 'vi');
@@ -237,6 +252,7 @@ test('invalid legacy practice paper yields the authoritative global cream palett
 
 for (const initialDark of [false, true]) {
   test(`reader Auto tracks the OS and updates app and paper together from ${initialDark ? 'dark' : 'light'}`, async ({ page }) => {
+    await useBundledBooks(page);
     await page.setViewportSize({ width: 375, height: 814 });
     await page.emulateMedia({ colorScheme: initialDark ? 'dark' : 'light' });
     await page.addInitScript(() => {
@@ -263,6 +279,7 @@ for (const initialDark of [false, true]) {
 
 
 test('native landscape reading controls retain 44px touch targets for all six papers', async ({ page }) => {
+  await useBundledBooks(page);
   await page.setViewportSize({ width: 814, height: 411 });
   await page.goto('/?article=tt_1781528855960&chap=1'); await settleClient(page);
   const toolbar = page.locator('.reader-modal .reader-toolbar');

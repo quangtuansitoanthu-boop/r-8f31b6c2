@@ -127,6 +127,12 @@ export const PRACTICE_COMMUNITY_QUERY_POLICY = {
   retry: false,
 } as const;
 
+export const PRACTICE_PROGRESS_QUERY_POLICY = {
+  ...PRACTICE_COMMUNITY_QUERY_POLICY,
+  staleTime: 48 * 60 * 60 * 1000,
+  gcTime: 72 * 60 * 60 * 1000,
+} as const;
+
 export function fetchPracticeProgress(fetcher: Fetcher = fetch, signal?: AbortSignal): Promise<PracticeProgressData> {
   return requestJson(fetcher, '/api/practice/progress', { headers: { accept: 'application/json' }, signal });
 }

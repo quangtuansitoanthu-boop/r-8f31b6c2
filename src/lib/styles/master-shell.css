@@ -546,6 +546,10 @@ textarea {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+.qts-route-topbar > .tt-back-btn {
+  min-width: var(--touch-target-size);
+  min-height: var(--touch-target-size);
+}
 .tt-back-btn:hover {
   background: var(--gold-light);
   border-color: var(--gold);

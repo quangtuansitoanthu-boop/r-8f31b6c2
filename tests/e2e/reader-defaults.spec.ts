@@ -4,7 +4,10 @@ import { loginAsMember, settleClient, choosePdfOnline } from './runtime-helpers'
 test.beforeEach(async ({ page }) => { await loginAsMember(page); });
 
 test('an explicit light preference keeps warm paper even with a dark OS preference', async ({ page }) => {
-  await page.addInitScript(() => { if (!localStorage.getItem('tutam_dark_mode')) localStorage.setItem('tutam_dark_mode', '0'); });
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('tutam_dark_mode')) localStorage.setItem('tutam_dark_mode', '0');
+    if (!localStorage.getItem('tutam_app_light_palette')) localStorage.setItem('tutam_app_light_palette', 'cream');
+  });
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/?article=e2e-ebook');
   await settleClient(page);
@@ -92,7 +95,13 @@ for (const appTheme of ['0', '1']) {
           samples.querySelector('mark')!.append(nested);
           content.append(samples);
         }
-        const channels = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+        const pixel = document.createElement('canvas').getContext('2d')!;
+        const channels = (value: string) => {
+          pixel.clearRect(0, 0, 1, 1);
+          pixel.fillStyle = value;
+          pixel.fillRect(0, 0, 1, 1);
+          return Array.from(pixel.getImageData(0, 0, 1, 1).data);
+        };
         const luminance = (rgb: number[]) => rgb.map(value => {
           const channel = value / 255;
           return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
@@ -102,11 +111,11 @@ for (const appTheme of ['0', '1']) {
           for (let node: Element | null = sample; node; node = node.parentElement) ancestors.unshift(node);
           let paper = [255, 255, 255];
           for (const node of ancestors) {
-            const rgba = getComputedStyle(node).backgroundColor.match(/[\d.]+/g)!.map(Number);
-            const alpha = rgba[3] ?? 1;
+            const rgba = channels(getComputedStyle(node).backgroundColor);
+            const alpha = rgba[3] / 255;
             paper = paper.map((channel, index) => rgba[index] * alpha + channel * (1 - alpha));
           }
-          const ink = luminance(channels(getComputedStyle(sample).color));
+          const ink = luminance(channels(getComputedStyle(sample).color).slice(0, 3));
           const background = luminance(paper);
           return { name: sample.dataset.contrastProbe, ratio: (Math.max(ink, background) + .05) / (Math.min(ink, background) + .05) };
         });

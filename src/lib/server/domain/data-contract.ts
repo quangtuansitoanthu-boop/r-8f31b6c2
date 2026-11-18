@@ -232,6 +232,10 @@ function normalizeTalkTracks(value: unknown): Array<Record<string, unknown>> {
     return {
       url,
       title,
+      ...(typedTrack.media_type === 'video' ? {
+        media_type: 'video',
+        ...(typedTrack.aspect_ratio === '16:9' ? { aspect_ratio: '16:9' } : {}),
+      } : {}),
       ...(duration == null ? {} : { duration_sec: Math.round(duration) }),
     };
   });

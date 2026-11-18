@@ -19,8 +19,7 @@ for (const theme of ['light', 'dark'] as const) {
     const menu = page.locator('.cn-big-tab-card');
     const titles = await menu.locator('h2').allTextContents();
     expect(titles.indexOf('Chia sẻ từ người dùng')).toBe(titles.indexOf('Liên hệ & Góp ý') - 1);
-    await expect.poll(() => requests.includes('/api/presence')).toBe(true);
-    const initial = requests.filter(path => path !== '/api/presence');
+    const initial = [...requests];
     await page.getByRole('button', { name: /Chia sẻ từ người dùng/ }).click();
     await expect(page).toHaveURL(/tab=testimonials/);
     await expect(page).toHaveTitle('Chia sẻ từ người dùng — Quang Từ');
@@ -45,7 +44,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.screenshot({ path: testInfo.outputPath(`testimonials-top-${width}-${theme}.png`) });
       await page.screenshot({ path: testInfo.outputPath(`testimonials-${width}-${theme}.png`), fullPage: true });
     }
-    expect(requests.filter(path => path !== '/api/presence')).toEqual(initial);
+    expect(requests).toEqual(initial);
     await page.context().setOffline(false);
     await page.locator('.cn-subpage-back-btn').click();
     await expect(page.getByRole('button', { name: /Liên hệ & Góp ý/ })).toBeVisible();
@@ -54,6 +53,6 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goBack();
     await page.getByRole('button', { name: /Chia sẻ từ người dùng/ }).click();
     await expect(stories).toHaveCount(8);
-    expect(requests.filter(path => path !== '/api/presence')).toEqual(initial);
+    expect(requests).toEqual(initial);
   });
 }

@@ -20,8 +20,6 @@ test('mobile admin tables keep labels separate from their values', async ({ page
 
 test('traffic axes stay readable when the viewport shrinks', async ({ page }) => {
   await loginAsAdmin(page);
-  const previousPath = new URL(page.url()).pathname;
-  let measuringResize = false;
   const resizeRequests: string[] = [];
   const pending = new Set<Request>();
   let lastActivity = Date.now();
@@ -29,9 +27,6 @@ test('traffic axes stay readable when the viewport shrinks', async ({ page }) =>
     const path = new URL(request.url()).pathname;
     if (!path.startsWith('/api/')) return;
     resizeRequests.push(path);
-    // Heartbeat keepalive của trang vừa rời có thể không phát sự kiện kết thúc ở document mới.
-    if (!measuringResize && previousPath !== '/admin/analytics' && path === '/api/presence'
-      && request.method() === 'POST' && request.postDataJSON()?.currentPath === previousPath) return;
     pending.add(request);
     lastActivity = Date.now();
   });
@@ -40,18 +35,11 @@ test('traffic axes stay readable when the viewport shrinks', async ({ page }) =>
   };
   page.on('requestfinished', finished);
   page.on('requestfailed', finished);
-  const initialPresence = page.waitForResponse(response => {
-    const request = response.request();
-    return new URL(response.url()).pathname === '/api/presence'
-      && request.method() === 'POST' && request.postDataJSON()?.currentPath === '/admin/analytics';
-  });
   await page.goto('/admin/analytics');
   await settleClient(page);
-  expect((await initialPresence).ok()).toBe(true);
-  // Đo resize sau khi session và heartbeat khởi tạo đã hoàn tất.
+  // Đo resize sau khi các request khởi tạo đã hoàn tất.
   await expect.poll(() => pending.size === 0 && Date.now() - lastActivity >= 200).toBe(true);
   resizeRequests.length = 0;
-  measuringResize = true;
   for (const width of [375, 320, 1440, 375]) {
     await page.setViewportSize({ width, height: 812 });
     const axis = page.locator('.traffic-chart__axis').first();

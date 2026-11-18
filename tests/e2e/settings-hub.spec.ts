@@ -54,11 +54,10 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('.settings-section')).toHaveCount(6);
     await expect(page.locator('.settings-section[open]')).toHaveCount(0);
     await page.locator('.settings-hub').screenshot({ path: testInfo.outputPath(`collapsed-${theme}.png`) });
-    await expect.poll(() => requests.includes('/api/presence')).toBe(true);
     const snapshot = () => page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) =>
       key.startsWith('tutam_read_') || key === 'tutam_pdf_paper_mode' || key === 'tutam_practice_reminders_v1' || key.includes('personal'))));
     const stored = await snapshot();
-    const initialRequests = requests.filter(path => path !== '/api/presence');
+    const initialRequests = [...requests];
 
     const lunarSummary = page.locator('#settings-lunar > summary');
     await lunarSummary.focus();
@@ -69,7 +68,8 @@ for (const theme of ['light', 'dark'] as const) {
 
     await page.locator('#settings-personal > summary').click();
     const timing = page.locator('.personal-timing');
-    await timing.locator('input[type="number"]').fill('7');
+    await timing.getByRole('combobox').selectOption('custom');
+    await timing.getByRole('spinbutton').fill('8');
     await timing.evaluate(element => element.setAttribute('data-draft-marker', 'same-owner'));
     await page.locator('#settings-reading > summary').click();
     await expect(page.locator('.settings-section[open]')).toHaveCount(1);
@@ -77,7 +77,8 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('.cn-preview-box')).toHaveCSS('font-size', '21px');
     await page.locator('#settings-personal > summary').click();
     await expect(timing).toHaveAttribute('data-draft-marker', 'same-owner');
-    await expect(timing.locator('input[type="number"]')).toHaveValue('7');
+    await expect(timing.getByRole('combobox')).toHaveValue('custom');
+    await expect(timing.getByRole('spinbutton')).toHaveValue('8');
     await expect(timing.getByRole('button', { name: 'Lưu cài đặt', exact: true })).toBeVisible();
 
     for (const width of [375, 1440]) {
@@ -102,7 +103,7 @@ for (const theme of ['light', 'dark'] as const) {
       }
     }
     expect(await snapshot()).toEqual(stored);
-    expect(requests.filter(path => path !== '/api/presence')).toEqual(initialRequests);
+    expect(requests).toEqual(initialRequests);
 
     await page.locator('#settings-lunar > summary').click();
     await page.getByRole('button', { name: 'Nhắc ngày Thập Trai (10 ngày ăn chay âm lịch)', exact: true }).click();

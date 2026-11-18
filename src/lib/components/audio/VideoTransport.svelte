@@ -4,7 +4,7 @@
   import { talkVideoText } from '$lib/i18n/talk-video';
   import { audioPlayer, getAudioPlayer } from '$lib/stores/audio-player.svelte';
 
-  let { title }: { title: string } = $props();
+  let { title, compact = false }: { title: string; compact?: boolean } = $props();
   const localeStore = getLocaleContext();
   const text = $derived(talkVideoText[localeStore.current === 'en' ? 'en' : 'vi']);
   let commandError = $state('');
@@ -34,7 +34,7 @@
   }
 </script>
 
-<div class="video-transport" role="group" aria-label={title}>
+<div class="video-transport" class:compact role="group" aria-label={title}>
   <span class="track-count">{text.track} {$audioPlayer.trackIndex + 1} / {trackCount}</span>
   <strong>{title}</strong>
   <div class="seek-row">
@@ -58,6 +58,9 @@
 
 <style>
   .video-transport { display: grid; gap: .5em; padding: 2em 1em max(1em, env(safe-area-inset-bottom, 0px)); color: var(--video-ink); background: linear-gradient(transparent, var(--video-surface)); }
+  .compact { background: var(--bg); color: var(--text); padding: 0 .75em .5em; gap: 0; }
+  .compact .toggle { width: 44px; height: 44px; }
+  .compact .track-count, .compact strong { display: none; }
   .track-count { font-size: .75em; opacity: .8; }
   strong { font-size:var(--font-size-body); line-height: 1.4; overflow-wrap: anywhere; }
   .seek-row { display: flex; align-items: center; gap: .75em; font-size: .75em; font-variant-numeric: tabular-nums; }

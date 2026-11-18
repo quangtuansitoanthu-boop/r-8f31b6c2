@@ -42,24 +42,23 @@ test('guest sharing offers sign in and keeps the private draft without posting',
   expect(await page.evaluate(() => localStorage.getItem('quangtu_principal_v1:anonymous:tt_personal_reflections_v1'))).toContain(content);
 });
 
-test('first-visit guidance honours remembering and focuses private writing without content requests', async ({ page }) => {
+test('guidance can be reopened and focuses private writing without content requests', async ({ page }) => {
   await page.goto('/tu-tap'); await settleClient(page);
   const requests = contentRequests(page);
   await page.locator('.tt-mode-card--reflection').click();
   const guide = page.getByTestId('reflection-guide');
   await expect(guide).toBeVisible();
-  await guide.getByRole('checkbox').uncheck();
-  await guide.getByRole('button', { name: 'Tôi đã hiểu, Bắt đầu quán chiếu →', exact: true }).click();
+  const startWriting = guide.getByRole('button', { name: 'Tôi đã hiểu, Bắt đầu quán chiếu →', exact: true });
+  await startWriting.click();
   const editor = page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true });
   await expect(editor).toBeFocused();
-  expect(await page.evaluate(() => localStorage.getItem('tt_reflection_guide_seen_v1'))).toBeNull();
-  await openHub(page);
-  await openPersonal(page);
-  await expect(editor).toBeFocused();
-  expect(await page.evaluate(() => localStorage.getItem('tt_reflection_guide_seen_v1'))).toBe('1');
-  await page.reload(); await settleClient(page);
-  await expect(editor).toBeVisible();
   await expect(guide).toHaveCount(0);
+  await page.locator('.guide-toggle-button').click();
+  await expect(guide).toBeVisible();
+  await startWriting.click();
+  await expect(editor).toBeFocused();
+  await page.reload(); await settleClient(page);
+  await expect(guide).toBeVisible();
   expect(requests).toEqual([]);
 });
 
@@ -126,6 +125,77 @@ test('both private journal share actions require confirmation and cancel sends n
   }
 });
 
+test.describe('iOS reflection sharing', () => {
+  test('sends both journal kinds through the iOS bridge and preserves a refused draft for retry', async ({ page }) => {
+    const worker = 'https://quangtu-web.quangtu-ansitoanthu.workers.dev';
+    const csrfToken = 'ios-fixture-csrf';
+    const user = { id: TEST_MEMBER_ID, role: 'user', displayName: 'Đồng tu', email: '', avatarUrl: '' };
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(({ worker, csrfToken, communityPath }) => {
+      const attempts: Array<{ url: string; method: string; headers: Record<string, string>; data: { kind: string; nickname: string; content: string; clientPostId: string } }> = [];
+      Object.assign(window, {
+        webkit: { messageHandlers: { bridge: {} } },
+        mindfulNativeAttempts: attempts,
+        Capacitor: {
+          PluginHeaders: [{ name: 'CapacitorHttp', methods: [{ name: 'request', rtype: 'promise' }] }],
+          nativePromise: async (plugin: string, method: string, options: typeof attempts[number]) => {
+            if (plugin !== 'CapacitorHttp' || method !== 'request' || options.url !== worker + communityPath) {
+              throw new Error('Unexpected native request');
+            }
+            attempts.push(options);
+            const headers = { 'content-type': 'application/json' };
+            if (options.headers.origin !== worker || options.headers['x-csrf-token'] !== csrfToken) {
+              return { status: 403, headers, data: { error: { code: 'invalid_origin' } } };
+            }
+            if (attempts.length === 1) return { status: 503, headers, data: { error: { code: 'temporary' } } };
+            return { status: 200, headers, data: { post: {
+              ...options.data, id: options.data.clientPostId, status: 'published', createdAt: new Date().toISOString(),
+              reactionCount: 0, viewerReacted: false, isOwn: true,
+            } } };
+          },
+        },
+      });
+      localStorage.setItem('quangtu_active_url', worker);
+      localStorage.setItem('tutam_locale', 'vi');
+    }, { worker, csrfToken, communityPath });
+    await page.route('**/api/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === '/api/session' || path === '/api/auth/session') return route.fulfill({ json: {
+        authenticated: true, user, csrfToken, expiresAt: '2099-01-01T00:00:00.000Z',
+      } });
+      if (new URL(route.request().url()).hostname === 'localhost') return route.continue();
+      return route.fulfill({ status: 503, json: {} });
+    });
+    await page.goto('/tu-tap', { waitUntil: 'domcontentloaded' });
+    await settleClient(page);
+    await openPersonal(page);
+    await page.getByRole('textbox', { name: 'Biệt danh đồng tu', exact: true }).fill('Đồng Tu iOS');
+    const repentance = page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true });
+    const text = publicReflection('Bản nháp iOS');
+    await repentance.fill(text);
+    const confirm = async (name: string) => {
+      await page.getByRole('button', { name, exact: true }).click();
+      await page.getByRole('dialog', { name: 'Xác nhận chia sẻ', exact: true })
+        .getByRole('button', { name: 'Đồng ý chia sẻ', exact: true }).click();
+    };
+    await confirm('Gửi cộng đồng sám hối');
+    await expect(page.getByText('Chưa gửi được bài. Nội dung trên máy vẫn được giữ nguyên.', { exact: true })).toBeVisible();
+    await expect(repentance).toHaveValue(text);
+    expect(await page.evaluate(key => localStorage.getItem(key), `${prefix}tt_personal_reflections_v1`)).toContain(text);
+    await confirm('Gửi cộng đồng sám hối');
+    await expect(page.getByText('Đã chia sẻ lên cộng đồng.', { exact: true })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Việc thiện lành đã làm', exact: true }).fill(publicReflection('Việc lành iOS'));
+    await confirm('Chia sẻ việc lành');
+    await expect(page.getByText('Đã chia sẻ lên cộng đồng.', { exact: true })).toBeVisible();
+    const attempts = await page.evaluate(() => (window as unknown as { mindfulNativeAttempts: {
+      url: string; method: string; headers: Record<string, string>; data: { kind: string; clientPostId: string };
+    }[] }).mindfulNativeAttempts);
+    expect(attempts.map(a => a.data.kind)).toEqual(['repentance', 'repentance', 'good_deed']);
+    expect(attempts[0].data.clientPostId).toBe(attempts[1].data.clientPostId);
+    expect(attempts.every(a => a.method === 'POST' && a.headers.origin === worker && a.headers['x-csrf-token'] === csrfToken)).toBe(true);
+  });
+});
+
 test('personal routines open directly and never expose an unsaved UUID', async ({ page }) => {
   await loginAsMember(page);
   await page.setViewportSize({ width: 375, height: 844 });
@@ -136,27 +206,55 @@ test('personal routines open directly and never expose an unsaved UUID', async (
   await expect(page.getByRole('button', { name: 'Tạo thời khóa mới', exact: true })).toHaveCount(0);
   await openHub(page);
   await page.getByRole('button', { name: /^Thời khóa tu tập/u }).click();
-  const dialog = page.getByRole('dialog', { name: 'Thời khóa tu tập', exact: true });
+  const dialog = page.getByRole('region', { name: 'Thời khóa tu tập', exact: true });
   const requests = contentRequests(page);
+  const rows = dialog.locator('.saved-routine');
+  await expect(dialog.locator('.routine-header')).toHaveText('Tạo thời khóa mới');
+  await expect(rows).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Tạo thời khóa mới', exact: true }).click();
+  const draft = page.getByRole('dialog', { name: 'Tạo thời khóa mới', exact: true });
+  const routineName = draft.getByRole('textbox', { name: 'Tên thời khóa', exact: true });
+  const save = draft.getByRole('button', { name: 'Lưu thời khóa', exact: true });
+  const status = dialog.getByRole('status');
+  await expect(routineName).toHaveValue('Thời khoá sáng');
+  await expect(save).toBeDisabled();
+  await expect(draft.getByText('Thêm ít nhất hai bước hành trì.')).toBeVisible();
   const name = `Thời khóa thử ${Date.now()}`;
-  await dialog.getByRole('textbox', { name: 'Tên thời khóa', exact: true }).fill(name);
-  await dialog.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
+  await routineName.fill(name);
+  await draft.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
   await page.getByRole('dialog', { name: 'Thêm bước', exact: true }).getByRole('button', { name: 'HỒI HƯỚNG', exact: true }).click();
-  await dialog.locator('summary').filter({ hasText: 'HỒI HƯỚNG' }).click();
-  await dialog.getByRole('textbox', { name: 'Lời hồi hướng riêng', exact: true }).fill('Nguyện đem công đức này hướng về khắp tất cả.');
-  await dialog.getByRole('button', { name: 'Lưu thời khóa', exact: true }).click();
-  const picker = dialog.getByRole('combobox', { name: 'Thời khóa đã lưu', exact: true });
-  await expect(picker).toHaveText(name);
+  await draft.locator('summary').filter({ hasText: 'HỒI HƯỚNG' }).click();
+  await draft.getByRole('textbox', { name: 'Lời hồi hướng riêng', exact: true }).fill('Nguyện đem công đức này hướng về khắp tất cả.');
+  await expect(save).toBeDisabled();
+  await expect(draft.getByText('Thêm ít nhất hai bước hành trì.')).toBeVisible();
+  await expect(rows).toHaveCount(0);
+  await draft.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Thêm bước', exact: true }).getByRole('button', { name: 'Thiền định', exact: true }).click();
+  await save.click();
+  await expect(status).toHaveText('Đã lưu thời khóa trên thiết bị.');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.getByRole('button', { name, exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Tạo thời khóa mới', exact: true }).click();
-  await expect(picker).toHaveText('Thời khóa đã lưu');
-  await dialog.getByRole('textbox', { name: 'Tên thời khóa', exact: true }).fill('Thời Khóa Sáng');
-  await expect(picker).toHaveText('Thời khóa đã lưu');
-  await picker.click();
-  await page.getByRole('dialog', { name: 'Thời khóa đã lưu', exact: true }).getByRole('button', { name, exact: true }).click();
-  await expect(dialog.getByRole('textbox', { name: 'Tên thời khóa', exact: true })).toHaveValue(name);
+  await expect(routineName).toHaveValue('Thời khoá sáng');
+  await draft.getByRole('button', { name: 'Hủy', exact: true }).click();
+  await rows.getByRole('button', { name: `Sửa ${name}`, exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Sửa thời khoá' });
+  await expect(edit.getByRole('textbox', { name: 'Tên thời khóa', exact: true })).toHaveValue(name);
   expect(requests).toEqual([]);
   await captureMobile(page, 'routine-editor');
+  await edit.getByRole('button', { name: 'Hủy', exact: true }).click();
+  const remove = rows.getByRole('button', { name: `Xóa ${name}`, exact: true });
+  await remove.click();
+  const confirm = page.getByRole('dialog', { name: 'Xóa thời khóa?', exact: true });
+  await expect(confirm).toContainText(name);
+  await confirm.getByRole('button', { name: 'Hủy', exact: true }).click();
+  await expect(remove).toBeFocused();
+  await remove.click();
+  await confirm.getByRole('button', { name: 'Xóa', exact: true }).click();
+  await expect(rows).toHaveCount(0);
+  await page.reload();
+  await expect(dialog.locator('.routine-header')).toHaveText('Tạo thời khóa mới');
+  expect(requests).toEqual([]);
 });
 
 test('undeployed community is reported clearly without automatic retry requests', async ({ page }) => {
@@ -235,9 +333,13 @@ test('reflection card supports header Back, browser Forward and reload without l
   await page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true }).fill(entry);
   await openHub(page);
   await page.goForward();
+  await expect(page.getByTestId('reflection-guide')).toBeVisible();
+  await page.locator('.guide-toggle-button').click();
   await expect(page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true })).toHaveValue(entry);
   await page.reload();
   await settleClient(page);
+  await expect(page.getByTestId('reflection-guide')).toBeVisible();
+  await page.locator('.guide-toggle-button').click();
   await expect(page.getByRole('textbox', { name: 'Nhìn lại lỗi lầm & sám hối', exact: true })).toHaveValue(entry);
   expect(requests).toEqual([]);
 });
@@ -345,10 +447,12 @@ test('dedication-only routine records one summary without counted practice logs'
   await settleClient(page);
   const before = await page.evaluate(prefix => ({ logs: localStorage.getItem(`${prefix}tt_practice_logs_v1`), summaries: JSON.parse(localStorage.getItem(`${prefix}tt_routine_summaries_v1`) ?? '[]') }), prefix);
   await page.getByRole('button', { name: /^Thời khóa tu tập/u }).click();
-  await page.getByRole('combobox', { name: 'Thời khóa đã lưu', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Thời khóa đã lưu', exact: true }).getByRole('button', { name: routineName, exact: true }).click();
+
   const requests = contentRequests(page);
-  await page.getByRole('button', { name: 'Bắt đầu thời khóa', exact: true }).click();
+  const savedRoutines = () => page.evaluate(prefix => localStorage.getItem(`${prefix}tt_personal_settings_v1`), prefix);
+  const stored = await savedRoutines();
+  await page.getByRole('button', { name: `Bắt đầu ${routineName}`, exact: true }).click();
+  await page.getByRole('dialog', { name: 'Bắt đầu thời khoá tu tập?' }).getByRole('button', { name: 'Bắt đầu', exact: true }).click();
   const reading = page.getByRole('dialog', { name: 'Hành trì thời khóa', exact: true });
   await expect(reading).toBeVisible();
   await expect(reading.getByText('Nguyện đem công đức này', { exact: true })).toBeVisible();
@@ -358,6 +462,7 @@ test('dedication-only routine records one summary without counted practice logs'
   await expect(reading).toHaveCount(0);
   const after = await page.evaluate(prefix => ({ logs: localStorage.getItem(`${prefix}tt_practice_logs_v1`), summaries: JSON.parse(localStorage.getItem(`${prefix}tt_routine_summaries_v1`) ?? '[]') }), prefix);
   expect(after.logs).toBe(before.logs);
+  expect(await savedRoutines()).toBe(stored);
   expect(after.summaries).toHaveLength(before.summaries.length + 1);
   expect(after.summaries.filter((item: { note: string }) => item.note.startsWith(routineName))).toHaveLength(1);
   expect(requests).toEqual([]);

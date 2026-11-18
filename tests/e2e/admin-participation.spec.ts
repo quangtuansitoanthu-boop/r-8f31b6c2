@@ -67,7 +67,7 @@ test('real local API connects account metadata to admin and rejects member reads
   expect((await page.request.get('/api/admin/practice-participation')).status()).toBe(403);
   await loginAsAdmin(page);
   const session=await (await page.request.get('/api/session')).json();
-  const response=await page.request.post('/api/practice/participation',{headers:{origin:'http://localhost:8787','x-csrf-token':session.csrfToken},data:{ownerId:session.user.id,items:[{module:'five',event:'started',at:new Date().toISOString()}]}});
+  const response=await page.request.post('/api/practice/participation',{headers:{origin:new URL(page.url()).origin,'x-csrf-token':session.csrfToken},data:{ownerId:session.user.id,items:[{module:'five',event:'started',at:new Date().toISOString()}]}});
   expect(response.status()).toBe(200);
   await page.goto('/admin/practice-participation');await settleClient(page);
   const main=page.locator('.ap-participation');

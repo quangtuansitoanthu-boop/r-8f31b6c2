@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { isDataApiPath } from './runtime-helpers';
 
 test('continue practice remains visible without saved progress and opening it makes no new requests', async ({ page }, info) => {
   await page.setViewportSize({ width: 375, height: 844 });
@@ -41,8 +42,8 @@ for (const locale of ['vi', 'en'] as const) for (const dark of [false, true]) {
     }, { locale, dark });
     let apiRequests = 0;
     await page.route('**/api/**', route => {
-      apiRequests++;
       const path = new URL(route.request().url()).pathname;
+      if (isDataApiPath(path)) apiRequests++;
       const json = path === '/api/session' ? { authenticated: false, user: null, csrfToken: null, expiresAt: null }
         : path === '/api/articles' ? [{ id: 'companion-sutra', tieu_de: 'Kinh Địa Tạng Bồ Tát Bổn Nguyện',
           danh_muc: 'KINH PHẬT', trang_thai: 'Hoàn thành', has_muc_luc: true, so_tap: 2 }]
@@ -58,8 +59,6 @@ for (const locale of ['vi', 'en'] as const) for (const dark of [false, true]) {
     const reference = page.locator('.tt-tracker__card');
     await expect(reference).toBeVisible();
     const journal = (await reference.boundingBox())!;
-    const background = await reference.evaluate(el => getComputedStyle(el).backgroundColor);
-    const glassFilter = await reference.evaluate(el => getComputedStyle(el).backdropFilter);
     await reference.locator('.tt-tracker__recent-add').click();
     const manual = page.locator('[aria-labelledby="practice-log-title"]');
     await expect(manual).toBeVisible();
@@ -68,18 +67,18 @@ for (const locale of ['vi', 'en'] as const) for (const dark of [false, true]) {
     await expect(reference).toBeVisible();
     await page.locator('.tt-tracker__close').click();
     await page.locator('.tt-mode-card--rec').click();
-    const routine = page.locator('.practice-recommendations');
-    await expect(routine.locator('.practice-recommendations__scroll')).toBeVisible();
-    expect(await routine.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(background);
-    expect(await routine.evaluate(el => getComputedStyle(el).backdropFilter)).toBe(glassFilter);
+    const routine = page.locator('.routine-page');
+    await expect(routine).toBeVisible();
+    await expect(page.locator('.tt-mode-card--rec')).toHaveCount(0);
     const routineBox = (await routine.boundingBox())!;
     expect(routineBox.x).toBeGreaterThanOrEqual(0);
     expect(routineBox.x + routineBox.width).toBeLessThanOrEqual(390);
     expect(routineBox.y + routineBox.height).toBeLessThanOrEqual(812);
-    const close = routine.locator('.tt-rec-toggle-btn');
-    expect((await close.boundingBox())!.width).toBeGreaterThanOrEqual(44);
-    expect((await close.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await expect(close).toHaveAccessibleName(locale === 'vi' ? 'Quay lại Tu Tập' : 'Back to Practice Hub');
+    const close = page.locator('.qts-route-topbar .tt-back-btn');
+    const closeBox = (await close.boundingBox())!;
+    expect(Number(closeBox.width.toFixed(3))).toBeGreaterThanOrEqual(44);
+    expect(Number(closeBox.height.toFixed(3))).toBeGreaterThanOrEqual(44);
+    await expect(page.locator('.qts-route-topbar .tt-topbar-title')).toHaveText(locale === 'vi' ? 'Thời khoá' : 'Routines');
     await expect(routine.getByRole('heading', { name: locale === 'vi' ? 'Thời khóa tu tập' : 'Practice routines' })).toBeVisible();
     await expect(routine.getByRole('button', { name: locale === 'vi' ? 'Buổi tối' : 'Evening', exact: true })).toHaveCount(0);
     await close.click();

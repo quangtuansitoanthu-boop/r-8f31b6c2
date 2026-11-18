@@ -14,7 +14,82 @@ const variants = [
 ];
 const routes = ['/', '/kinh-sach', '/phap-thoai', '/tu-tap', '/huong-dan', '/trich-dan-cua-toi', '/tien-do-tu-tap',
   '/chinh-sach-bao-mat', '/privacy-policy', '/ca-nhan', ...['account','settings','author','testimonials','feedback','guide','study-guide'].map(tab => '/ca-nhan?tab='+tab),
-  '/tu-tap/chep-kinh','/tu-tap/chep-danh-hieu', ...['rosary','meditation','le-phat','thanh-tinh','giu-gioi','bat-quan-trai'].map(action=>'/tu-tap?action='+action)];
+  '/tu-tap/chep-kinh','/tu-tap/chep-danh-hieu','/tu-tap/an-chay', ...['rosary','meditation','le-phat','thanh-tinh','giu-gioi','bat-quan-trai'].map(action=>'/tu-tap?action='+action)];
+
+test('vegan tabs stay below the practice header when scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.clock.setFixedTime(new Date('2026-11-15T11:30:00Z'));
+  await page.addInitScript(() => {
+    const host = window as unknown as Record<string, unknown>;
+    host.CapacitorCustomPlatform = { name: 'ios' };
+    host.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: {} };
+  });
+  await page.goto('/tu-tap', { waitUntil: 'domcontentloaded' });
+  await settleClient(page);
+  const calendarLink = page.locator('a.tt-mode-card--vegan');
+  await expect(calendarLink).toContainText('Lịch ăn chay đủ dinh dưỡng');
+  await calendarLink.click();
+  const header = page.locator('.qts-route-topbar');
+  const tabs = page.locator('.vegan nav');
+  const title = page.locator('.vegan h1');
+  await expect(title).toHaveText('Lịch ăn chay đủ dinh dưỡng');
+  const back = header.getByRole('button', { name: 'Quay lại', exact: true });
+  await expect(page.locator('.vegan .heading a')).toHaveCount(0);
+  await expect(page.locator('.vegan .meal')).not.toHaveCount(0);
+  await expect(back).toHaveCSS('border-top-style', 'solid');
+  expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  const headerBox = (await header.boundingBox())!;
+  const headerBottom = headerBox.y + headerBox.height;
+  expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(headerBottom - 1);
+  await page.evaluate(() => window.scrollBy(0, 480));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+  await expect.poll(async () => (await tabs.boundingBox())!.y).toBeGreaterThanOrEqual(headerBottom - 1);
+  await expect.poll(() => tabs.getByRole('button').evaluateAll(buttons => buttons.every(button => {
+    const box = button.getBoundingClientRect();
+    return button.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+  }))).toBe(true);
+  await tabs.getByRole('button').nth(1).click();
+  await expect(tabs.getByRole('button').nth(1)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('vegan search stays aligned when typing and returning to practice', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(new Date('2026-11-15T06:40:00Z'));
+  await page.addInitScript(() => {
+    const host = window as unknown as Record<string, unknown>;
+    host.CapacitorCustomPlatform = { name: 'ios' };
+    host.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: {} };
+    localStorage.setItem('tutam_locale', 'vi');
+    localStorage.setItem('tutam_ui_font_scale', '0.9');
+  });
+  await page.goto('/tu-tap', { waitUntil: 'domcontentloaded' });
+  await settleClient(page);
+  await page.locator('a.tt-mode-card--vegan').click();
+  await expect(page.locator('.vegan .meal').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Menu món', exact: true }).click();
+  const search = page.getByRole('searchbox');
+  await expect(search).toBeVisible();
+  const menuCount = await page.locator('.vegan .dish').count();
+  await expect(search).toHaveCSS('font-size', '16px');
+  for (const filter of await page.locator('.vegan .filters select').all()) {
+    await expect(filter).toHaveCSS('font-size', '16px');
+  }
+  const checkViewport = () => page.evaluate(() => ({
+    scale: window.visualViewport?.scale,
+    offsetLeft: window.visualViewport?.offsetLeft,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+  }));
+  await search.tap();
+  await page.keyboard.insertText('nấm');
+  await expect(search).toHaveValue('nấm');
+  await expect.poll(() => page.locator('.vegan .dish').count()).toBeLessThan(menuCount);
+  await expect(page.locator('.vegan .dish').first()).toBeVisible();
+  expect(await checkViewport()).toEqual({ scale: 1, offsetLeft: 0, overflow: false });
+  await page.locator('.qts-route-topbar').getByRole('button', { name: 'Quay lại', exact: true }).click();
+  await expect(page).toHaveURL(/\/tu-tap\/?$/);
+  await expect(search).toHaveCount(0);
+  expect(await checkViewport()).toEqual({ scale: 1, offsetLeft: 0, overflow: false });
+});
 
 for (const variant of variants) test(`iOS interface overflow ${variant.width} ${variant.locale} ${variant.dark?'dark':'light'} font ${variant.scale}`, async ({ page }, info) => {
   test.setTimeout(180_000);

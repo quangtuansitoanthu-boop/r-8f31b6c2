@@ -148,28 +148,32 @@ async function persistPlayerSync(repository: SyncRepository, id: string, input: 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const current = parseStoredSyncRow(await repository.getPlayerSync(id));
     const merged = mergePlayerSync(current.envelope, input, current.metadata);
+    const values = playerSyncWriteValues(merged, merged.metadata);
+    if (current.envelope && current.envelope.updated_at
+      && (!input.updated_at || Date.parse(input.updated_at) <= Date.parse(current.envelope.updated_at))
+      && JSON.stringify(values) === JSON.stringify(playerSyncWriteValues(
+        { ...current.envelope, updated_at: merged.updated_at }, pruneSyncMetadata(current.metadata, {}, {}),
+      ))) {
+      return { id, ...stripSyncMetadata({ ...merged, updated_at: current.envelope.updated_at }) };
+    }
     const success = current.envelope
-      ? await repository.compareAndSetPlayerSync(id, current.revision, {
-        ptPlayerState: encodeJsonNullable(merged.pt_player_state, 'pt_player_state'),
-        ptAlbumPositions: encodeJsonObject(merged.pt_album_positions, 'pt_album_positions'),
-        ptRecentAlbums: encodeJsonArray(merged.pt_recent_albums, 'pt_recent_albums'),
-        ptFavoriteAlbums: encodeJsonArray(merged.pt_favorite_albums, 'pt_favorite_albums'),
-        ptListenLaterAlbums: encodeJsonArray(merged.pt_listen_later_albums, 'pt_listen_later_albums'),
-        updatedAt: merged.updated_at,
-        syncMetadata: encodeSyncMetadata(merged.metadata),
-      })
-      : await repository.createPlayerSync(id, {
-        ptPlayerState: encodeJsonNullable(merged.pt_player_state, 'pt_player_state'),
-        ptAlbumPositions: encodeJsonObject(merged.pt_album_positions, 'pt_album_positions'),
-        ptRecentAlbums: encodeJsonArray(merged.pt_recent_albums, 'pt_recent_albums'),
-        ptFavoriteAlbums: encodeJsonArray(merged.pt_favorite_albums, 'pt_favorite_albums'),
-        ptListenLaterAlbums: encodeJsonArray(merged.pt_listen_later_albums, 'pt_listen_later_albums'),
-        updatedAt: merged.updated_at,
-        syncMetadata: encodeSyncMetadata(merged.metadata),
-      });
+      ? await repository.compareAndSetPlayerSync(id, current.revision, values)
+      : await repository.createPlayerSync(id, values);
     if (success) return { id, ...stripSyncMetadata(merged) };
   }
   throw new ServerInputError(409, 'sync_conflict', 'Không thể đồng bộ dữ liệu. Vui lòng thử lại.');
+}
+
+function playerSyncWriteValues(envelope: SyncEnvelope & { updated_at: string }, metadata: SyncMetadata) {
+  return {
+    ptPlayerState: encodeJsonNullable(envelope.pt_player_state, 'pt_player_state'),
+    ptAlbumPositions: encodeJsonObject(envelope.pt_album_positions, 'pt_album_positions'),
+    ptRecentAlbums: encodeJsonArray(envelope.pt_recent_albums, 'pt_recent_albums'),
+    ptFavoriteAlbums: encodeJsonArray(envelope.pt_favorite_albums, 'pt_favorite_albums'),
+    ptListenLaterAlbums: encodeJsonArray(envelope.pt_listen_later_albums, 'pt_listen_later_albums'),
+    updatedAt: envelope.updated_at,
+    syncMetadata: encodeSyncMetadata(metadata),
+  };
 }
 
 function ensurePlayerOwner(context: CloudflareRequestContext): void {

@@ -3,6 +3,7 @@ import { createPersonalPracticeStorage } from '../../../src/lib/browser/personal
 import { isDailyRoutine, isReflectionEntry, moveRoutineStep, type DailyRoutine } from '../../../src/lib/domain/practice/personal-practice';
 import { acknowledgePersonalSync, changePersonalSyncState, failPersonalSync, initialPersonalSyncState, personalSyncTicket, PERSONAL_SYNC_INTERVAL_MS as interval } from '../../../src/lib/domain/practice/personal-sync-policy';
 import { normalizePersonalSettings } from '../../../src/lib/domain/practice/personal-settings';
+import { routineStepActivity, routineToolStep } from '../../../src/lib/domain/practice/routine-activities';
 
 function memory() {
   const rows = new Map<string, string>();
@@ -51,6 +52,22 @@ describe('personal practice local ownership', () => {
       expect(normalizePersonalSettings({ routines: [selected], nickname: '' }).routines[0].steps[0]).toEqual(selected.steps[0]);
     }
     expect(isDailyRoutine({ ...legacy, steps: [{ ...legacy.steps[0], cue: 'unsupported' }] })).toBe(false);
+  });
+  it('round trips new tool selections using the existing v1 settings contract alongside old steps', () => {
+    const steps = [
+      routineToolStep('vow', 'repentance', 'LỜI NGUYỆN\n\nLời phát nguyện'),
+      routineToolStep('reader', 'mantra', 'NGHI THỨC TRÌ TỤNG CHÚ ĐẠI BI', 'tt_1781274943336'),
+      routineToolStep('copy', 'scripture-copying', 'Chép kinh'),
+      ...routine.steps,
+    ];
+    const snapshot = normalizePersonalSettings({ routines: [{ ...routine, steps }], nickname: '' });
+    expect(snapshot.routines[0].steps).toEqual(steps);
+    expect(snapshot.routines[0].steps.map(routineStepActivity)).toEqual([
+      { mode: 'repentance' }, { mode: 'mantra', articleId: 'tt_1781274943336' },
+      { mode: 'scripture-copying' }, { mode: 'prostration' }, { mode: 'dedication' },
+    ]);
+    expect(routineStepActivity({ id: 'old', kind: 'dedication', text: 'HỒI HƯỚNG', sourceId: 'tt_1780910773084:13618' }))
+      .toEqual({ mode: 'dedication' });
   });
   it('atomically replaces settings on explicit restore without touching private reflections', () => {
     const storage = memory(); const owner = createPersonalPracticeStorage(storage, 'a');

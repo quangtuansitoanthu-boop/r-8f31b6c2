@@ -69,6 +69,17 @@ async function synchronizeFolder({ env, folder, rootFolderId, token, fetchImpl, 
   }
 
   const existingFiles = source ? await loadCatalogFiles(env, folder.id) : [];
+  // Danh mục video nhập riêng phải giữ metadata và thứ tự; bộ quét âm thanh không quản lý MP4/M4V.
+  if (existingFiles.some((file) => /\.(mp4|m4v)$/iu.test(String(file.name || '')))) {
+    return {
+      folderId: folder.id,
+      folderName: folder.name,
+      albumId: source.album_id,
+      status: 'skipped',
+      reason: 'video_catalog_managed',
+      trackCount: existingFiles.length,
+    };
+  }
   const ordered = preserveTrackOrder(existingFiles, discovered);
   const fingerprint = await fingerprintFolder(folder.name, ordered);
   const speaker = speakerFromFolderName(folder.name);

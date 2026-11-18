@@ -17,8 +17,16 @@ export function localizeTalkTopic(topic: string | undefined, locale: 'vi' | 'en'
 
 export const talkVideoText = {
   vi: {
+    storyNoticeTitle: 'Lưu ý về nội dung',
+    storyNotice: 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ',
+    storyNoticeTimeout: 'Tự ẩn sau 10 giây',
     video: 'Video',
     fullscreen: 'Mở rộng',
+    enterFullscreen: 'Toàn màn hình',
+    exitFullscreen: 'Thu nhỏ',
+    loading: 'Đang tải video…',
+    retry: 'Thử lại',
+    videoUnavailable: 'Chưa tải được video. Kiểm tra kết nối rồi thử lại.',
     list: 'Danh sách bài',
     back: 'Quay lại',
     previous: 'Bài trước',
@@ -38,8 +46,16 @@ export const talkVideoText = {
     unavailable: 'Chưa hiển thị được video. Bạn vẫn có thể nghe âm thanh.',
   },
   en: {
+    storyNoticeTitle: 'About these stories',
+    storyNotice: 'The stories in this album come from Ms Hoa’s and the ritual practitioners’ dreams about helping departed spirits. These are personal experiences, so if you believe them, you are welcome to reflect on them; if not, please enjoy them as entertainment.',
+    storyNoticeTimeout: 'Disappears after 10 seconds',
     video: 'Video',
     fullscreen: 'Expand',
+    enterFullscreen: 'Full screen',
+    exitFullscreen: 'Exit full screen',
+    loading: 'Loading video…',
+    retry: 'Retry',
+    videoUnavailable: 'Unable to load video. Check your connection and try again.',
     list: 'Track list',
     back: 'Back',
     previous: 'Previous track',

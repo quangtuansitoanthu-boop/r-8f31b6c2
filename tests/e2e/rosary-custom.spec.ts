@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { principalStorageKey } from '../../src/lib/browser/principal-storage';
-import { loginAsAdmin, settleClient } from './runtime-helpers';
+import { loginAsAdmin, settleClient, useNativeApiWithLocalBackend } from './runtime-helpers';
 
 const customKey = 'tt_custom_rosary_phrases_v1';
 const logsKey = principalStorageKey(null, 'tt_practice_logs_v1');
@@ -320,6 +320,16 @@ test('unsettled restored custom count keeps its readable phrase and type instead
 });
 
 test('principal invalidation clears custom choices and the owner draft before a guest adds a phrase', async ({ page }) => {
+  await page.clock.install();
+  const fetchLocal = await useNativeApiWithLocalBackend(page);
+  await page.route('https://quangtu.vn/api/session', async route => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const { response, headers } = await fetchLocal(route);
+    const session = await response.json();
+    await route.fulfill({ status: response.status(), headers, json: session.authenticated
+      ? { ...session, expiresAt: new Date(Date.now() + 120_000).toISOString() }
+      : session });
+  });
   await page.addInitScript(key => {
     localStorage.setItem(key, JSON.stringify([{ id: 'cp_1793400000000_owner', text: 'Danh hiệu tài khoản A', type: 'Niệm danh hiệu' }]));
   }, principalStorageKey('e2e-google-admin', customKey));
@@ -328,13 +338,11 @@ test('principal invalidation clears custom choices and the owner draft before a 
   await expectCustomChoices(page, ['Danh hiệu tài khoản A']);
   await chooseNewPhrase(page);
   await page.getByRole('textbox', { name: 'Danh hiệu hoặc câu chú tùy chọn', exact: true }).fill('Bản nháp tài khoản A');
-  // Mobile kiểm lại phiên từ server khi trang được khôi phục; giữ nguyên route đang mở.
+  // The session owner revalidates at expiry while the rosary remains mounted.
   await page.context().clearCookies();
   const refreshedSession = page.waitForResponse(response => new URL(response.url()).pathname === '/api/session'
     && response.request().method() === 'GET' && response.status() === 200);
-  await page.evaluate(() => {
-    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
-  });
+  await page.clock.fastForward(121_000);
   expect(await (await refreshedSession).json()).toMatchObject({ authenticated: false });
   await openRosary(page, false);
   await expectCustomChoices(page, 0);

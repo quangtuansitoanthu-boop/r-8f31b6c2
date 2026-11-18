@@ -1,6 +1,6 @@
 export const veganUi = {
   vi: {
-    title: 'Ăn Chay Thanh Tịnh', back: 'Tu tập', tabs: ['Hôm nay', 'Lịch tuần & Đi chợ', 'Menu món'],
+    title: 'Lịch ăn chay đủ dinh dưỡng', back: 'Tu tập', tabs: ['Hôm nay', 'Lịch tuần & Đi chợ', 'Menu món'],
     groups: ['Luộc & hấp', 'Bún, phở & mì', 'Cơm, xôi & món kho/xào', 'Bánh mì & bữa sáng', 'Cháo & súp', 'Canh & món kèm'],
     meals: ['Bữa sáng', 'Bữa trưa', 'Bữa tối'], people: 'người', minutes: 'phút', less: 'Giảm số người', more: 'Tăng số người',
     smallerText: 'Giảm cỡ chữ công thức', largerText: 'Tăng cỡ chữ công thức',
@@ -14,7 +14,7 @@ export const veganUi = {
     nutritionNote: 'Thực đơn được phối hợp cân đối đủ 4 nhóm chất (đạm thực vật, tinh bột tốt, chất béo lành mạnh, vitamin & khoáng chất) theo khuyến nghị của Viện Dinh Dưỡng.',
   },
   en: {
-    title: 'Mindful vegan meals', back: 'Practice', tabs: ['Today', 'Week & shopping', 'Dish menu'],
+    title: 'Balanced vegan meal calendar', back: 'Practice', tabs: ['Today', 'Week & shopping', 'Dish menu'],
     groups: ['Boiled & steamed', 'Noodles', 'Rice & stir-fries', 'Bread & breakfast', 'Porridge & soup', 'Sides & broths'],
     meals: ['Breakfast', 'Lunch', 'Dinner'], people: 'people', minutes: 'min', less: 'Decrease servings', more: 'Increase servings',
     smallerText: 'Decrease recipe text size', largerText: 'Increase recipe text size',

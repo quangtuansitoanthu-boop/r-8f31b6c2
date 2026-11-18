@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { modalDialog } from '$lib/browser/modal-dialog';
   import { confirmInApp } from '$lib/browser/app-dialog';
   import { uiScrollBehavior } from '$lib/browser/ui-motion';
   import { createReaderTextToSpeech, type ReaderSpeechState } from '$lib/components/reader/reader-text-to-speech';
   import { getNativeReaderSpeech } from '$lib/browser/native-reader-speech';
+  import { getThemeContext, type LightPalette } from '$lib/stores/theme.svelte';
   import { getLocaleContext } from '$lib/stores/locale.svelte';
   import { copyingCarryStart, editCopyingPage } from '$lib/domain/practice/copying-pages';
   import { recordCompletedBookCopy } from '$lib/browser/copying-completion';
@@ -19,17 +21,20 @@
   import { copyingBlockCompleted, copyingChapterCompletion, copyingTextCompletion } from '$lib/domain/practice/copying-completion-progress';
   import { copySourceText, copySourceLayoutLines } from '$lib/domain/practice/copying-formatting';
   import sourceLayouts from '$lib/data/scripture-copying/layouts.json';
-  import { Check, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, PenLine, Settings, Maximize, Minimize, ArrowDownUp, BookOpen, Volume2, Square, X } from '@lucide/svelte';
+  import { ArrowLeft, Check, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, PenLine, Settings, Maximize, Minimize, ArrowDownUp, BookOpen, SlidersHorizontal, Volume2, Square, X } from '@lucide/svelte';
   import { copyingSentences, copyingCursorPosition, copyingSourceWordLines } from '$lib/domain/practice/copying-follow';
   import { createInterfaceTranslator } from '$lib/i18n/copying-interface';
   const localizeUi = createInterfaceTranslator();
   const locale = getLocaleContext();
   let speechState = $state<ReaderSpeechState>('idle');
   let speechRate = $state(1);
-  let paper = $state<'white' | 'cream' | 'gray'>('cream');
-  function choosePaper(value: typeof paper) {
-    paper = value;
-    try { localStorage.setItem('tt_copy_paper_v1', value); } catch { /* Nền giấy chỉ là tùy chọn thiết bị, không chặn chép kinh. */ }
+  const theme = getThemeContext();
+  const paperChoices = ['auto', 'white', 'cream', 'gray', 'purple', 'dark'] as const;
+  const paperLabels = { auto: 'Tự động', white: 'Trắng', cream: 'Kem', gray: 'Xám', purple: 'Tím', dark: 'Tối' } as const;
+  const paperChoice = $derived(theme.mode === 'light' ? theme.palette : theme.mode);
+  function choosePaper(value: LightPalette | 'auto' | 'dark') {
+    if (value === 'auto' || value === 'dark') theme.apply(value);
+    else theme.apply('light', value);
   }
   let lineSpacing = $state(1.8);
   let nativeSpeechSettings = $state(false);
@@ -84,7 +89,7 @@
     cancelAutoAdvance();
     if (step !== 'write' || loading || !chapter || composing || restarting) return;
     if (block === chapter.blocks.length - 1 && (!book || chapterNumber >= book.chapters.length || !chapterComplete)) return;
-    const isFinished = copyingBlockCompleted(chapter.blocks[block], currentText);
+    const isFinished = !hasOpenCopyNote(currentText) && copyingBlockCompleted(chapter.blocks[block], currentText);
     if (!isFinished) return;
     if (inputType === 'insertParagraph' || inputType === 'insertLineBreak') {
       void triggerAutoAdvanceBlock();
@@ -187,6 +192,7 @@
     cancelAutoAdvance();
     sampleSpeech.destroy();
   });
+  import { routineCopyChoice } from '$lib/browser/routine-copy-navigation';
   import { beforeNavigate, goto } from '$app/navigation';
   import { acquireScrollLock as lockBodyScroll } from '$lib/browser/scroll-lock';
   import { nativePlatform } from '$lib/browser/native-platform';
@@ -197,7 +203,7 @@
   import { createCopyStore, createCopyBookRunStore } from '$lib/browser/scripture-copying-storage';
   import { sendCopyingSnapshot } from '$lib/browser/scripture-copying-api';
   import { copyDraftKey, createCopyId, createCopyWorkspace, type CopyDraft, type CopyStore } from '$lib/browser/scripture-copying-workspace';
-  import { COPYING_BOOKS, COPY_NOTICE, compareCopy, normalizeCopyText, isBlockedCopyInput, type CopyBook, type CopyBookId, type CopyIssue } from '$lib/domain/practice/scripture-copying';
+  import { COPYING_BOOKS, COPY_NOTICE, compareCopy, normalizeCopyText, isBlockedCopyInput, hasOpenCopyNote, type CopyBook, type CopyBookId, type CopyIssue } from '$lib/domain/practice/scripture-copying';
 
   const session = getSessionContext();
   const queryClient = useQueryClient();
@@ -486,8 +492,10 @@
     }
   });
 
-  function review() {
+  function review(event: MouseEvent) {
     if (!chapter || composing) return;
+    (event.currentTarget as HTMLButtonElement).focus({ preventScroll: true });
+    cancelAutoAdvance();
     const result = compareCopy(chapter.blocks[block], text);
     issues = result.issues;
     reviewComplete = result.complete;
@@ -523,7 +531,9 @@
     });
     // Review is explicit: never open an error panel or shrink the writing page while typing.
   }
+  function closeReview() { checked = false; issues = []; }
   async function pointTo(issue: CopyIssue) {
+    closeReview();
     editorPage = Math.max(0, editorPages.findIndex((start, index) => issue.start >= start && issue.start < (editorPages[index + 1] ?? Infinity)));
     pageTurnPending = false;
     await tick();
@@ -716,7 +726,6 @@
   });
   onMount(() => {
     // Each visit starts with Bookerly; font changes apply to the current session.
-    try { const savedPaper = localStorage.getItem('tt_copy_paper_v1'); if (savedPaper === 'white' || savedPaper === 'cream' || savedPaper === 'gray') paper = savedPaper; } catch { /* Giữ nền giấy mặc định khi bộ nhớ không khả dụng. */ }
     try { const savedSize = Number(localStorage.getItem('tt_copy_font_size_v1') ?? 20); if (Number.isFinite(savedSize)) editorFontSize = Math.max(14, Math.min(40, savedSize)); } catch { /* Device preference only. */ }
     try { ghostEnabled = localStorage.getItem('tt_copy_ghost_v1') === '1'; } catch { /* Device preference only. */ }
     try { practiceSync = createPracticeSyncClient(fetchWithSessionRefresh); }
@@ -725,6 +734,9 @@
     bookRuns = createCopyBookRuns(createCopyBookRunStore());
     workspace = createCopyWorkspace(store, sendCopyingSnapshot);
     try { showIntro = localStorage.getItem('tt_copy_notice_v1') !== '1'; } catch { /* The notice stays visible. */ }
+    const choice = routineCopyChoice(new URL(window.location.href), owner || null);
+    const bookChoice = COPYING_BOOKS.find(item => item.id === choice);
+    if (bookChoice) selected = bookChoice.id;
     mounted = true;
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if ((localError || localSavePending) && draft?.texts.some(Boolean)) { event.preventDefault(); event.returnValue = ''; }
@@ -771,6 +783,9 @@
     return () => { cancelled = true; };
   });
   let sourceVisible = $state(true);
+  let sourceToolsOpen = $state(false);
+  let editorToolsOpen = $state(false);
+  const editorToolsLabel = $derived(localizeUi(editorToolsOpen ? 'Thu gọn' : 'Tùy chọn'));
   let sourceElement = $state<HTMLDivElement>();
   let sourceLayoutVersion = $state(0);
   let lastFollowPanel: HTMLElement | undefined;
@@ -863,6 +878,10 @@
   let keyboardOpen = $state(false);
   let fullscreen = $state(false);
   let fullscreenAvailable = $state(false);
+  function canRequestFullscreen(): boolean {
+    // iOS WebKit fullscreen puts its controls and the cutout over the writing header.
+    return nativePlatform() !== 'ios' && Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+  }
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -873,7 +892,7 @@
   async function toggleOptions() {
     optionsOpen = !optionsOpen;
     await tick();
-    const target = optionsOpen ? document.querySelector<HTMLElement>('#copy-options button') : document.getElementById('copy-options-trigger');
+    const target = optionsOpen ? document.querySelector<HTMLElement>('#copy-options button') : Array.from(document.querySelectorAll<HTMLElement>('[data-copy-options-trigger]')).find(button => button.getClientRects().length);
     target?.focus({ preventScroll: true });
   }
   let selectionTitle = $state<HTMLHeadingElement>();
@@ -895,11 +914,13 @@
   async function beginWriting() {
     if (loading || !chapter || !draft || networkBusy) return;
     // Request within the button gesture, before tick consumes user activation.
-    if (document.fullscreenEnabled && !document.fullscreenElement) {
+    if (canRequestFullscreen() && !document.fullscreenElement) {
       void document.documentElement.requestFullscreen().catch(() => {});
     }
-    step = 'write'; optionsOpen = false;
-    await tick(); writingTitle?.focus({ preventScroll: true });
+    continuousScroll = nativePlatform() === 'web' && !window.matchMedia('(max-width:700px)').matches;
+    step = 'write'; optionsOpen = false; sourceToolsOpen = false; editorToolsOpen = false;
+    await tick();
+    (writingTitle?.getClientRects().length ? writingTitle : document.querySelector<HTMLElement>('.copy-page'))?.focus({ preventScroll: true });
     scheduleEditorReflow();
   }
   async function chooseAgain() {
@@ -909,7 +930,7 @@
     await tick(); selectionTitle?.focus({ preventScroll: true });
   }
   function writingKeys(event: KeyboardEvent) {
-    if (step !== 'write' || event.isComposing || authOpen) return;
+    if (step !== 'write' || event.isComposing || authOpen || checked) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       if (optionsOpen) void toggleOptions(); else void chooseAgain();
@@ -925,7 +946,7 @@
   $effect(() => {
     if (step !== 'write') return;
     const releaseScroll = lockBodyScroll();
-    fullscreenAvailable = Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+    fullscreenAvailable = canRequestFullscreen();
     const fullscreenChanged = () => { fullscreen = Boolean(document.fullscreenElement); };
     fullscreenChanged();
     document.addEventListener('fullscreenchange', fullscreenChanged);
@@ -995,7 +1016,7 @@
 
 <svelte:head><title>{localizeUi("Chép kinh — Tu tập Phật pháp")}</title><meta name="description" content={localizeUi("Tự tay chép kinh, rà soát sai thiếu và tự lưu trên thiết bị. Chỉ lưu lên tài khoản khi bạn bấm lưu.")} /></svelte:head>
 
-<div class="copy-page" data-paper={paper} class:copy-writing={step === 'write'} class:copy-ios={step === 'write' && nativePlatform() === 'ios'} class:keyboard-open={keyboardOpen} style:--copy-line-height={lineSpacing} data-testid="copying-page" data-practice-route-back={step !== 'write' ? true : undefined} role={step === 'write' ? 'dialog' : undefined} aria-modal={step === 'write' ? true : undefined} aria-label={step === 'write' ? localizeUi('Không gian chép kinh') : undefined} tabindex="-1" onkeydown={writingKeys}>
+<div class="copy-page" data-paper={theme.paper} class:copy-writing={step === 'write'} class:copy-ios={step === 'write' && nativePlatform() === 'ios'} class:keyboard-open={keyboardOpen} style:--copy-line-height={lineSpacing} data-testid="copying-page" data-practice-route-back={step !== 'write' ? true : undefined} role={step === 'write' ? 'dialog' : undefined} aria-modal={step === 'write' ? true : undefined} aria-label={step === 'write' ? localizeUi('Không gian chép kinh') : undefined} tabindex="-1" onkeydown={writingKeys}>
   {#if step === 'choose'}
     <header class="choose-header"><span class="eyebrow">{localizeUi("TỪNG CHỮ CHUYÊN TÂM")}</span><h1 bind:this={selectionTitle} tabindex="-1">{localizeUi("Chép kinh")}</h1><p>{localizeUi("Chọn một bộ kinh, dành một khoảng lặng để tự tay chép lời kinh.")}</p></header>
     <ol class="stepper" aria-label={localizeUi('Các bước chép kinh')}><li aria-current="step"><span>1</span>{localizeUi('Chọn kinh')}</li><li><span>2</span>{localizeUi('Hướng dẫn')}</li><li><span>3</span>{localizeUi('Chép kinh')}</li></ol>
@@ -1038,25 +1059,30 @@
     <header class="writing-bar" inert={optionsOpen}>
       <button class="icon-button" type="button" aria-label={localizeUi('Đổi kinh hoặc phẩm')} title={localizeUi('Đổi kinh hoặc phẩm')} disabled={networkBusy} onclick={chooseAgain}><ChevronLeft size={23} aria-hidden="true" /></button>
       <div class="writing-title"><span class="eyebrow">{localizeUi('BƯỚC 2 · CHÉP KINH')}</span><h1 bind:this={writingTitle} tabindex="-1">{book?.title}</h1><p title={chapter?.title}>{chapter?.title}</p></div>
-      {#if fullscreenAvailable}<button class="icon-button" type="button" title={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} aria-label={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} onclick={toggleFullscreen}>{#if fullscreen}<Minimize size={19} aria-hidden="true" />{:else}<Maximize size={19} aria-hidden="true" />{/if}</button>{/if}
-      <button class="icon-button" type="button" aria-label={localizeUi('Tùy chọn và bản đã lưu')} title={localizeUi('Tùy chọn và bản đã lưu')} id="copy-options-trigger" aria-expanded={optionsOpen} aria-controls="copy-options" onclick={toggleOptions}><Settings size={22} strokeWidth={1.8} aria-hidden="true" /></button>
-      <button class="primary save-button" type="button" disabled={loading || !draft || networkBusy} onclick={save}>{networkBusy ? localizeUi("Đang xử lý…") : draft?.pending ? localizeUi("Thử lưu lại lên hệ thống") : localizeUi("Lưu lên hệ thống")}</button>
+      <div class="writing-actions">
+        {#if fullscreenAvailable}<button class="icon-button" type="button" title={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} aria-label={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} onclick={toggleFullscreen}>{#if fullscreen}<Minimize size={19} aria-hidden="true" />{:else}<Maximize size={19} aria-hidden="true" />{/if}</button>{/if}
+        <button class="icon-button" type="button" aria-label={localizeUi('Tùy chọn và bản đã lưu')} title={localizeUi('Tùy chọn và bản đã lưu')} data-copy-options-trigger aria-expanded={optionsOpen} aria-controls="copy-options" onclick={toggleOptions}><Settings size={22} strokeWidth={1.8} aria-hidden="true" /></button>
+        <button class="primary save-button" type="button" disabled={loading || !draft || networkBusy} onclick={save}>{networkBusy ? localizeUi("Đang xử lý…") : draft?.pending ? localizeUi("Thử lưu lại lên hệ thống") : localizeUi("Lưu lên hệ thống")}</button>
+      </div>
     </header>
     <div class="save-status" class:error={localError}><span role="status">{localStatus || localizeUi("Đang mở bộ nhớ ứng dụng…")}</span><span class="account-note">{draft?.dirty ? localizeUi('Chưa lưu thay đổi vào tài khoản') : draft?.savedAt ? localizeUi('Đã lưu vào tài khoản') : localizeUi('Bản chép chỉ ở trên thiết bị')}</span></div>
     {#if message}<div class="message" role="status"><p>{message}</p><button class="icon-button" type="button" aria-label={localizeUi('Đóng thông báo')} onclick={() => message = ''}><X size={18} aria-hidden="true" /></button></div>{/if}
     {#if guestDraft?.texts.some(Boolean)}<aside class="guest-draft"><p>{localizeUi("Có bản chép khách trên thiết bị này. Bản đó chưa được lưu vào tài khoản.")}</p><button type="button" onclick={adoptGuest} disabled={networkBusy}>{localizeUi("Tiếp tục bản chép khách trong tài khoản")}</button></aside>{/if}
     {#if loading || (draft && (draft.sutraId !== selected || draft.chapter !== chapterNumber))}<p role="status">{localizeUi("Đang mở bản chép trên máy…")}</p>
     {:else if chapter && draft}
-      <div class="block-toolbar">
-        <div class="block-nav"><button class="icon-button" type="button" aria-label={localizeUi('Đoạn trước')} disabled={block === 0} onclick={() => goBlock(block - 1)}><ChevronLeft size={20} aria-hidden="true" /></button><label for="copy-block">{localizeUi('Đoạn')}</label><select id="copy-block" value={block} onchange={e => goBlock(Number(e.currentTarget.value))}>{#each chapter.blocks as _, i}<option value={i}>{i + 1}{copyingTextCompletion(chapter.blocks[i], draft.texts[i] ?? '').accepted ? ' ✓' : ''}</option>{/each}</select><span class="muted">/ {chapter.blocks.length}</span><button class="icon-button" type="button" aria-label={localizeUi('Đoạn sau')} disabled={block === chapter.blocks.length - 1} onclick={() => goBlock(block + 1)}><ChevronRight size={20} aria-hidden="true" /></button></div>
-        <label class="font-picker"><span class="sr-only">{localizeUi('Phông chữ')}</span><select aria-label={localizeUi('Phông chữ')} value={selectedFont} onchange={chooseFont}>{#each fontOptions as font}<option value={font.id}>{localizeUi(font.name)}</option>{/each}</select></label>
-      </div>
       <p class="book-run-progress" role="status">{localizeUi('Lượt {0} · Đã hoàn thành {1}/{2} phẩm/quyển', (bookSnapshot?.previousRuns.length ?? 0) + 1, completedChapters, book?.chapters.length ?? 0)}</p>
       <progress class="chapter-progress" max={100} value={chapterCompletion.percent} aria-label={localizeUi('Tiến độ chép kinh')} title={localizeUi('Đạt từ 90% được ghi nhận hoàn thành. Rà soát chỉ để tham khảo.')}></progress>
       {#if bookComplete || chapterComplete}<div class="completion-banner" class:book-complete={bookComplete}><div><strong>{localizeUi(bookComplete ? 'Đã chép trọn bộ kinh' : 'Đã chép xong phẩm/quyển này')}</strong><p role="status">{localizeUi(completionError ? 'Chưa ghi được công phu. Hãy thử lại trước khi mở lượt mới.' : bookComplete ? bookSnapshot?.legacyCompleted ? 'Bản chép cũ và lịch sử công phu được giữ nguyên.' : 'Đã ghi nhận 1 lượt vào Công phu của tôi. Bản chép được giữ nguyên.' : 'Chỉ ghi nhận 1 lượt công phu khi hoàn thành trọn bộ kinh.')}</p></div>{#if completionError}<button type="button" onclick={() => void recordCompletion()}>{localizeUi('Thử lại')}</button>{:else if bookComplete}<div class="book-run-actions"><button class="primary" type="button" disabled={restarting || networkBusy || composing || completionRun !== bookSnapshot?.runId} onclick={restartCopy}>{localizeUi('Bắt đầu lượt {0}', (bookSnapshot?.previousRuns.length ?? 0) + 2)}</button><button type="button" onclick={() => { archivePreview = draft; optionsOpen = true; }}>{localizeUi('Xem bản đã chép')}</button><a href="/tien-do-tu-tap">{localizeUi('Công phu của tôi')}</a></div>{:else if book && chapterNumber < book.chapters.length}<button type="button" onclick={() => { focusAfterChapter = { scope, book: selected, chapter: chapterNumber + 1 }; chapterNumber++; }}>{localizeUi('Sang phẩm/quyển tiếp theo')}</button>{:else if nextIncompleteChapter > 0}<button type="button" onclick={() => { focusAfterChapter = { scope, book: selected, chapter: nextIncompleteChapter }; chapterNumber = nextIncompleteChapter; }}>{localizeUi('Tiếp tục phẩm/quyển chưa hoàn thành: {0}', nextIncompleteChapter)}</button>{/if}</div>{/if}
       <div class="writing-grid" inert={optionsOpen} class:source-hidden={!sourceVisible}>
         <section class="source-panel" aria-labelledby="copy-source-title">
-          <div class="panel-heading"><h2 id="copy-source-title">{localizeUi('Kinh mẫu')} <small>{block + 1}/{chapter.blocks.length}</small></h2>
+          <div class="panel-heading source-heading">
+            <span class="mobile-source-control"><button class="icon-button writing-back" type="button" aria-label={localizeUi('Đổi kinh hoặc phẩm')} title={localizeUi('Đổi kinh hoặc phẩm')} disabled={networkBusy} onclick={chooseAgain}><ArrowLeft size={22} aria-hidden="true" /></button></span>
+            <h2 id="copy-source-title">{localizeUi('Kinh mẫu')}</h2>
+            <div class="block-nav"><button class="icon-button" type="button" aria-label={localizeUi('Đoạn trước')} disabled={block === 0} onclick={() => goBlock(block - 1)}><ChevronLeft size={20} aria-hidden="true" /></button><label for="copy-block">{localizeUi('Đoạn')}</label><select id="copy-block" value={block} onchange={e => goBlock(Number(e.currentTarget.value))}>{#each chapter.blocks as _, i}<option value={i}>{i + 1} / {chapter.blocks.length}{copyingTextCompletion(chapter.blocks[i], draft.texts[i] ?? '').accepted ? ' ✓' : ''}</option>{/each}</select><button class="icon-button" type="button" aria-label={localizeUi('Đoạn sau')} disabled={block === chapter.blocks.length - 1} onclick={() => goBlock(block + 1)}><ChevronRight size={20} aria-hidden="true" /></button></div>
+            <button class="icon-button source-tools-trigger" type="button" aria-label={localizeUi('Tùy chọn kinh mẫu')} aria-expanded={sourceToolsOpen} aria-controls="copy-source-tools" title={localizeUi('Tùy chọn kinh mẫu')} onclick={() => sourceToolsOpen = !sourceToolsOpen}><SlidersHorizontal size={18} aria-hidden="true" /></button>
+            <span class="mobile-source-control"><button class="icon-button" type="button" aria-label={localizeUi('Tùy chọn và bản đã lưu')} title={localizeUi('Tùy chọn và bản đã lưu')} data-copy-options-trigger aria-expanded={optionsOpen} aria-controls="copy-options" onclick={toggleOptions}><Settings size={22} strokeWidth={1.8} aria-hidden="true" /></button></span>
+          </div>
+          <div class="source-tools" class:tools-open={sourceToolsOpen} id="copy-source-tools">
             {#if sourceVisible}<div class="source-font-controls" role="group" aria-label={localizeUi('Cỡ chữ')}><button type="button" aria-label={localizeUi('Giảm cỡ chữ')} disabled={sourceFontSize <= 14} onclick={() => sourceFontSize = Math.max(14, sourceFontSize - 2)}>A−</button><output aria-live="polite">{sourceFontSize}px</output><button type="button" aria-label={localizeUi('Tăng cỡ chữ')} disabled={sourceFontSize >= 40} onclick={() => sourceFontSize = Math.min(40, sourceFontSize + 2)}>A+</button></div>{/if}
             <button class="sample-speech" class:reading={speechState === 'playing'} type="button" disabled={speechState === 'loading'} aria-busy={speechState === 'loading'} aria-pressed={speechState === 'playing'} onpointerdown={event => { if (editor?.hasFocus()) event.preventDefault(); }} onclick={toggleSampleSpeech}>{#if speechState === 'playing'}<Square size={17} fill="currentColor" aria-hidden="true" />{:else}<Volume2 size={22} strokeWidth={1.8} aria-hidden="true" />{/if}{localizeUi(speechState === 'loading' ? 'Đang chuẩn bị đọc…' : speechState === 'playing' ? 'Dừng đọc' : speechState === 'paused' ? 'Đọc tiếp' : 'Đọc để chép')}</button>
             <button class="source-toggle" type="button" aria-expanded={sourceVisible} aria-controls="copy-source-text" onclick={() => sourceVisible = !sourceVisible}>{sourceVisible ? localizeUi('Thu gọn') : localizeUi('Hiện kinh mẫu')}{#if sourceVisible}<ChevronUp size={16} aria-hidden="true" />{:else}<ChevronDown size={16} aria-hidden="true" />{/if}</button>
@@ -1072,8 +1098,10 @@
         <section class="editor-panel" aria-labelledby="copy-editor-title">
           <div class="panel-heading editor-heading">
             <label id="copy-editor-title" for="copy-text">{localizeUi('Bản chép của bạn')}</label>
-            <div class="editor-tools">
-              <button class="ghost-toggle-btn" type="button" disabled={composing} aria-pressed={ghostEnabled} title={localizeUi(ghostEnabled ? 'Đang bật chữ in mờ (vở chép kinh)' : 'Bật chữ in mờ để chép')} onclick={toggleGhostMode}>{localizeUi('Chữ mờ')}</button>
+            <button class="editor-tools-trigger" type="button" aria-label={editorToolsLabel} aria-expanded={editorToolsOpen} aria-controls="copy-editor-tools" onclick={() => editorToolsOpen = !editorToolsOpen}>{#if editorToolsOpen}<ChevronUp size={16} aria-hidden="true" />{:else}<SlidersHorizontal size={16} aria-hidden="true" />{/if}<span>{editorToolsLabel}</span></button>
+            <button class="ghost-toggle-btn" type="button" disabled={composing} aria-pressed={ghostEnabled} title={localizeUi(ghostEnabled ? 'Đang bật chữ in mờ (vở chép kinh)' : 'Bật chữ in mờ để chép')} onclick={toggleGhostMode}>{localizeUi('Chữ mờ')}<span class="ghost-switch" aria-hidden="true"></span></button>
+          </div>
+          <div class="editor-tools" class:tools-open={editorToolsOpen} id="copy-editor-tools">
               <div class="compact-editor-display">
                 <select aria-label={localizeUi('Phông chữ')} value={selectedFont} disabled={composing} onchange={chooseFont}>{#each fontOptions as font (font.id)}<option value={font.id}>{localizeUi(font.name)}</option>{/each}</select>
                 <select aria-label={localizeUi('Cỡ chữ bản chép')} value={editorFontSize} disabled={composing} onchange={e => changeEditorFontSize(Number(e.currentTarget.value) - editorFontSize)}>{#each [14,16,18,20,22,24,26,28,30,32,34,36,38,40] as size (size)}<option value={size}>{size}</option>{/each}</select>
@@ -1083,18 +1111,55 @@
               </div>
               <button class="icon-button" type="button" disabled={composing} aria-pressed={continuousScroll} aria-label="Cuộn liên tục" title={continuousScroll ? 'Chuyển sang chia trang' : 'Chuyển sang cuộn liên tục'} onclick={toggleEditorScroll}>{#if continuousScroll}<ArrowDownUp size={18} aria-hidden="true" />{:else}<BookOpen size={18} aria-hidden="true" />{/if}</button>
               {#if !continuousScroll}<div class="editor-pages" role="group" aria-label={localizeUi('Trang gõ')}><button type="button" aria-label={localizeUi('Trang gõ trước')} disabled={editorPage === 0 || composing} onclick={() => goEditorPage(editorPage - 1)}><ChevronLeft size={16} aria-hidden="true" /></button><output aria-live="polite">{editorPage + 1}/{editorPages.length}</output><button type="button" aria-label={localizeUi('Trang gõ sau')} disabled={editorPage === editorPages.length - 1 || composing} onclick={() => goEditorPage(editorPage + 1)}><ChevronRight size={16} aria-hidden="true" /></button></div>{/if}
-            </div>
           </div>
           <RichCopyEditor editingContext={JSON.stringify([scope, selected, chapterNumber, block, editorPage])} readonly={restarting} allowPaste={canPaste} bind:this={editor} value={pageText} runs={typedRuns} {ghostRuns} traceCanonical={canonicalTraceEligible} showGhost={ghostEnabled} font={editorFont} scale={editorScale} size={editorFontSize} label={localizeUi('Tự gõ bản chép của bạn')} placeholder={localizeUi('Chậm rãi gõ từng lời kinh…')} invalid={issues.length > 0} maxlength={Math.max(0, chapter.blocks[block].length * 2 + 1000 - (text.length - pageText.length))} onreferencepaste={pasteReference} onlayout={scheduleEditorReflow} onvalue={input} onbeforeinput={beforeInput} ondisallow={disallow} oncaret={followEditorCaret} oncomposing={active => { composing = active; if (active) cancelAutoAdvance(); if (!active) { pageTurnPending = true; followEditorCaret(); if (reflowPending) { reflowPending = false; scheduleEditorReflow(); } checkTypingAutoAdvance(text, ''); } }} /><span class="copy-note">{localizeUi('Phần trong ngoặc ( ) là hướng dẫn, không bắt buộc chép.')}</span><span id="copy-input-help" class="sr-only">{localizeUi(canPaste ? "Quản trị viên có thể dán văn bản để kiểm tra." : "Không hỗ trợ dán hoặc kéo thả. Bạn có thể sửa, xóa và gõ dấu tiếng Việt.")}</span>
-          <div class="review-actions"><button type="button" onclick={review}>{localizeUi('Rà soát đoạn này')}</button>{#if copyingTextCompletion(chapter.blocks[block], text).accepted}<strong>{#if autoAdvancePending || autoAdvancingBlock}{localizeUi('✓ Đã xong · Đang chuyển đoạn tiếp theo…')}{:else}{localizeUi('✓ Đạt yêu cầu chép')}{/if}</strong>{#if block < chapter.blocks.length - 1}<button type="button" class="btn-next-block" onclick={() => void triggerAutoAdvanceBlock()}>{localizeUi('Sang đoạn tiếp theo')} →</button>{/if}{:else}<span class="muted">{localizeUi(canPaste ? 'Quản trị · Cho phép dán' : 'Tự gõ · Không dán văn bản')}</span>{/if}</div>
-          {#if issues.length}<section class="issues" aria-label={localizeUi('Vị trí cần sửa')}><div class="issues-heading"><h3>{issues.length} {localizeUi('vị trí cần rà soát')}</h3><button type="button" aria-label={localizeUi('Đóng rà soát')} onclick={() => { issues = []; checked = false; }}><X size={16} aria-hidden="true" /></button></div><ol>{#each issues as issue (issue)}<li><button type="button" onclick={() => pointTo(issue)}>{issue.kind === 'missing' ? localizeUi('Thiếu “{0}”', issue.expected) : issue.kind === 'extra' ? localizeUi('Thừa “{0}”', issue.actual) : localizeUi('Bạn gõ “{0}” · Bản kinh “{1}”', issue.actual, issue.expected)} <small>{localizeUi('— vị trí')} {issue.start + 1}</small></button></li>{/each}</ol></section>{:else if checked}<div class="review-success-banner" role="status"><p class="review-success">{localizeUi(reviewComplete ? 'Đoạn này đã chép đúng bản kinh.' : 'Chưa thấy lỗi trong phần đã gõ. Phần đuôi chưa gõ được tính là chưa chép.')}</p>{#if reviewComplete && block < chapter.blocks.length - 1}<button type="button" class="btn-next-block" onclick={() => void triggerAutoAdvanceBlock()}>{localizeUi('Chép đoạn tiếp theo')} ({block + 2}/{chapter.blocks.length}) →</button>{/if}</div>{/if}
+          <div class="review-actions"><button type="button" disabled={composing || restarting} aria-label={localizeUi('Rà soát đoạn này')} onclick={review}><span class="desktop-review-label">{localizeUi('Rà soát đoạn này')}</span><span class="mobile-review-label">{localizeUi('Rà soát')}</span></button>{#if copyingTextCompletion(chapter.blocks[block], text).accepted}<strong>{#if autoAdvancePending || autoAdvancingBlock}{localizeUi('✓ Đã xong · Đang chuyển đoạn tiếp theo…')}{:else}{localizeUi('✓ Đạt yêu cầu chép')}{/if}</strong>{#if block < chapter.blocks.length - 1}<button type="button" class="btn-next-block" onclick={() => void triggerAutoAdvanceBlock()}>{localizeUi('Sang đoạn tiếp theo')} →</button>{/if}{:else}<span class="muted">{localizeUi(canPaste ? 'Quản trị · Cho phép dán' : 'Tự gõ · Không dán văn bản')}</span>{/if}</div>
         </section>
       </div>
+    {/if}
+    {#if checked}
+      <dialog class="copy-review" aria-labelledby="copy-review-title" use:modalDialog oncancel={event => { event.preventDefault(); closeReview(); }}>
+        <header class="copy-review-header">
+          <h2 id="copy-review-title" tabindex="-1" data-modal-focus>{localizeUi('Rà soát đoạn này')}</h2>
+          <button class="icon-button" type="button" aria-label={localizeUi('Đóng rà soát')} onclick={closeReview}><X size={20} aria-hidden="true" /></button>
+          {#if issues.length}<p>{localizeUi('{0} vị trí cần rà soát', issues.length)}</p>{/if}
+        </header>
+        <div class="copy-review-body">
+          {#if issues.length}
+            <ol class="copy-review-list" aria-label={localizeUi('Vị trí cần sửa')}>
+              {#each issues as issue, index (issue)}
+                <li><button type="button" onclick={() => pointTo(issue)}>
+                  <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <span>{#if issue.kind === 'wrong'}{localizeUi('Bạn gõ: {0}', issue.actual)}<br />{localizeUi('Kinh mẫu: {0}', issue.expected)}{:else if issue.kind === 'missing'}{localizeUi('Thiếu “{0}”', issue.expected)}{:else}{localizeUi('Thừa “{0}”', issue.actual)}{/if}</span>
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button></li>
+              {/each}
+            </ol>
+          {:else}
+            {#if reviewComplete}<Check class="review-complete-mark" size={28} aria-hidden="true" />{/if}
+            <p role="status">{localizeUi(reviewComplete ? 'Đoạn này đã chép đúng bản kinh.' : 'Chưa thấy lỗi trong phần đã gõ. Phần đuôi chưa gõ được tính là chưa chép.')}</p>
+            <p class="muted">{localizeUi('Phần trong ngoặc ( ) là hướng dẫn, không bắt buộc chép.')}</p>
+          {/if}
+        </div>
+        <footer class="copy-review-footer">
+          <button type="button" onclick={closeReview}>{localizeUi('Đóng')}</button>
+          {#if issues.length}
+            <button class="primary" type="button" onclick={() => pointTo(issues[0])}>{localizeUi('Về chỗ cần sửa')}</button>
+          {:else if reviewComplete && chapter && block < chapter.blocks.length - 1}
+            <button class="primary" type="button" onclick={() => { closeReview(); void triggerAutoAdvanceBlock(); }}>{localizeUi('Chép đoạn tiếp theo')}</button>
+          {/if}
+        </footer>
+      </dialog>
     {/if}
     {#if optionsOpen}
       <button type="button" class="options-backdrop" tabindex="-1" aria-label={localizeUi('Đóng nền tùy chọn')} onclick={toggleOptions}></button>
       <div id="copy-options" class="options-panel" data-dialog-glass role="dialog" aria-modal="true" aria-labelledby="copy-options-title" style:--copy-line-height={lineSpacing}>
         <div class="panel-heading"><h2 id="copy-options-title">{localizeUi('Cài đặt chép kinh')}</h2><button class="icon-button" type="button" aria-label={localizeUi('Đóng tùy chọn')} onclick={toggleOptions}><X size={21} aria-hidden="true" /></button></div>
+        <div class="mobile-account-actions">
+          <button class="primary save-button" type="button" disabled={loading || !draft || networkBusy} onclick={save}>{networkBusy ? localizeUi("Đang xử lý…") : draft?.pending ? localizeUi("Thử lưu lại lên hệ thống") : localizeUi("Lưu lên hệ thống")}</button>
+          {#if fullscreenAvailable}<button class="icon-button" type="button" title={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} aria-label={fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'} onclick={toggleFullscreen}>{#if fullscreen}<Minimize size={19} aria-hidden="true" />{:else}<Maximize size={19} aria-hidden="true" />{/if}</button>{/if}
+          {#if message}<p class="mobile-save-feedback" role="status">{message}</p>{/if}
+        </div>
         <section class="storage-details">
           <h3>{localizeUi('Đọc để chép')}</h3>
           <p>{localizeUi('Dùng trình đọc Kinh sách. Ưu tiên giọng ngoại tuyến đã cài trên thiết bị.')}</p>
@@ -1103,7 +1168,20 @@
           <select id="copy-speech-rate" bind:value={speechRate} onchange={(event) => sampleSpeech.setRate(Number(event.currentTarget.value))}>{#each [0.3, 0.5, 0.8, 1, 1.2, 1.5] as rate (rate)}<option value={rate}>{rate}×</option>{/each}</select></div>
         </section>
         {#if chapter && draft}
-          <section class="storage-details"><fieldset class="paper-picker"><legend>{localizeUi('Nền giấy')}</legend><div>{#each [{id:'white',label:'Trắng'},{id:'cream',label:'Kem'},{id:'gray',label:'Xám'}] as option (option.id)}<button type="button" class:chosen={paper === option.id} aria-pressed={paper === option.id} onclick={() => choosePaper(option.id as typeof paper)}><span class="paper-swatch" data-paper={option.id} aria-hidden="true">≡</span>{localizeUi(option.label)}{#if paper === option.id}<Check size={16} aria-hidden="true" />{/if}</button>{/each}</div></fieldset></section>
+          <section class="storage-details">
+            <fieldset class="paper-picker">
+              <legend>{localizeUi('Nền giao diện')}</legend>
+              <div>
+                {#each paperChoices as choice (choice)}
+                  <button type="button" class:chosen={paperChoice === choice} aria-pressed={paperChoice === choice} onclick={() => choosePaper(choice)}>
+                    <span class="paper-swatch" data-paper={choice} aria-hidden="true"></span>
+                    {localizeUi(paperLabels[choice])}
+                    {#if paperChoice === choice}<Check size={16} aria-hidden="true" />{/if}
+                  </button>
+                {/each}
+              </div>
+            </fieldset>
+          </section>
           <section class="mobile-writing-options storage-details">
             <h3>{localizeUi('Hiển thị')}</h3>
             
@@ -1129,7 +1207,7 @@
 </div>
 
 <style>
-  .issues{color:var(--text)}
+  
   .ghost-toggle-btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:var(--radius-sm) calc(var(--radius-sm) * 2);font-size:var(--font-size-meta);font-weight:600;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text2);cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
   .ghost-toggle-btn:hover{background:var(--bg3);color:var(--text)}
   .ghost-toggle-btn[aria-pressed="true"]{background:var(--gold-light,var(--bg3));border-color:var(--gold);color:var(--brown);font-weight:700}
@@ -1153,15 +1231,16 @@
   .choose-header h1,.selection-section h2,.notice h2,.options-panel h2,.options-panel h3{font-weight:700;text-align:center}
   .choose-header p,.notice p,.storage-details>p,.cloud-panel>p,.edition-note{text-align:justify}
   /* Giấy vẫn sáng trong chế độ tối; chữ trên giấy dùng màu mực riêng. */
-  .copy-writing .source-panel h2 small,.copy-writing .copy-note,.copy-writing .review-actions .muted,.copy-writing .review-actions strong,.copy-writing .review-success{color:var(--copy-paper-ink)}
+  .copy-writing .copy-note,.copy-writing .review-actions .muted,.copy-writing .review-actions strong{color:var(--copy-paper-ink)}
   .copy-writing .editor-tools>.icon-button{color:var(--text)}
   .mobile-writing-options{display:none}
   .source-paragraph{margin:0 0 .15em;white-space:pre-line;text-align-last:auto}
   .source-paragraph[style*="justify"]{text-align-last:left}
   .source-paragraph .source-line{margin:0;white-space:normal}
+  .source-guidance{font-style:italic}
   .source-word--current{background:var(--gold-light,var(--bg3));border-radius:3px;text-decoration:underline;text-decoration-color:var(--gold);text-underline-offset:4px}.admin-copy-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 
-  .copy-note{font-size:10px;line-height:1.4;color:var(--text2);padding:5px 12px;flex-shrink:0}.issues-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.issues-heading button{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:4px}
+  .copy-note{font-size:10px;line-height:1.4;color:var(--text2);padding:5px 12px;flex-shrink:0}
 
   .editor-tools{display:flex;align-items:center;justify-content:space-between;gap:14px}.editor-font-controls{border-right:1px solid var(--border);padding-right:12px}.editor-font-controls button{min-width:34px;min-height:34px}.editor-heading{row-gap:3px}
   @media(max-width:700px){.editor-heading{flex-wrap:wrap}.editor-heading>label{flex-basis:100%;margin-right:0}.editor-tools{width:100%;gap:8px}.editor-font-controls{border:0;padding:0}.editor-font-controls button{min-height:32px;min-width:34px}.editor-tools .editor-pages button{min-height:32px;width:32px}}
@@ -1179,11 +1258,11 @@
   .stepper{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:12px;list-style:none;padding:0;margin:26px 0}.stepper li{display:flex;align-items:center;gap:9px;color:var(--text2);font-size:14px}.stepper li[aria-current]{color:var(--brown);font-weight:700}.stepper span{display:grid;place-items:center;width:28px;height:28px;background:var(--bg3);border-radius:50%;border:1px solid var(--border)}.stepper li[aria-current] span{background:var(--gold);color:var(--on-gold,#fff);border-color:var(--gold)}
   .selection-section{border:1px solid var(--border);background:var(--bg2);border-radius:22px;padding:26px}.books{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0 24px}.books button{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:20px 18px;gap:12px;border:2px solid var(--border);min-height:160px;background:var(--bg);transition:border-color .15s,background .15s}.books button.active{border-color:var(--gold);background:var(--gold-light,var(--bg3))}.books strong{font-family:var(--font-reader,serif);font-size:17px;line-height:1.5}.book-number,.books small{color:var(--text2);font-size:12px}.books :global(.selected-mark){position:absolute;right:12px;top:15px;color:var(--brown)}.chapter-choice{display:grid;gap:9px}.chapter-choice label{font-size:13px;font-weight:650}.chapter-choice select{width:100%;min-width:0;max-width:100%;padding-right:26px}.primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);border-color:var(--gold);color:var(--on-gold,#fff);font-weight:700}.start-copying{width:100%;margin:22px 0 10px;min-height:52px}.selection-hint{text-align:center}.resume-note{font-size:13px;color:var(--brown);margin-top:14px}.notice{margin-top:20px;border-radius:16px;background:var(--bg3);padding:18px 20px;border:1px solid var(--border)}.notice h2{font-size:15px;margin-bottom:8px}.notice p{color:var(--text2);font-size:13px}.notice button{margin-top:12px}
   .copy-writing{position:fixed;inset:0;top:var(--copy-viewport-top,0px);height:100vh;height:var(--copy-viewport-height,100dvh);max-width:none;width:100%;box-sizing:border-box;z-index:150;background:var(--bg);padding:0 max(20px,calc((100vw - 1440px)/2)) max(10px,env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow:hidden}
-  .writing-bar{display:flex;align-items:center;gap:12px;padding:12px 0 8px;flex-shrink:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:8px;flex-shrink:0}.writing-title{flex:1;min-width:0}.writing-title h1{font-size:16px;line-height:1.4;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.writing-title p{font-size:11px;color:var(--text2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.save-button{font-size:12px;max-width:190px}.save-status{display:flex;justify-content:space-between;gap:12px;color:var(--text2);font-size:11px;padding:0 0 10px;flex-shrink:0}.save-status.error{color:var(--danger-text)}.message{display:flex;align-items:flex-start;gap:8px;background:var(--bg3);border-left:3px solid var(--gold);padding:6px 10px;margin:0 0 8px;max-height:20vh;overflow:auto;flex-shrink:0}.message p{font-size:12px;flex:1}.guest-draft{display:flex;align-items:center;gap:10px;font-size:12px;padding:8px;background:var(--bg3);max-height:20vh;overflow:auto;flex-shrink:0}.guest-draft button{font-size:12px}.block-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}.block-nav{display:flex;align-items:center;gap:8px}.block-nav label{font-size:13px}.block-nav select{max-width:90px;min-width:62px;padding:6px 10px}.font-picker{min-width:0}.font-picker select{width:145px;max-width:100%;font-size:12px;padding:8px}.chapter-progress{display:block;width:100%;height:3px;min-height:3px;margin:10px 0 14px;accent-color:var(--gold);flex-shrink:0}
-  .writing-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:18px;flex:1;min-height:0}.source-panel,.editor-panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden}.panel-heading{display:flex;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;flex-wrap:wrap}.panel-heading h2,.panel-heading label{font-size:13px;font-weight:700;margin-right:auto}.source-font-controls{display:flex;align-items:center;gap:7px}.source-font-controls button{padding:6px;min-width:40px;min-height:40px;font-size:14px;font-weight:700}.source-font-controls output{font-size:11px;min-width:30px;font-variant-numeric:tabular-nums;text-align:center}.source-toggle{display:flex;align-items:center;gap:5px;border:0;background:none;padding:5px;font-size:11px;min-height:40px}.source{font-family:var(--font-reader,serif);font-size:20px;line-height:1.8;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;overflow:auto;overscroll-behavior:contain;flex:1;padding:10px 20px 24px;scrollbar-width:thin}.source-line{margin:0 0 .5em;line-height:inherit;white-space:pre-wrap}.source-line:last-child{margin-bottom:0}.review-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0}.review-actions button{font-size:12px;padding:8px 12px}.review-actions strong{font-size:11px;color:var(--brown)}.review-actions .muted{font-size:10px}.source-hidden{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}.source-hidden .source-panel{align-self:start}.issues{max-height:24vh;overflow:auto;padding:12px 16px;background:var(--bg3);border-top:1px solid var(--border);flex-shrink:0}.issues h3{color:var(--danger-text);font-size:13px}.issues ol{padding-left:20px;margin:6px 0}.issues li{margin:6px 0}.issues button{text-align:left;font-size:12px;overflow-wrap:anywhere;padding:8px;min-height:36px}.review-success{padding:8px 14px;font-size:12px;color:var(--brown)}
+  .writing-bar{display:flex;align-items:center;gap:12px;padding:12px 0 8px;flex-shrink:0}.icon-button{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:8px;flex-shrink:0}.writing-title{flex:1;min-width:0}.writing-title h1{font-size:16px;line-height:1.4;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.writing-title p{font-size:11px;color:var(--text2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.save-button{font-size:12px;max-width:190px}.save-status{display:flex;justify-content:space-between;gap:12px;color:var(--text2);font-size:11px;padding:0 0 10px;flex-shrink:0}.save-status.error{color:var(--danger-text)}.message{display:flex;align-items:flex-start;gap:8px;background:var(--bg3);border-left:3px solid var(--gold);padding:6px 10px;margin:0 0 8px;max-height:20vh;overflow:auto;flex-shrink:0}.message p{font-size:12px;flex:1}.guest-draft{display:flex;align-items:center;gap:10px;font-size:12px;padding:8px;background:var(--bg3);max-height:20vh;overflow:auto;flex-shrink:0}.guest-draft button{font-size:12px}.block-nav{display:flex;align-items:center;gap:8px}.block-nav label{font-size:13px}.block-nav select{max-width:90px;min-width:62px;padding:6px 10px}.chapter-progress{display:block;width:100%;height:3px;min-height:3px;margin:10px 0 14px;accent-color:var(--gold);flex-shrink:0}
+  .writing-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:18px;flex:1;min-height:0}.source-panel,.editor-panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden}.panel-heading{display:flex;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;flex-wrap:wrap}.panel-heading h2,.panel-heading label{font-size:13px;font-weight:700;margin-right:auto}.source-font-controls{display:flex;align-items:center;gap:7px}.source-font-controls button{padding:6px;min-width:40px;min-height:40px;font-size:14px;font-weight:700}.source-font-controls output{font-size:11px;min-width:30px;font-variant-numeric:tabular-nums;text-align:center}.source-toggle{display:flex;align-items:center;gap:5px;border:0;background:none;padding:5px;font-size:11px;min-height:40px}.source{font-family:var(--font-reader,serif);font-size:20px;line-height:1.8;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;overflow:auto;overscroll-behavior:contain;flex:1;padding:10px 20px 24px;scrollbar-width:thin}.source-line{margin:0 0 .5em;line-height:inherit;white-space:pre-wrap}.source-line:last-child{margin-bottom:0}.review-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0}.review-actions button{font-size:12px;padding:8px 12px}.review-actions strong{font-size:11px;color:var(--brown)}.review-actions .muted{font-size:10px}.source-hidden{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}.source-hidden .source-panel{align-self:start}
   .options-panel{position:absolute;right:max(16px,calc((100vw - 1440px)/2));top:68px;bottom:max(16px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 32px));z-index:3;overflow:auto;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 48px #0003;padding:6px 18px 20px}.options-panel>.panel-heading{position:sticky;top:-6px;z-index:1;background:var(--bg2);padding:8px 0;border-bottom:1px solid var(--border)}.storage-details,.cloud-panel{padding:18px 0;border-bottom:1px solid var(--border)}.options-panel h3{margin-bottom:8px}.options-panel p{font-size:13px;color:var(--text2);margin:8px 0}.options-panel button{font-size:12px}.cloud-panel ul{list-style:none;padding:0}.cloud-panel li{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;margin:12px 0}.edition-note{margin-top:16px!important}
-  @media(max-width:700px){.copy-page{padding:20px 14px 90px}.choose-header h1{font-size:var(--font-size-section-title)}.choose-header p{font-size:var(--font-size-body)}.stepper{margin:20px 0;gap:8px}.stepper li{flex-direction:column;text-align:center;font-size:12px}.selection-section{padding:18px 14px;border-radius:18px}.selection-section h2{font-size:var(--font-size-card-title)}.books{grid-template-columns:1fr;gap:9px;margin:16px 0}.books button{min-height:78px;padding:12px 34px 12px 13px;display:grid;grid-template-columns:24px 1fr;gap:4px 10px}.books strong{font-size:15px}.books small{grid-column:2}.book-number{align-self:center}.chapter-choice select{font-size:12px}.selection-hint{font-size:11px}.copy-writing{padding:0 10px max(6px,env(safe-area-inset-bottom))}.writing-bar{padding:7px 0 5px;gap:6px}.writing-title h1{font-size:12px}.writing-title p{display:none}.writing-title .eyebrow{font-size:8px}.writing-bar .icon-button{min-width:40px;min-height:40px;padding:7px}.save-button{max-width:105px;font-size:10px;padding:7px 9px;min-height:40px;line-height:1.4}.save-status{font-size:10px;padding-bottom:6px}.account-note{max-width:52%;text-align:right}.block-toolbar{gap:5px}.block-nav{gap:5px}.block-nav label{font-size:12px}.block-nav .icon-button{min-width:36px;min-height:36px;padding:4px}.block-nav select{min-height:36px;min-width:58px;font-size:12px;padding:5px}.font-picker select{width:120px;min-height:36px;font-size:11px;padding:5px}.chapter-progress{margin:5px 0 8px}.writing-grid,.source-hidden{display:flex;flex-direction:column;gap:8px}.source-panel{flex:0 1 auto;max-height:36%;border-radius:12px}.source-hidden .source-panel{align-self:stretch;max-height:none;flex-shrink:0}.panel-heading{padding:5px 9px;gap:5px;flex-wrap:nowrap}.panel-heading h2,.panel-heading label{font-size:12px}.source-font-controls{gap:3px}.source-font-controls button{min-width:36px;min-height:36px;font-size:12px;padding:5px}.source-font-controls output{font-size:10px;min-width:28px}.source-toggle{font-size:10px;min-height:36px;padding:4px;gap:2px}.source-toggle :global(svg){width:12px}.source{max-height:20vh;max-height:20dvh;padding:4px 12px 12px;flex:0 1 auto;line-height:1.7}.editor-panel{flex:1;border-radius:12px}.review-actions{padding:5px 8px;gap:6px}.review-actions button{font-size:11px;min-height:36px;padding:7px 10px}.review-actions .muted{font-size:9px}.options-panel{top:55px;right:10px;bottom:8px;width:calc(100% - 20px)}.issues{max-height:20vh;padding:8px 12px}.message p,.guest-draft{font-size:11px}.guest-draft button{font-size:10px;padding:6px}}
-  .source.admin-copy{user-select:text;-webkit-user-select:text}.source-line--current{background:var(--gold-light,var(--bg3));box-shadow:-3px 0 0 var(--gold);border-radius:3px}.source-panel h2 small{font:400 10px/1.2 var(--font-ui,inherit);color:var(--text2);white-space:nowrap}
+  @media(max-width:700px){.copy-page{padding:20px 14px 90px}.choose-header h1{font-size:var(--font-size-section-title)}.choose-header p{font-size:var(--font-size-body)}.stepper{margin:20px 0;gap:8px}.stepper li{flex-direction:column;text-align:center;font-size:12px}.selection-section{padding:18px 14px;border-radius:18px}.selection-section h2{font-size:var(--font-size-card-title)}.books{grid-template-columns:1fr;gap:9px;margin:16px 0}.books button{min-height:78px;padding:12px 34px 12px 13px;display:grid;grid-template-columns:24px 1fr;gap:4px 10px}.books strong{font-size:15px}.books small{grid-column:2}.book-number{align-self:center}.chapter-choice select{font-size:12px}.selection-hint{font-size:11px}.copy-writing{padding:0 10px max(6px,env(safe-area-inset-bottom))}.writing-bar{padding:7px 0 5px;gap:6px}.writing-title h1{font-size:12px}.writing-title p{display:none}.writing-title .eyebrow{font-size:8px}.writing-bar .icon-button{min-width:40px;min-height:40px;padding:7px}.save-button{max-width:105px;font-size:10px;padding:7px 9px;min-height:40px;line-height:1.4}.save-status{font-size:10px;padding-bottom:6px}.account-note{max-width:52%;text-align:right}.block-nav{gap:5px}.block-nav label{font-size:12px}.block-nav .icon-button{min-width:36px;min-height:36px;padding:4px}.block-nav select{min-height:36px;min-width:58px;font-size:12px;padding:5px}.chapter-progress{margin:5px 0 8px}.writing-grid,.source-hidden{display:flex;flex-direction:column;gap:8px}.source-panel{flex:0 1 auto;max-height:36%;border-radius:12px}.source-hidden .source-panel{align-self:stretch;max-height:none;flex-shrink:0}.panel-heading{padding:5px 9px;gap:5px;flex-wrap:nowrap}.panel-heading h2,.panel-heading label{font-size:12px}.source-font-controls{gap:3px}.source-font-controls button{min-width:36px;min-height:36px;font-size:12px;padding:5px}.source-font-controls output{font-size:10px;min-width:28px}.source-toggle{font-size:10px;min-height:36px;padding:4px;gap:2px}.source-toggle :global(svg){width:12px}.source{max-height:20vh;max-height:20dvh;padding:4px 12px 12px;flex:0 1 auto;line-height:1.7}.editor-panel{flex:1;border-radius:12px}.review-actions{padding:5px 8px;gap:6px}.review-actions button{font-size:11px;min-height:36px;padding:7px 10px}.review-actions .muted{font-size:9px}.options-panel{top:55px;right:10px;bottom:8px;width:calc(100% - 20px)}.message p,.guest-draft{font-size:11px}.guest-draft button{font-size:10px;padding:6px}}
+  .source.admin-copy{user-select:text;-webkit-user-select:text}.source-line--current{background:var(--gold-light,var(--bg3));box-shadow:-3px 0 0 var(--gold);border-radius:3px}
   .editor-pages{display:flex;align-items:center;gap:5px}.editor-pages button{display:flex;align-items:center;justify-content:center;padding:4px;min-width:34px;min-height:34px}.editor-pages output{font-size:11px;min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.keyboard-open .source{max-height:64px}.keyboard-open .source-panel{max-height:32%}.keyboard-open .review-actions .muted,.keyboard-open .account-note,.keyboard-open .writing-title .eyebrow{display:none}
   @media(max-height:520px){.writing-title .eyebrow,.save-status .account-note{display:none}.writing-bar{padding:3px 0}.source-panel{max-height:32%}.source{max-height:14dvh}.chapter-progress{margin:3px 0}.panel-heading{padding-block:3px}.review-actions{padding-block:3px}}
@@ -1191,7 +1270,7 @@
     .mobile-writing-options{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);align-items:center;gap:12px 8px}
     .mobile-writing-options label{font-size:12px}
     .mobile-writing-options select{min-width:0;width:100%;min-height:40px;font-size:13px}
-    .copy-writing .block-toolbar,.copy-writing .source-font-controls,.copy-writing .writing-title .eyebrow,.copy-writing .account-note{display:none}
+    .copy-writing .source-font-controls,.copy-writing .writing-title .eyebrow,.copy-writing .account-note{display:none}
     .copy-writing{padding-inline:6px}
     .copy-writing .writing-bar{gap:5px;padding:4px 0}
     .copy-writing .writing-bar .icon-button{min-width:36px;min-height:36px;padding:6px}
@@ -1202,7 +1281,7 @@
     .copy-writing .editor-heading>label{flex-basis:auto;margin-right:auto}
     .copy-writing .editor-tools{width:auto;gap:4px}
     .copy-writing .editor-tools>.icon-button{min-width:34px;min-height:34px;padding:5px}
-    .copy-writing .editor-tools>.ghost-toggle-btn{min-height:44px;padding:4px 7px;font-size:11px}
+    .copy-writing .editor-heading>.ghost-toggle-btn{min-height:44px;padding:4px 7px;font-size:11px}
     @media(max-width:360px){
       .compact-editor-display select:first-child{width:68px}
       .compact-editor-display select:last-child{width:44px}
@@ -1217,7 +1296,7 @@
     .keyboard-open .writing-bar .icon-button{min-width:32px;min-height:32px;padding:4px}
     .keyboard-open .save-button{min-height:32px;padding:4px 7px}
     .keyboard-open .save-status{font-size:9px;padding-bottom:2px}
-    .keyboard-open .block-toolbar,.keyboard-open .source-font-controls,.keyboard-open .copy-note{display:none}
+    .keyboard-open .source-font-controls,.keyboard-open .copy-note{display:none}
     .keyboard-open .chapter-progress{margin:2px 0 4px}
     .keyboard-open .writing-grid{gap:5px}
     .keyboard-open .source-panel{flex:0 0 36%;max-height:36%;border-radius:8px}
@@ -1244,19 +1323,17 @@
   .copy-writing .writing-bar .icon-button,.copy-writing .save-button,.copy-writing .source-toggle,.copy-writing .editor-tools>.icon-button,.copy-writing .review-actions button,.copy-writing .block-nav .icon-button{min-height:44px;min-width:44px}
   :global(body:has(.copy-page) .tt-topbar button){min-width:44px;min-height:44px}
 
-  .copy-page[data-paper='white']{--copy-paper:var(--copy-paper-white)}
-  .copy-page[data-paper='cream']{--copy-paper:var(--copy-paper-cream)}
-  .copy-page[data-paper='gray']{--copy-paper:var(--copy-paper-gray)}
+  .copy-page{--copy-paper:var(--bg);--copy-paper-ink:var(--text);--copy-paper-rule:var(--border2)}
   .copy-writing .source-panel,.copy-writing .editor-panel{background:var(--copy-paper);color:var(--copy-paper-ink)}
   .copy-writing .source,.copy-writing :global(.rich-copy),.copy-writing :global(.rich-copy-ghost){color:var(--copy-paper-ink)}
   .copy-writing :global(.rich-copy[data-empty='true']::before){color:var(--copy-paper-ink);opacity:.55}
   .copy-writing .source-font-controls button,.copy-writing .review-actions button{color:var(--text)}
-  .copy-writing .source-line--current,.copy-writing .source-word--current{background:var(--copy-paper-cream);color:var(--copy-paper-ink)}
+  .copy-writing .source-line--current,.copy-writing .source-word--current{background:var(--gold-light);color:var(--copy-paper-ink)}
   .setting-row{display:flex;align-items:center;justify-content:space-between;gap:var(--radius);margin-top:var(--radius)}
   .mobile-writing-options>h3{grid-column:1/-1}
   .sample-speech{display:inline-flex;align-items:center;justify-content:center;gap:var(--radius);color:var(--brown)}
   .sample-speech :global(svg){flex-shrink:0}
-  #copy-options-trigger{color:var(--brown);border-color:var(--border);background:var(--gold-light)}
+  [data-copy-options-trigger]{color:var(--brown);border-color:var(--border);background:var(--gold-light)}
   .paper-picker{border:0;padding:0;margin:var(--radius-card) 0}
   .paper-picker legend{font-weight:600;margin-bottom:var(--radius-sm)}
   .paper-picker>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--radius-sm)}
@@ -1264,17 +1341,97 @@
   .paper-picker button.chosen{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
   .paper-picker button :global(svg){position:absolute;right:var(--radius-sm);top:var(--radius-sm);color:var(--brown)}
   .paper-swatch{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--copy-paper-ink)}
-  .paper-swatch[data-paper='white']{background:var(--copy-paper-white)}
-  .paper-swatch[data-paper='cream']{background:var(--copy-paper-cream)}
-  .paper-swatch[data-paper='gray']{background:var(--copy-paper-gray)}
+  .paper-swatch[data-paper='auto']{background:linear-gradient(120deg,var(--reading-paper-cream) 50%,var(--reading-paper-dark) 50%)}
+  .paper-swatch[data-paper='white']{background:var(--reading-paper-white)}
+  .paper-swatch[data-paper='cream']{background:var(--reading-paper-cream)}
+  .paper-swatch[data-paper='gray']{background:var(--reading-paper-gray)}
+  .paper-swatch[data-paper='purple']{background:var(--reading-paper-purple)}
+  .paper-swatch[data-paper='dark']{background:var(--reading-paper-dark)}
   .source-line--reading{background:rgba(200,150,62,.15)!important;box-shadow:-4px 0 0 var(--gold)!important;border-radius:4px}
   .source-word--reading{background:#ffe58f!important;color:#24180c!important;border-radius:4px;box-shadow:0 0 0 2px #ffe58f,0 2px 6px rgba(212,168,75,.35);display:inline-block}
   .btn-next-block{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;min-height:36px;border-radius:var(--radius-control,8px);background:var(--gold);color:var(--on-gold,#24180c);border:1px solid var(--gold);font-weight:700;font-size:12px;cursor:pointer;transition:transform .15s ease,background .15s ease}
   .btn-next-block:hover{background:var(--gold2);transform:translateX(2px)}
-  .review-success-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--gold-light,rgba(212,175,55,.1));border-radius:8px;margin-top:4px}
-  .review-success-banner .review-success{padding:0}
   :root[data-theme="dark"] .source-line--reading{background:rgba(212,168,75,.18)!important;box-shadow:-4px 0 0 var(--gold2)!important}
   :root[data-theme="dark"] .source-word--reading{background:#d4a84b!important;color:#1a0f05!important;box-shadow:0 0 0 2px #d4a84b,0 0 10px rgba(212,168,75,.5)}
-  .options-panel{background:var(--dialog-surface-background,var(--card));border-color:var(--dialog-surface-border,var(--border));box-shadow:var(--dialog-surface-shadow,var(--shadow-xl))}
-  .options-panel>.panel-heading{background:var(--dialog-surface-background,var(--card))}
+  .options-panel{border-radius:var(--radius-card);background:var(--dialog-surface-background,var(--card));border-color:var(--dialog-surface-border,var(--border));box-shadow:var(--dialog-surface-shadow,var(--shadow-xl))}
+  .options-panel>.panel-heading{background:var(--dialog-surface-background,var(--card));border-radius:var(--radius-control);padding-inline:var(--radius-sm)}
+
+  .writing-actions{display:flex;align-items:center;justify-content:flex-end;gap:inherit;min-width:0}
+  .mobile-source-control,.editor-tools-trigger,.source-tools-trigger,.mobile-account-actions,.mobile-review-label{display:none}
+  .source-tools,.editor-tools{display:flex;align-items:center;flex-wrap:wrap;gap:var(--radius-sm);padding:0 var(--space-page) var(--radius-sm);flex-shrink:0}
+  .source-heading .block-nav select{max-width:none}
+  .source-heading button,.editor-pages button,.editor-tools-trigger{color:var(--text)}
+  .source-tools .source-toggle{color:var(--copy-paper-ink)}
+  .source-heading .block-nav label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .copy-review{position:fixed;inset:0;margin:auto;height:fit-content;width:min(calc(100% - var(--space-page) * 2), 32rem);max-height:70vh;max-height:min(70dvh, calc(var(--copy-viewport-height, 100dvh) - var(--space-page) * 2), 38rem);box-sizing:border-box;padding:0;overflow:hidden;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-card)}
+  .copy-review[open]{display:flex;flex-direction:column}
+  .copy-review::backdrop{background:var(--practice-dialog-backdrop)}
+  .copy-review-header,.copy-review-footer{display:flex;align-items:center;gap:var(--radius-sm);padding:var(--space-page);flex-shrink:0}
+  .copy-review-header{flex-wrap:wrap;justify-content:space-between;border-bottom:1px solid var(--border)}
+  .copy-review-header h2{font-size:var(--font-size-card-title)}
+  .copy-review-header p{flex-basis:100%;color:var(--text2)}
+  .copy-review-body{min-height:0;padding:var(--space-page);overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+  .copy-review-body :global(.review-complete-mark){color:var(--gold);margin-bottom:var(--radius-sm)}
+  .copy-review-list button>span:first-child{color:var(--danger-text);font-variant-numeric:tabular-nums}
+  .copy-review-list{list-style:none;padding:0;margin:0;display:grid;gap:var(--radius-sm)}
+  .copy-review-list button{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--radius-sm);text-align:start;overflow-wrap:anywhere}
+  .copy-review-footer{border-top:1px solid var(--border);justify-content:flex-end;flex-wrap:wrap}
+  .ghost-toggle-btn,.ghost-toggle-btn[aria-pressed="true"]{gap:var(--radius-sm);border-color:transparent;background:transparent;color:var(--copy-paper-ink);font-weight:500}
+  .ghost-switch{box-sizing:border-box;inline-size:36px;block-size:22px;flex:none;display:flex;align-items:center;padding:2px;border:1px solid var(--border2);border-radius:var(--radius-pill,999px);background:var(--bg3)}
+  .ghost-switch::after{content:'';inline-size:16px;block-size:16px;flex:none;border-radius:50%;background:var(--reading-paper-white);box-shadow:0 0 0 1px var(--border)}
+  [aria-pressed="true"] .ghost-switch{justify-content:flex-end;background:var(--gold);border-color:var(--gold)}
+  @media(min-width:701px){
+    .copy-writing{padding-inline:max(var(--space-page), calc((100vw - 1440px) / 2))}
+    .writing-grid:not(.source-hidden){grid-template-columns:minmax(0, 46fr) minmax(0,54fr);gap:calc(var(--space-page) * 1.5)}
+    .writing-bar{display:grid;grid-template-columns:minmax(min(36%,16rem),1fr) minmax(0,2fr) minmax(min(36%,16rem),1fr)}
+    .writing-bar>.icon-button{justify-self:start}
+    .compact-editor-display{display:flex}
+    .compact-editor-display select{color:var(--text);max-width:10rem}
+    .compact-editor-display select+select{display:none}
+    .editor-tools{justify-content:flex-start}
+    .writing-title h1{text-align:center;text-transform:uppercase}
+    .writing-title p,.writing-title .eyebrow{text-align:center;display:block}
+  }
+  @media(max-width:700px){
+    .copy-writing:has(.writing-grid) .writing-bar,.copy-writing:has(.writing-grid) .save-status:not(.error),.desktop-review-label{display:none}
+    .mobile-source-control,.mobile-review-label{display:inline-flex}
+    .copy-review-footer button{flex:1 1 auto}
+    .mobile-account-actions{display:flex;flex-wrap:wrap;gap:var(--radius-sm);padding-block:var(--radius-sm)}
+    .copy-writing .mobile-account-actions .save-button{max-width:none}
+    .mobile-save-feedback{flex-basis:100%}
+    .copy-writing .source-heading{padding-inline:calc(var(--radius-sm) * .75);gap:calc(var(--radius-sm) / 3);justify-content:space-between}
+    .copy-writing .source-heading h2{margin-inline-end:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--font-size-meta)}
+    .copy-writing .source-heading .block-nav{margin-inline-start:auto;border:1px solid var(--copy-paper-rule);border-radius:var(--radius-control)}
+    .copy-writing .source-heading button,.copy-writing .source-heading select{background:transparent;color:var(--copy-paper-ink);border-color:transparent}
+    .copy-writing .source-heading .block-nav select{width:60px;min-width:60px;font-variant-numeric:tabular-nums}
+    .copy-writing .source-heading .mobile-source-control{flex:none}
+    .copy-writing .source-heading .writing-back{border-color:var(--border2);border-radius:var(--radius-control)}
+    .copy-writing .source-tools.tools-open{align-items:center;border-top:1px solid var(--copy-paper-rule);padding-top:var(--radius-sm)}
+    .copy-writing .source-tools .source-toggle{margin-inline-start:auto}
+    .copy-writing .source-heading .block-nav{display:flex;gap:0}
+    .copy-writing .source-heading .block-nav select{padding-inline:0}
+    .copy-writing .source-heading .icon-button{padding:0}
+    .copy-writing .source-heading h2{min-width:0;overflow-wrap:anywhere}
+    .source-heading .source-tools-trigger,.editor-heading .editor-tools-trigger{display:inline-flex;align-items:center;justify-content:center;gap:var(--radius-sm)}
+    .copy-writing .source-tools:not(.tools-open),.copy-writing .editor-tools:not(.tools-open){display:none}
+    .copy-writing .source-tools.tools-open,.copy-writing .editor-tools.tools-open{display:flex;padding:0 var(--radius-sm) var(--radius-sm);gap:var(--radius-sm);justify-content:flex-start}
+    .copy-writing .editor-tools.tools-open{flex-wrap:nowrap;gap:calc(var(--radius-sm) / 2)}
+    .copy-writing .editor-tools .compact-editor-display{flex:0 1 auto}
+    .copy-writing .editor-tools .editor-pages{gap:calc(var(--radius-sm) / 2)}
+    .copy-writing .source-tools .source-font-controls{display:flex}
+    .source-tools .sample-speech,.editor-tools-trigger{font-size:var(--font-size-meta);padding-inline:var(--radius-sm)}
+    .editor-tools-trigger{white-space:nowrap}
+    .copy-writing .source-panel{flex-shrink:0;max-height:50%}
+    .copy-writing .source-panel:has(.tools-open){max-height:60%}
+    .copy-writing .source{max-height:25dvh;padding-inline:var(--radius-sm)}
+    .copy-writing.keyboard-open .source-panel{flex-basis:auto;max-height:40%}
+    .copy-writing.keyboard-open .source-panel:has(.tools-open){max-height:55%}
+    .copy-writing.keyboard-open .source{max-height:64px}
+    .copy-writing .options-panel{top:var(--app-safe-top,env(safe-area-inset-top,0px))}
+  }
+  @media(max-width:360px){
+    .copy-writing .source-heading h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+    .copy-writing .source-heading .block-nav{margin-inline:auto}
+    .copy-writing .editor-pages output{min-width:26px}
+  }
 </style>

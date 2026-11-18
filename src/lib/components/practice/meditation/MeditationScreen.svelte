@@ -61,13 +61,23 @@
     return () => { renderer.destroy(); water = null; };
   });
   $effect(() => {
-    water?.setEnabled($uiMotion.effective && !backgroundPickerOpen && session.phase !== 'completed' && session.phase !== 'cancelled');
+    water?.setEnabled($uiMotion.effective && !focused && !backgroundPickerOpen && session.phase !== 'completed' && session.phase !== 'cancelled');
   });
   $effect(() => {
     selectedBackground;
     water?.invalidate();
   });
-  let fullscreen = $state(false);
+  let focused = $state(false);
+  let focusTrigger = $state<HTMLButtonElement>();
+  let focusExit = $state<HTMLButtonElement>();
+  const canFocus = $derived(session.phase === 'preparing' || session.phase === 'active');
+  // Follow the existing session clock so toggling Focus never restarts the breath.
+  const breathProgress = $derived(((session.preparationElapsedMs + session.activeElapsedMs) % 10_000) / 10_000);
+  const breathScale = $derived(1 - .2 * Math.cos(breathProgress * 2 * Math.PI));
+  const breathCue = $derived(breathProgress < .5 ? t.breatheIn : t.breatheOut);
+  $effect(() => {
+    if (focused && !canFocus) exitFocus();
+  });
   let backgroundPickerOpen = $state(false);
   let selectedBackground = $state<string | null>(null);
   let failedBackgrounds = $state<string[]>([]);
@@ -112,7 +122,7 @@
 
   onDestroy(() => {
     ambientController.destroy();
-    if (fullscreen) {
+    if (focused) {
       void setImmersiveFullscreen(false, screen);
     }
   });
@@ -169,6 +179,10 @@
 
   function handleCancel(event: Event): void {
     event.preventDefault();
+    if (focused) {
+      exitFocus();
+      return;
+    }
     if (backgroundPickerOpen) {
       closeBackgroundPicker();
       return;
@@ -177,36 +191,55 @@
     else if (session.phase !== 'paused') onPause();
   }
 
-  async function toggleFullscreen(): Promise<void> {
-    const nextState = !fullscreen;
-    fullscreen = nextState;
-    await setImmersiveFullscreen(nextState, screen);
+  function enterFocus(): void {
+    focused = true;
+    void setImmersiveFullscreen(true, screen);
+    void tick().then(() => focusExit?.focus({ preventScroll: true }));
+  }
+
+  function exitFocus(leaveFullscreen = true): void {
+    focused = false;
+    if (leaveFullscreen) void setImmersiveFullscreen(false, screen);
+    void tick().then(() => {
+      (canFocus ? focusTrigger : screen)?.focus({ preventScroll: true });
+    });
   }
 </script>
 
 <svelte:window onfullscreenchange={() => {
-  if (document.fullscreenElement) {
-    fullscreen = true;
-  } else if (!isNativeApp()) {
-    fullscreen = false;
-  }
+  if (isNativeApp()) return;
+  if (focused && !document.fullscreenElement) exitFocus(false);
+  if (!focused && document.fullscreenElement === screen) void setImmersiveFullscreen(false, screen);
 }} />
 
 <dialog use:modalDialog class="meditation-modal" aria-label={isEn ? 'Meditation Session' : 'Phiên thiền'} oncancel={handleCancel}>
-<section bind:this={screen} class="meditation-screen" class:is-fullscreen={fullscreen} class:breath-paused={session.phase !== 'active'} aria-label={t.meditationTitle} tabindex="-1" data-modal-focus>
+<section bind:this={screen} class="meditation-screen" class:is-focused={focused} class:breath-paused={session.phase !== 'active'} aria-label={t.meditationTitle} tabindex="-1" data-modal-focus>
   <canvas bind:this={waterCanvas} class="meditation-screen__water" aria-hidden="true"></canvas>
   {#if selectedBackground}
     <div class="meditation-screen__photo" aria-hidden="true">
       <img src={selectedBackground} alt="" onload={() => water?.invalidate()} onerror={() => selectedBackground = null} />
     </div>
   {/if}
+  {#if focused}
+    <div class="meditation-focus">
+      <button class="meditation-focus__stage" type="button" tabindex="-1"
+        aria-label={`${t.exitFocus} · ${t.breathingGuide}`} onclick={() => exitFocus()}>
+        <span class="meditation-screen__visual" aria-hidden="true">
+          <span class="meditation-screen__breath" style:--breath-scale={$uiMotion.effective ? breathScale : 1}><span>🪷</span></span>
+        </span>
+        <span class="meditation-focus__cue">{breathCue}</span>
+      </button>
+      <header><button bind:this={focusExit} type="button" onclick={() => exitFocus()}>{t.exitFocus}</button></header>
+    </div>
+  {/if}
+  <div class="meditation-screen__controls" hidden={focused}>
   <header inert={backgroundPickerOpen}>
     <div><span aria-hidden="true">🪷</span><strong>{t.meditationTitle}</strong></div>
     <div class="meditation-screen__header-actions">
     <button bind:this={backgroundTrigger} type="button" aria-expanded={backgroundPickerOpen} aria-controls={backgroundPickerId} onclick={() => backgroundPickerOpen = !backgroundPickerOpen}>{t.changeMeditationBackground}</button>
-    <button type="button" onclick={() => void toggleFullscreen()} aria-pressed={fullscreen}>
-      {fullscreen ? t.exitFullscreen : t.fullscreen}
-    </button>
+    {#if canFocus}
+      <button bind:this={focusTrigger} type="button" onclick={enterFocus}>{t.focusMode}</button>
+    {/if}
     </div>
   </header>
   {@render routineControls?.()}
@@ -328,6 +361,7 @@
       {/if}
     {/if}
   </footer>
+  </div>
 </section>
 </dialog>
 
@@ -400,13 +434,28 @@
   @media(prefers-reduced-motion:reduce){.meditation-screen__breath{animation:none;transform:none}.meditation-screen::before{background-image:none}}
   @media(prefers-reduced-motion:reduce){.meditation-screen__breathing-cue{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.meditation-screen__breathing-cue span{animation:none;visibility:inherit}}
 
-  /* Fullscreen centering & balance */
-  .meditation-screen.is-fullscreen header{padding:calc(20px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) 18px max(24px,env(safe-area-inset-left,0px))}
-  .meditation-screen.is-fullscreen footer{padding:18px max(24px,env(safe-area-inset-right,0px)) max(32px,calc(18px + env(safe-area-inset-bottom,0px))) max(24px,env(safe-area-inset-left,0px))}
-  .meditation-screen.is-fullscreen .meditation-screen__content{max-width:720px}
-  .meditation-screen.is-fullscreen .meditation-screen__visual{width:min(34vw,280px)}
-  .meditation-screen.is-fullscreen .meditation-screen__time{font-size:clamp(68px,13vw,122px)}
-  .meditation-screen.is-fullscreen .meditation-screen__badge{font-size:15px;padding:9px 22px}
+  .meditation-screen__controls{display:contents}
+  .meditation-screen__controls[hidden],
+  .is-focused .meditation-screen__photo,
+  .is-focused .meditation-screen__water,
+  .is-focused::before{display:none}
+  .meditation-focus{position:absolute;inset:0;display:grid;grid-template-areas:"stage"}
+  .meditation-focus header{grid-area:stage;align-self:start;justify-content:flex-end;pointer-events:none}
+  .meditation-focus header button{pointer-events:auto}
+  .meditation-focus__stage{
+    grid-area:stage;display:grid;place-content:center;justify-items:center;gap:var(--space-page);
+    min-width:0;min-height:0;padding:max(var(--space-page),env(safe-area-inset-top,0px))
+      max(var(--space-page),env(safe-area-inset-right,0px)) max(var(--space-page),env(safe-area-inset-bottom,0px))
+      max(var(--space-page),env(safe-area-inset-left,0px));
+    border:0;background:transparent;color:inherit;font:inherit;text-align:center;cursor:pointer;
+  }
+  .meditation-focus__stage .meditation-screen__visual{width:min(52vw,32dvh,250px);height:auto}
+  .meditation-focus__stage .meditation-screen__breath{
+    width:80%;animation:none;transform:scale(var(--breath-scale,1));transition:transform .25s linear;
+  }
+  .meditation-focus__stage .meditation-screen__breath span{font-size:clamp(28px,min(13vw,13dvh),68px)}
+  .meditation-focus__cue{font-size:clamp(1.25rem,5vw,2rem);font-weight:700;line-height:1.4}
+  @media(prefers-reduced-motion:reduce){.meditation-focus__stage .meditation-screen__breath{transform:none;transition:none}}
 
   @media(max-width:520px){
     .meditation-screen header{flex-wrap:wrap;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px}
@@ -417,9 +466,6 @@
     .meditation-screen__guide-item{font-size:var(--font-size-body);line-height:1.45}
     .meditation-screen footer{display:grid;grid-template-columns:1fr 1fr}
     .meditation-screen footer button:only-child{grid-column:1/-1}
-    .meditation-screen.is-fullscreen header{padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px}
-    .meditation-screen.is-fullscreen .meditation-screen__visual{width:64vw}
-    .meditation-screen.is-fullscreen .meditation-screen__time{font-size:clamp(64px,16vw,96px)}
   }
 
   @media(max-height:520px){
@@ -432,5 +478,10 @@
     .meditation-screen__time{font-size:44px}
     .meditation-screen__instruction,.meditation-screen__layers{margin-top:6px}
     .meditation-screen footer{padding-top:8px;padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+  }
+  .meditation-screen .meditation-focus header{
+    padding:calc(var(--space-page) + env(safe-area-inset-top,0px))
+      max(var(--space-page),env(safe-area-inset-right,0px)) 0
+      max(var(--space-page),env(safe-area-inset-left,0px));
   }
 </style>

@@ -10,7 +10,7 @@
 :root .tt-mode-card--name-copying { --mode-tint:var(--practice-name-copy-start); --mode-end:var(--practice-name-copy-end); --mode-ink:var(--practice-name-copy-ink); }
 :root .tt-mode-card--copying { --mode-tint:var(--gold-light); --mode-end:var(--gold-muted); --mode-ink:var(--brown-dark); }
 :root .tt-mode-card--continue { --mode-tint:var(--practice-meditation-tint); --mode-end:var(--practice-mantra-tint); --mode-ink:var(--text); }
-:root .tt-mode-card--vegan { --mode-tint:var(--practice-name-copy-card-start); --mode-end:var(--practice-name-copy-card-end); --mode-ink:var(--practice-name-copy-card-ink); }
+:root .tt-mode-card--vegan { --mode-tint:var(--vegan-green); --mode-end:var(--vegan-green-deep); --mode-ink:var(--vegan-on-green); }
 :root .tt-mode-card--nghi-thuc { --mode-tint:#eaa17e; --mode-end:#f9d2b9; --mode-ink:var(--practice-card-ink-strong); }
 :root .tt-mode-card--rec { --mode-tint:#ff929f; --mode-end:#ffc7c7; --mode-ink:#692332; }
 :root .tt-mode-card--tracker { --mode-tint:#94aafa; --mode-end:#c9d5ff; --mode-ink:#243763; }

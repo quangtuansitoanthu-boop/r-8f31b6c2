@@ -132,39 +132,10 @@ async function switchEntry(page: Page, mode: 'daily' | 'eight') {
   await expect(page.getByTestId('precept-practice-screen')).toHaveCount(0);
   await open(page, mode);
 }
-async function measureCatalogPresence(page: Page, advanceDay: boolean): Promise<number> {
-  const browser = page.context().browser();
-  if (!browser) throw new Error('Presence baseline requires the configured browser.');
-  const context = await browser.newContext({ viewport: page.viewportSize() ?? undefined, serviceWorkers: 'block' });
-  try {
-    const control = await context.newPage();
-    const presence: string[] = [];
-    await control.clock.setFixedTime(new Date('2026-10-28T03:00:00Z'));
-    await control.route('**/api/**', async route => {
-      const path = new URL(route.request().url()).pathname;
-      if (path === '/api/presence') presence.push(route.request().method());
-      await route.fulfill({ json: path === '/api/session'
-        ? { authenticated: false, csrfToken: null, user: null, expiresAt: null } : [] });
-    });
-    await control.goto(`${process.env.SVELTEKIT_BASE_URL || 'http://localhost:8787'}/tu-tap`);
-    await settleClient(control);
-    await expect.poll(() => presence.length).toBeGreaterThan(0);
-    if (advanceDay) await control.clock.setFixedTime(new Date('2026-10-29T03:00:00Z'));
-    await control.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await control.waitForTimeout(300);
-    expect(presence.every(method => method === 'POST')).toBe(true);
-    return presence.length;
-  } finally { await context.close(); }
-}
-async function expectLocalFeatureBudget(requests: string[], before: number, baseline: number, info: import('@playwright/test').TestInfo) {
+async function expectLocalFeatureBudget(requests: string[], before: number, info: import('@playwright/test').TestInfo) {
   const observed = requests.slice(before);
-  const presence = observed.filter(request => request === 'POST /api/presence');
-  expect(observed.filter(request => request !== 'POST /api/presence')).toEqual([]);
-  expect(presence.length).toBeLessThanOrEqual(baseline);
-  await info.attach('request-budget', { contentType: 'application/json', body: JSON.stringify({
-    catalogIdleAndFocusPresenceBaseline: baseline, totalHttpAfterHydration: observed.length,
-    existingRootPresence: presence.length, featureHttp: observed.length - presence.length, observed,
-  }) });
+  expect(observed).toEqual([]);
+  await info.attach('request-budget', { contentType: 'application/json', body: JSON.stringify({ featureHttp: observed.length, observed }) });
 }
 test('catalog offers daily precepts, eight-precept observance and abstinence as separate entries', async ({ page }) => {
   await page.goto('/tu-tap'); await settleClient(page);
@@ -239,7 +210,6 @@ test('an existing active observance resumes without repeating preparation or cha
 for (const width of [375, 1440]) for (const dark of [false, true]) {
   test(`companion keeps partial records local and legacy data intact (${width}, ${dark ? 'dark' : 'light'})`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
-    const presenceBaseline = await measureCatalogPresence(page, true);
     await page.clock.setFixedTime(new Date('2026-10-28T03:00:00Z'));
     await page.addInitScript(({ legacy, oldReflection, dark }) => {
       localStorage.setItem('tutam_locale', 'vi');
@@ -322,7 +292,7 @@ for (const width of [375, 1440]) for (const dark of [false, true]) {
     expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!), reflectionKey)).toEqual(oldReflection);
     await expect(screen.getByText(/Giác Ngộ|giacngo\.vn/)).toHaveCount(0);
     await page.waitForTimeout(300);
-    await expectLocalFeatureBudget(requests, before, presenceBaseline, info);
+    await expectLocalFeatureBudget(requests, before, info);
   });
 }
 
@@ -429,7 +399,6 @@ for (const storageFails of [false, true]) test(`abstinence check-in credits only
 
 
 test('ending an observance early records cancellation without completing unreported precepts', async ({ page }, info) => {
-  const presenceBaseline = await measureCatalogPresence(page, false);
   await page.clock.setFixedTime(new Date('2026-10-28T03:00:00Z'));
   const requests: string[] = [];
   await page.route('**/api/**', async route => {
@@ -453,7 +422,7 @@ test('ending an observance early records cancellation without completing unrepor
   expect((await persisted(page)).days).toEqual([]);
   expect((await persisted(page)).conductDates).toEqual([]);
   await page.waitForTimeout(300);
-  await expectLocalFeatureBudget(requests, before, presenceBaseline, info);
+  await expectLocalFeatureBudget(requests, before, info);
 });
 
 test('browser Back closes the new practice entry and Forward restores it', async ({ page }) => {

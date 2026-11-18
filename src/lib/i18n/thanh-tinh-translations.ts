@@ -138,6 +138,7 @@ export interface ThanhTinhTranslationSchema {
     remainingLabel: string;
     sessionLabel: (mins: number) => string;
     seekAria: string;
+    playbackError: string;
     loopLabel: string;
     kicker: string;
     title: string;
@@ -380,6 +381,7 @@ export const thanhTinhTranslations: { vi: ThanhTinhTranslationSchema; en: ThanhT
       remainingLabel: 'Còn lại',
       sessionLabel: (mins: number) => `Phiên nghe ${mins} phút`,
       seekAria: 'Vị trí phát',
+      playbackError: 'Chưa phát được Chú Lăng Nghiêm. Hãy bấm Phát để thử lại.',
       loopLabel: 'Lặp lại',
       kicker: 'PHÁP BẢO ĐOẠN TRỪ DỤC HỎA ĐỆ NHẤT',
       title: 'Thần Chú Lăng Nghiêm',
@@ -631,6 +633,7 @@ export const thanhTinhTranslations: { vi: ThanhTinhTranslationSchema; en: ThanhT
       remainingLabel: 'Remaining',
       sessionLabel: (mins: number) => `${mins}-minute session`,
       seekAria: 'Playback position',
+      playbackError: 'Could not play the Shurangama Dharani. Tap Play to try again.',
       loopLabel: 'Repeat',
       kicker: 'SUPREME DHARMA TREASURE TO SUBDUE CRAVING',
       title: 'Shurangama Dharani',

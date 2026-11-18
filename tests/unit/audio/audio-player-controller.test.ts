@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { principalStorageKey } from '$lib/browser/principal-storage';
 import { PRACTICE_SESSION_OUTBOX_KEY } from '$lib/browser/practice-session-outbox';
+import publicTalkStreams from '$lib/data/public-talk-streams.json';
 
 vi.mock('$lib/browser/offline-audio-database', () => ({
   canAccessAudioAlbum: vi.fn(async () => true),
@@ -30,7 +31,9 @@ vi.mock('$lib/browser/audio-sync', () => ({
 }));
 
 class FakeAudio extends EventTarget {
-  src = '';
+  private source = '';
+  get src() { return this.source; }
+  set src(value: string) { this.source = value; this.error = null; }
   preload = '';
   playbackRate = 1;
   volume = 1;
@@ -125,6 +128,52 @@ describe('AudioPlayerController resume and retry lifecycle', () => {
     vi.clearAllMocks();
     keyboardHandler = undefined;
     installBrowserStubs();
+  });
+
+  it('continues a public track from its position when the API and Archive fail', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const controller = new AudioPlayerController();
+    const [albumId, files] = Object.entries(publicTalkStreams)[0];
+    const [fileId, archive] = Object.entries(files)[0];
+    const track = { title: 'Talk', url: `/api/audio/drive/${fileId}` };
+    const audio = controller.audio as unknown as FakeAudio;
+    try {
+      await controller.playTrack({ id: albumId, title: 'Album', description: '', visibility: 'public', tracks: [track] });
+      audio.currentTime = 47;
+      audio.error = { code: 4 };
+      audio.dispatchEvent(new Event('error'));
+      expect(audio.src).toBe(archive);
+      expect(audio.currentTime).toBe(47);
+      audio.error = { code: 2 };
+      audio.dispatchEvent(new Event('error'));
+      expect(new URL(audio.src).searchParams.get('id')).toBe(fileId);
+      expect(audio.currentTime).toBe(47);
+      expect(controller.snapshot.album?.tracks[0].url).toBe(track.url);
+    } finally { controller.destroy(); }
+  });
+
+  it('plays the published Báo Ứng Hiện Đời track from Archive and falls back directly to Drive', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const controller = new AudioPlayerController();
+    const audio = controller.audio as unknown as FakeAudio;
+    const archive = 'https://archive.org/download/084-nhan-qua-giai-theo-phat-giao-09/001%20bao%20ung%20hien%20doi%20tap%201%20-%201.mp3';
+    const track = { title: 'Tập 1 · Phần 1', url: archive };
+    try {
+      await controller.playTrack({
+        id: 'pt_bao_ung_hien_doi', title: 'Báo Ứng Hiện Đời', description: '', visibility: 'public', tracks: [track],
+      });
+      expect(audio.src).toBe(archive);
+      audio.currentTime = 47;
+      audio.error = { code: 2 };
+      audio.dispatchEvent(new Event('error'));
+      expect(audio.src).toBe('https://drive.usercontent.google.com/download?id=1v00rKw7vNPLdSo7QYRsEX1d2TW8UtIpI&export=download&confirm=t');
+      expect(audio.currentTime).toBe(47);
+      expect(controller.snapshot.album?.tracks[0].url).toBe(archive);
+      audio.error = { code: 2 };
+      audio.dispatchEvent(new Event('error'));
+      expect(controller.snapshot).toMatchObject({ playing: false, retry: 0 });
+      expect(controller.snapshot.error).toContain('Không thể phát bài');
+    } finally { controller.destroy(); }
   });
 
   it('initializes public playback when recent-history storage is blocked', async () => {

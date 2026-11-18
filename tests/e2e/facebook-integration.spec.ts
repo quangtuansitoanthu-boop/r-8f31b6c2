@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { loginAsAdmin, settleClient } from './runtime-helpers';
 
 test.describe('Facebook login and import management', () => {
-  test('rejects malformed browser handoffs and cross-origin redemption without a session cookie', async ({ request }) => {
+  test('rejects malformed browser handoffs and cross-origin redemption without a session cookie', async ({ request, baseURL }) => {
     const start = await request.get('/api/auth/facebook/native?challenge=invalid', { maxRedirects: 0 });
     expect(start.status()).toBe(400);
     expect(start.headers()['set-cookie']).toBeUndefined();
@@ -13,7 +13,7 @@ test.describe('Facebook login and import management', () => {
     expect(invalidOrigin.status()).toBe(403);
     expect(invalidOrigin.headers()['set-cookie']).toBeUndefined();
     const missingCsrf = await request.post('/api/auth/facebook/native/redeem', {
-      headers: { Origin: 'http://localhost:8787' }, data: { code: 'a'.repeat(43), verifier: 'b'.repeat(64) },
+      headers: { Origin: baseURL ? new URL(baseURL).origin : 'http://localhost:8787' }, data: { code: 'a'.repeat(43), verifier: 'b'.repeat(64) },
     });
     expect(missingCsrf.status()).toBe(403);
     expect(missingCsrf.headers()['set-cookie']).toBeUndefined();

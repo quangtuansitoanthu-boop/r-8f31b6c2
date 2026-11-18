@@ -70,6 +70,7 @@ describe('practice reader progress', () => {
     second.save({ articleId: 'article-a', articleTitle: 'Kinh A', chapterIndex: 1, chapterTitle: 'Phẩm Hai', scrollTop: 85 });
     await second.flush();
     expect(remote.get('article-a')).toMatchObject({ revision: 2, position: { chapterId: '1', scrollTop: 85 } });
+    await expect(first.load('article-a')).resolves.toMatchObject({ chapIdx: 1, scrollTop: 85 });
     expect(JSON.parse(String(requests.findLast((request) => request.init?.method === 'PUT')?.init?.body))).toMatchObject({ baseRevision: 1, epoch: 1 });
     expect(requests.every((request) => !request.url.includes('/api/sync'))).toBe(true);
   });
@@ -135,9 +136,35 @@ describe('practice reader progress', () => {
     client.schedule({ ...input, scrollTop: 88 });
     expect(fetcher).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1_500);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    await expect(client.load('article-a')).resolves.toMatchObject({ chapIdx: 1, scrollTop: 88 });
+    expect(fetcher).not.toHaveBeenCalled();
+    client.destroy();
+    const restarted = createPracticeReaderProgressClient(fetcher, storage);
+    restarted.setSession({ authenticated: true, csrfToken: 'csrf-a', user: { id: 'user-a' } });
+    await expect(restarted.load('article-a')).resolves.toMatchObject({ chapIdx: 1, scrollTop: 88 });
+    expect(fetcher).not.toHaveBeenCalled();
+    restarted.destroy();
     expect(JSON.parse(createPrincipalStorage(storage, 'user-a').getItem(READING_ACTIVITY_OUTBOX_KEY) || '[]')).toHaveLength(1);
+  });
+
+  it('sends one checkpoint after 30 seconds of continuous scroll', async () => {
+    vi.useFakeTimers();
+    const positions: number[] = [];
+    const fetcher: typeof fetch = async (_url, init) => {
+      const input = normalizeReadingProgressWrite(JSON.parse(String(init?.body)));
+      positions.push(input.position.scrollTop!);
+      return Response.json({ progress: { ...input, revision: positions.length, serverUpdatedAt: new Date().toISOString() } });
+    };
+    const client = createPracticeReaderProgressClient(fetcher, new MemoryStorage());
+    client.setSession({ authenticated: true, csrfToken: 'csrf-a', user: { id: 'user-a' } });
+    for (let step = 1; step <= 20; step += 1) {
+      client.schedule({ articleId: 'article-a', articleTitle: '', chapterIndex: 2, chapterTitle: '', scrollTop: step * 10 });
+      await vi.advanceTimersByTimeAsync(1_500);
+    }
+    await vi.advanceTimersByTimeAsync(1_500);
+    console.info('30s practice scroll PUTs:', positions.length);
+    expect(positions).toEqual([200]);
+    expect(await client.flush()).toBe(0);
+    client.destroy();
   });
 
   it('derives a bounded content-specific reading minimum', () => {

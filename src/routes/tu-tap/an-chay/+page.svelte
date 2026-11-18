@@ -92,6 +92,11 @@
     }
   }
 
+  function openRecipe(event: MouseEvent, item: OfflineRecipe) {
+    (event.currentTarget as HTMLButtonElement).focus({ preventScroll: true });
+    recipe = item;
+  }
+
   function changeServings(delta: number) {
     servings = Math.min(12, Math.max(1, servings + delta));
     reconcileChecks();
@@ -126,8 +131,11 @@
         if (recipe) recipe = current.recipes.find(r => r.id === recipe?.id) ?? recipe;
       }
       reconcileChecks();
-      if (next.preload && needsVeganWeekUpdate(next.next)) await downloadVeganWeek(next.next);
       if (mounted) failed = false;
+      if (next.preload && needsVeganWeekUpdate(next.next)) {
+        // Lỗi tải trước tuần sau không làm tuần đang xem bị báo lỗi.
+        await downloadVeganWeek(next.next).catch(() => undefined);
+      }
     } catch {
       if (mounted) failed = true;
     } finally {
@@ -217,7 +225,7 @@
       <div class="meal">
         <h3><Soup size={19} aria-hidden="true" />{c.meals[meal]}</h3>
         {#each items as item (item.id)}
-          <button class="row dish" type="button" onclick={() => recipe = item}>
+          <button class="row dish" type="button" onclick={event => openRecipe(event, item)}>
             <span>{item.name}</span>
             <span class="dish-view">{c.viewRecipe}<ArrowRight size={16} aria-hidden="true" /></span>
           </button>
@@ -229,7 +237,6 @@
 
 <main class="vegan">
   <header class="heading">
-    <a href="/tu-tap"><ArrowLeft size={20} aria-hidden="true" />{c.recipeBack}</a>
     <h1>{c.title}</h1>
   </header>
   <nav class="glass" aria-label={c.title}>
@@ -244,7 +251,7 @@
     <p>{c.missing}</p>
     <button type="button" onclick={refresh}>{c.retry}</button>
   {:else if tab === 0}
-    <div class="toolbar">
+    <div class="meal-tools">
       <strong>{formatDay(todayDate, true)}{lunar.day === 1 ? ' · ' + c.first : lunar.day === 15 ? ' · ' + c.full : ''}</strong>
       {@render servingPicker()}
     </div>
@@ -277,7 +284,7 @@
     {@render meals(day)}
     <details class="card meal-disclosure">
       <summary><h2><ShoppingCart size={21} aria-hidden="true" />{c.shopping}</h2><ChevronDown size={20} aria-hidden="true" /></summary>
-      <div class="toolbar">
+      <div class="meal-tools">
         <select aria-label={c.scope} bind:value={wholeWeek}><option value={false}>{c.day}</option><option value={true}>{c.week}</option></select>
       </div>
       {#each shopping as item (item.key)}
@@ -303,7 +310,7 @@
     </div>
     <section class="card" aria-label={c.tabs[2]}>
       {#each filtered as item (item.id)}
-        <button class="row dish" type="button" onclick={() => recipe = item}>
+        <button class="row dish" type="button" onclick={event => openRecipe(event, item)}>
           <span><strong>{item.name}</strong><small>{#if item.region}{c.regions[VEGAN_REGIONS.indexOf(item.region)]} · {/if}{c.groups[VEGAN_GROUPS.indexOf(item.group)]} · {item.minutes} {c.minutes}</small></span>
           <ChevronRight size={18} aria-hidden="true" />
         </button>
@@ -321,7 +328,7 @@
       </div>
     </header>
     <div class="recipe-content" style:--recipe-font-size={recipeFontScale + '%'}>
-      <div class="toolbar">
+      <div class="recipe-toolbar">
         <span>{recipe.minutes} {c.minutes}</span>
         <div class="picker font-picker">
           <button type="button" aria-label={c.smallerText} disabled={recipeFontScale === minRecipeFontScale} onclick={() => changeRecipeFont(-10)}>A−</button>
@@ -350,9 +357,14 @@
 
 <style>
   .vegan {
+    --vegan-page-gutter: clamp(var(--radius-sm),3vw,var(--space-page));
+    --vegan-header-height: var(--practice-topbar-height,calc(64px + var(--app-safe-top,env(safe-area-inset-top,0px))));
     max-width:52rem;
     margin:auto;
-    padding:var(--space-page) clamp(var(--radius-sm),3vw,var(--space-page));
+    padding-block:var(--space-page);
+    padding-top:calc(var(--vegan-header-height) + var(--space-page));
+    padding-left:max(var(--vegan-page-gutter),env(safe-area-inset-left,0px));
+    padding-right:max(var(--vegan-page-gutter),env(safe-area-inset-right,0px));
     color:var(--text);
     border-radius:var(--radius-card);
     background:
@@ -360,14 +372,14 @@
       radial-gradient(ellipse at 0% 56%,color-mix(in srgb,var(--gold) 23%,transparent),transparent 57%),
       var(--bg);
   }
-  .heading,.toolbar,.row,.picker,.search{display:flex;align-items:center;gap:var(--radius-sm)}
+  .meal-tools,.row,.picker,.search{display:flex;align-items:center;gap:var(--radius-sm)}
   .heading{margin-bottom:var(--space-page)}
   h1,h2,h3,p{margin:0}
   h1{font-size:clamp(1.3rem,5vw,1.85rem)}
   h2{font-size:1.15rem}
-  .heading a,button,select,input[type=search]{min-height:44px;font:inherit;color:inherit}
-  .heading a,button{min-width:44px}
-  .heading a{display:flex;align-items:center;gap:.25rem;text-decoration:none;flex:none}
+  button,select,input[type=search]{min-height:44px;font:inherit;color:inherit}
+  input[type=search],:global(:root body) .filters select{font-size:var(--font-size-input)}
+  button{min-width:44px}
   button,select,.search{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius-control)}
   button,select{padding:var(--radius-sm);cursor:pointer}
   button:disabled{opacity:.55;cursor:default}
@@ -380,12 +392,16 @@
   }
   nav,.days{display:grid;gap:.25rem}
   nav {
+    position:sticky;
+    top:var(--vegan-header-height);
+    z-index:2;
     grid-template-columns:minmax(44px,1fr) minmax(44px,1.65fr) minmax(44px,1fr);
     margin-bottom:var(--space-page);
     border-radius:var(--radius-card);
     padding:.25rem;
   }
   nav button,.days button{min-width:44px;padding-inline:.25rem;font-size:.85rem}
+  nav button{white-space:normal;overflow-wrap:anywhere}
   nav button:not([aria-pressed=true]){background:transparent;border-color:transparent}
   .week-calendar{display:grid;gap:var(--radius-sm);text-align:center}
   .week-calendar .picker{justify-self:center}
@@ -395,7 +411,7 @@
   .days button{display:grid;place-content:center;gap:.15rem}
   .days button:not([aria-pressed=true]){background:var(--dialog-glass-background)}
   .days button strong{font-size:1.1rem}
-  .toolbar{justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--radius-sm)}
+  .meal-tools{justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--radius-sm)}
   .nutrition-note{display:flex;align-items:flex-start;gap:var(--radius-sm);padding:var(--radius-sm) calc(var(--radius-sm) * 1.5);margin-bottom:var(--radius-sm);border:1px solid var(--dialog-glass-border);border-radius:var(--radius-control);background:var(--dialog-glass-background);-webkit-backdrop-filter:var(--dialog-glass-filter);backdrop-filter:var(--dialog-glass-filter);box-shadow:var(--glass-button-shadow);color:var(--text2);font-size:.825rem;line-height:1.45}
   .nutrition-note :global(.nutrition-note-icon){flex:none;margin-top:.15rem;color:var(--green-ok)}
   .picker{border:1px solid var(--border2);border-radius:var(--radius-control);background:var(--dialog-glass-background);box-shadow:var(--glass-button-shadow)}
@@ -440,15 +456,21 @@
   .check span:last-child{margin-inline-start:auto}
   .filters{display:grid;gap:var(--radius-sm);margin-bottom:var(--radius-sm)}
   .search{padding-inline:var(--radius-sm)}
+  .search:focus-within{border-color:var(--gold)}
   input[type=search]{border:0;background:transparent;width:100%;min-width:0}
+  .search input:focus{outline:none}
   .message{color:var(--danger-text);margin-bottom:var(--radius-sm)}
   .recipe-screen[open]{position:fixed;inset:0;display:block;box-sizing:border-box;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:auto;overscroll-behavior:contain;border:0;border-radius:0;background:var(--bg);color:var(--text)}
-  .recipe-header{position:sticky;top:0;z-index:1;padding-top:env(safe-area-inset-top);background:var(--dialog-surface-background,var(--card));border-bottom:1px solid var(--dialog-surface-border,var(--border))}
+  .recipe-header{position:sticky;top:0;z-index:1;padding-top:var(--app-safe-top,env(safe-area-inset-top,0px));background:var(--dialog-surface-background,var(--card));border-bottom:1px solid var(--dialog-surface-border,var(--border))}
   .recipe-header-inner,.recipe-content{box-sizing:border-box;width:100%;max-width:52rem;margin-inline:auto;padding-inline:max(var(--space-page),env(safe-area-inset-left)) max(var(--space-page),env(safe-area-inset-right))}
   .recipe-header-inner{display:flex;align-items:center;gap:var(--radius-sm);padding-block:var(--radius-sm)}
   .recipe-header h2{min-width:0;overflow-wrap:anywhere}
   .recipe-back{display:grid;place-items:center;flex:none}
   .recipe-content{padding-top:var(--space-page);padding-bottom:calc(var(--space-page) + env(safe-area-inset-bottom))}
+  .recipe-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--radius-sm);margin-block-end:var(--radius-sm)}
+  .recipe-toolbar>span{color:var(--text2);white-space:nowrap}
+  .recipe-toolbar .picker{flex:none;max-width:100%}
+  .recipe-toolbar .picker strong{white-space:nowrap}
   .font-picker{gap:0}
   .font-picker button{font-weight:700}
   .font-picker button + button{border-inline-start:1px solid var(--border2);border-start-start-radius:0;border-end-start-radius:0}

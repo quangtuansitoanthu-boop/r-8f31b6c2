@@ -8,7 +8,7 @@ const modes = [
   { kind:'kinh', screen:'.tt-section-view', controls:'.tt-search' },
   { kind:'tri-chu', screen:'.tt-section-view', controls:'.tt-search' },
   { kind:'nghi-thuc', screen:'.tt-section-view', controls:'.tt-search' },
-  { kind:'rec', screen:'.practice-recommendations', controls:'.tt-rec-toggle-btn', back:'.tt-rec-toggle-btn' },
+  { kind:'rec', screen:'.routine-page', controls:'.routine-header button' },
   { kind:'tracker', screen:'.tt-tracker__card', controls:'.tt-tracker__close, .tt-tracker__btn-add', back:'.tt-tracker__close' },
 ];
 
@@ -105,7 +105,7 @@ for (const width of [360, 390]) for (const mode of modes) {
     expect(overlaps).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
-    if (mode.back || ['kinh','tri-chu','nghi-thuc'].includes(mode.kind)) {
+    if (mode.back || ['kinh','tri-chu','nghi-thuc','rec'].includes(mode.kind)) {
       if (mode.back) await screen.locator(mode.back).click();
       else await page.locator('.tt-topbar .tt-back-btn').click();
       await expect(page.locator('.tt-mode-card--thien')).toBeVisible();

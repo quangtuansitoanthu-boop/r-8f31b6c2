@@ -8,8 +8,6 @@
   import { getBrowserPracticeSessionOutbox, PRACTICE_SESSION_ACCEPTED_EVENT, type PracticeSessionAcceptedDetail, type PracticeSessionOutboxStatus } from '$lib/browser/practice-session-outbox';
   import { fetchWithSessionRefresh, getBrowserSession } from '$lib/browser/session-csrf';
   import { getBrowserStorage } from '$lib/browser/storage-contract';
-  import { PRACTICE_LOG_CHANGED_EVENT } from '$lib/domain/practice/completed-logs';
-  import { practiceSyncStatusText } from '$lib/i18n/practice-sync-status';
   import { afterNavigate, goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import { page } from '$app/state';
@@ -106,11 +104,6 @@
     return () => { task.abort(); if (generation === pdfTransitionGeneration) pdfTransitionGeneration += 1; };
   });
 
-  let practiceLogSyncPending = $state(false);
-  let practiceSessionSyncStatus = $state<PracticeSessionOutboxStatus | null>(null);
-  const practiceSyncMessage = $derived(practiceSyncStatusText(practiceSessionSyncStatus, practiceLogSyncPending, locale.current === 'en', sessionStore.value.authenticated));
-  let practiceSyncDismissed = $state(false);
-  let retryPracticeSync = () => {};
   let pwaUpdateAvailable = $state(false);
   let pwaUpdateApplying = $state(false);
   let phapBaoModalOpen = $state(false);
@@ -190,40 +183,60 @@
     const stopParticipationSync = startParticipationSync(practiceStorage,() => sessionStore.value);
     const practiceOutbox = getBrowserPracticeSessionOutbox(fetchWithSessionRefresh, practiceStorage);
     practiceOutbox.setSession(sessionStore.value);
-    const unsubscribePracticeSync = practiceOutbox.subscribe(status => { if (!disposed) practiceSessionSyncStatus = status; });
+    let practiceRetryTimer: number | undefined;
+    let practiceRetryPrincipal: string | undefined;
+    let practiceRetried = false;
+    const cancelPracticeRetry = () => {
+      window.clearTimeout(practiceRetryTimer);
+      practiceRetryTimer = undefined;
+    };
     const flushPracticeSessions = (retryFailed = true) => {
       if (disposed) return;
       practiceOutbox.setSession(sessionStore.value);
       const status = practiceOutbox.getStatus();
-      if (document.visibilityState !== 'hidden' && sessionStore.value.authenticated && status.pendingOperations
+      if (document.visibilityState !== 'hidden' && navigator.onLine && sessionStore.value.authenticated && status.pendingOperations
         && status.failure !== 'authentication' && status.failure !== 'rejected'
         && (retryFailed || status.phase !== 'failed')) {
         void practiceOutbox.flush().catch(() => undefined);
       }
     };
-    retryPracticeSync = () => {
-      if (!sessionStore.value.authenticated) {
-        void goto('/ca-nhan?tab=account');
+    const schedulePracticeRetry = (status: PracticeSessionOutboxStatus) => {
+      if (practiceRetryPrincipal !== status.principalId || !status.pendingOperations) {
+        practiceRetryPrincipal = status.principalId;
+        practiceRetried = false;
+      }
+      if (disposed || document.visibilityState === 'hidden' || !navigator.onLine || practiceRetried
+        || status.failure !== 'retryable' || !status.canRetry) {
+        cancelPracticeRetry();
         return;
       }
-      if (!sessionStore.value.csrfToken || practiceSessionSyncStatus?.failure === 'authentication') {
+      // Một lần thử lại khi app vẫn mở và máy chủ gặp lỗi tạm thời.
+      practiceRetryTimer ??= window.setTimeout(() => {
+        practiceRetryTimer = undefined;
+        practiceRetried = true;
+        flushPracticeSessions();
+      }, 30_000);
+    };
+    const unsubscribePracticeSync = practiceOutbox.subscribe(schedulePracticeRetry);
+    const selectPracticeSession = () => flushPracticeSessions(false);
+    const resumePracticeSync = () => {
+      cancelPracticeRetry();
+      if (document.visibilityState === 'hidden' || !navigator.onLine) return;
+      if (sessionStore.value.authenticated && practiceOutbox.getStatus().failure === 'authentication') {
         const principal = sessionStore.value.user?.id;
         void getBrowserSession({ force: true }).then(next => {
-          if (disposed) return;
-          if (!next.authenticated) { void goto('/ca-nhan?tab=account'); return; }
-          if (next.user?.id !== principal || !next.csrfToken) return;
+          if (disposed || !next.authenticated || next.user?.id !== principal || !next.csrfToken
+            || document.visibilityState === 'hidden' || !navigator.onLine) return;
           practiceOutbox.setSession(next);
           void practiceOutbox.flush().catch(() => undefined);
         }).catch(() => undefined);
         return;
       }
       flushPracticeSessions();
-      if (practiceLogSyncPending) window.dispatchEvent(new CustomEvent(PRACTICE_LOG_CHANGED_EVENT));
     };
-    const selectPracticeSession = () => flushPracticeSessions(false);
-    const resumePracticeSync = () => flushPracticeSessions();
     window.addEventListener(SESSION_CHANGE_EVENT, selectPracticeSession);
     document.addEventListener('visibilitychange', resumePracticeSync);
+    window.addEventListener('offline', cancelPracticeRetry);
     flushPracticeSessions(false);
     const stopCompletedLogSync = startCompletedPracticeLogSync(fetchWithSessionRefresh, practiceStorage,
       () => sessionStore.value,
@@ -234,8 +247,7 @@
         void queryClient.invalidateQueries({ queryKey: serverStateKeys.practiceCommunity.adminCampaigns(id) });
         void queryClient.invalidateQueries({ queryKey: serverStateKeys.practiceCommunity.progress(id) });
         void queryClient.invalidateQueries({ queryKey: serverStateKeys.practiceCommunity.leaderboard, refetchType: 'none' });
-      },
-      (pending) => { practiceLogSyncPending = pending; });
+      });
     const refreshAcceptedPracticeProgress = (event: Event) => {
       const detail = (event as CustomEvent<PracticeSessionAcceptedDetail>).detail;
       const currentId = sessionStore.value.authenticated ? sessionStore.value.user?.id : null;
@@ -270,7 +282,8 @@
         for (const queryKey of [serverStateKeys.participation.principal(oldId),serverStateKeys.communityBlocks.list(oldId),
           serverStateKeys.communityModeration.principal(oldId),
           serverStateKeys.mindfulCommunity.principal(oldId),
-          serverStateKeys.practiceCommunity.leaderboardForPrincipal(oldId)]) {
+          serverStateKeys.practiceCommunity.leaderboardForPrincipal(oldId),
+          serverStateKeys.practiceCommunity.progress(oldId)]) {
           void queryClient.cancelQueries({ queryKey });
           queryClient.removeQueries({ queryKey });
         }
@@ -327,7 +340,7 @@
 
     const handleOnline = () => {
       window.dispatchEvent(new CustomEvent('quangtu:online'));
-      flushPracticeSessions();
+      resumePracticeSync();
     };
     const openPhapBao = () => { phapBaoModalOpen = true; };
     const handleLocaleChanged = () => {
@@ -367,9 +380,10 @@
       stopParticipationSync();
       stopCompletedLogSync();
       unsubscribePracticeSync();
+      cancelPracticeRetry();
       window.removeEventListener(SESSION_CHANGE_EVENT, selectPracticeSession);
       document.removeEventListener('visibilitychange', resumePracticeSync);
-      retryPracticeSync = () => {};
+      window.removeEventListener('offline', cancelPracticeRetry);
       window.removeEventListener(PRACTICE_SESSION_ACCEPTED_EVENT, refreshAcceptedPracticeProgress);
       stopPersonalEventsSync();
       disposePerformance();
@@ -433,7 +447,7 @@
     <AppDialogHost />
   </div>
 
-  {#if pdfTransitionNotice && pdfTransitionNotice.removed > 0 && !pwaUpdateAvailable && !practiceSyncMessage}
+  {#if pdfTransitionNotice && pdfTransitionNotice.removed > 0 && !pwaUpdateAvailable}
     <div class="pwa-update-banner" data-pdf-transition-status role="status" aria-live="polite">
       <span>{contentUpdateText[locale.current].pdfAutoRemoved} {pdfTransitionNotice.removed}</span>
       <button type="button" class="dismiss" aria-label={contentUpdateText[locale.current].close} onclick={() => { pdfTransitionNotice = null; }}>×</button>
@@ -450,19 +464,6 @@
     {/await}
   {/if}
 
-  {#if practiceSyncMessage && !practiceSyncDismissed && !pwaUpdateAvailable}
-    <aside class="pwa-update-banner" style="white-space:normal" role="status" data-practice-sync-status>
-      <span>{practiceSyncMessage}</span>
-      {#if practiceSessionSyncStatus?.failure !== 'rejected'}
-      <button type="button" onclick={() => retryPracticeSync()} disabled={practiceSessionSyncStatus?.phase === 'syncing'}>
-        {!sessionStore.value.authenticated
-          ? locale.current === 'en' ? 'Sign in' : 'Đăng nhập'
-          : locale.current === 'en' ? 'Try again' : 'Thử lại'}
-      </button>
-      {/if}
-      <button type="button" onclick={() => { practiceSyncDismissed = true; }}>{locale.current === 'en' ? 'Later' : 'Để sau'}</button>
-    </aside>
-  {/if}
   {#if pwaUpdateAvailable}
     <aside class="pwa-update-banner" aria-live="polite" aria-label={t.pwaNewVersion} data-pwa-update-banner>
       <span>{t.pwaNewVersion}</span>
@@ -548,38 +549,6 @@
     line-height: 1;
   }
   .pwa-update-banner button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  .pwa-update-banner[data-practice-sync-status] {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    box-sizing: border-box;
-    width: min(var(--dialog-compact-width), calc(100vw - var(--space-page) * 2));
-    max-width: calc(100vw - var(--space-page) * 2);
-    gap: calc(var(--space-page) * .5);
-    padding: calc(var(--space-page) * .7);
-    border: 1px solid var(--gold-muted);
-    border-radius: var(--radius-card);
-    background: var(--card);
-    color: var(--text2);
-    box-shadow: var(--shadow-lg);
-    font-size: var(--font-size-body);
-    font-weight: 500;
-    line-height: 1.65;
-  }
-  .pwa-update-banner[data-practice-sync-status] span { grid-column: 1 / -1; }
-  .pwa-update-banner[data-practice-sync-status] button {
-    min-width: 44px;
-    min-height: 44px;
-    width: 100%;
-    padding: calc(var(--space-page) * .4);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-control);
-    background: var(--bg2);
-    color: var(--text2);
-    font-size: var(--font-size-label);
-    font-weight: 700;
-  }
-  .pwa-update-banner[data-practice-sync-status] button:not(:last-child) { border-color: var(--gold); background: var(--gold); color: var(--on-gold); }
-  .pwa-update-banner[data-practice-sync-status] button:focus-visible { outline-color: var(--text); }
   .pwa-update-banner[data-pdf-transition-status] {
     box-sizing:border-box;width:min(var(--dialog-compact-width),calc(100vw - var(--space-page)*2));
     align-items:flex-start;gap:calc(var(--space-page)*.5);padding:calc(var(--space-page)*.7);

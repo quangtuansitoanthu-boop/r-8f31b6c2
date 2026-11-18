@@ -22,6 +22,12 @@ export function createContentUpdatesRepository(env: CloudflareEnvLike) {
   return {
     articles: (after: CatalogCursor | null) => catalog('baiviet', after),
     talks: (after: CatalogCursor | null) => catalog('phap_thoai', after),
+    chapterIndex: (ids: string[]) => rows(`SELECT c.id, c.bai_viet_id, c.so_thu_tu, c.updated_at
+      FROM json_each(?) AS requested
+      CROSS JOIN baiviet AS a
+      CROSS JOIN tap_noi_dung AS c
+      WHERE a.id = requested.value AND a.trang_thai = 'Hoàn thành' AND c.bai_viet_id = a.id
+      ORDER BY c.id LIMIT 5000`, [JSON.stringify(ids)]),
     estimate: (ids: string[]) => rows(`SELECT a.id,
       length(CAST(json_quote(a.noi_dung) AS BLOB)) + length(CAST(a.tap_tieu_de AS BLOB))
       + COALESCE(SUM(CASE WHEN c.id IS NULL THEN 0 ELSE length(CAST(json_object(

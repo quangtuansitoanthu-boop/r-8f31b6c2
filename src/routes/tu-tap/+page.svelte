@@ -68,6 +68,8 @@
   import { createMindfulPost } from '$lib/browser/mindful-community-client';
   import { createPersonalPracticeStorage } from '$lib/browser/personal-practice-storage';
   import { cloneDailyRoutine, type DailyRoutine } from '$lib/domain/practice/personal-practice';
+  import { ROUTINE_READING_CATEGORIES, isRoutineReadingMode, isRoutineTextStep, routineStepActivity, type RoutineMode } from '$lib/domain/practice/routine-activities';
+  import { prepareRoutineCopy, takeRoutineCopyReturn } from '$lib/browser/routine-copy-navigation';
   import { loadPracticeDedicationTemplates, type PracticeDedicationTemplate } from '$lib/browser/practice-dedication-templates';
   import { createPersonalSettingsSync } from '$lib/browser/personal-settings-sync';
   import type { PersonalSettingsSnapshot } from '$lib/domain/practice/personal-settings';
@@ -358,6 +360,22 @@
     const fromUrl = from?.url;
     const toUrl = to?.url;
     if (toUrl?.pathname !== '/tu-tap') return;
+    if (fromUrl) {
+      const principal = sessionPrincipalId(sessionStore.value);
+      const resumed = takeRoutineCopyReturn(fromUrl, principal);
+      if (resumed) {
+        // Chờ trang Tu tập gắn lại đúng owner trước khi khôi phục bước chép.
+        void tick().then(() => {
+          if (!presenceMounted || activeRoutine || sessionPrincipalId(syncSession) !== principal) return;
+          activeRoutine = resumed.routine;
+          routineIndex = resumed.index;
+          routineStartedAt = resumed.startedAt;
+          routineIncomplete = resumed.incomplete;
+          routineStepState = 'returned';
+        });
+        return;
+      }
+    }
     const url = new URL(window.location.href);
     if (applyCommunityNotificationUrl(url)) return;
     // A same-route native goto keeps this component mounted; cold/session recovery remains separate.
@@ -374,6 +392,7 @@
   let routinePaused = $state(false);
   let routineCountdown = $state(0);
   let routineWaiting = $state(false);
+  let routineStepState = $state<'active' | 'returned' | 'unavailable'>('active');
   let routineTimer: ReturnType<typeof setTimeout> | null = null;
   let routineStartedAt = 0;
   let routineIncomplete = false;
@@ -1250,8 +1269,10 @@
   }
 
   $effect(() => {
-    if (!presenceMounted || screen !== 'catalog' || (!currentSection && upgradeTab === 'catalog')) return;
-    const title = upgradeTab !== 'catalog' ? personalPracticeCopy[isEn ? 'en' : 'vi'].reflectionTab : localeStore.t.header.practiceMode;
+    if (!presenceMounted || screen !== 'catalog' || (routineCollapsed && !currentSection && upgradeTab === 'catalog')) return;
+    const showingRoutine = !routineCollapsed;
+    const title = showingRoutine ? personalPracticeCopy[isEn ? 'en' : 'vi'].routineTopbar
+      : upgradeTab !== 'catalog' ? personalPracticeCopy[isEn ? 'en' : 'vi'].reflectionTab : localeStore.t.header.practiceMode;
     let disposed = false;
     let published = false;
     // Chờ preview dọn header trước khi trả quyền điều hướng cho danh mục.
@@ -1259,7 +1280,11 @@
       await tick();
       if (disposed) return;
       document.dispatchEvent(new CustomEvent('qts:practice-header', {
-        detail: { active: true, title, onBack: () => upgradeTab !== 'catalog' ? void selectUpgradeTab('catalog') : handleBackToHub() },
+        detail: { active: true, title, preserveTitleCase: showingRoutine, onBack: () => {
+          if (showingRoutine) setCatalogOverlay('thoi-khoa', false);
+          else if (upgradeTab !== 'catalog') void selectUpgradeTab('catalog');
+          else handleBackToHub();
+        } },
       }));
       published = true;
     })();
@@ -1731,6 +1756,7 @@
       else if (!finishMeditationEvidence(meditationSession)) return;
       if (!meditationLogFinished) return;
     }
+    const endedEarly = meditationSession?.phase !== 'completed';
     audio?.stopMeditationCompletion();
     meditationMotion?.stop();
     stopMeditationTickers();
@@ -1740,7 +1766,12 @@
     meditationLocalLogSaved = false;
     if (screen === 'practice') suspendScriptureEvidence(false);
     if (hadSession && !fromHistory && presenceMounted) closeToolUrl('meditation');
-    if (activeRoutine && !routineAdvancing) endRoutine();
+    if (hadSession) completeRoutineStep('meditation', endedEarly);
+  }
+
+  function endMeditationStep(): void {
+    endGuidedMeditation();
+    if (meditationSession?.phase === 'cancelled' && meditationLogFinished) completeRoutineStep('meditation', true);
   }
 
   function cleanupPracticeResources(): void {
@@ -2107,6 +2138,10 @@
   }
 
   function backToCatalog(isFromPopState = false): void {
+    const step = activeRoutine?.steps[routineIndex];
+    if (step && screen === 'preview' && currentArticle && currentArticle.id === routineStepActivity(step).articleId) {
+      routineStepState = 'returned';
+    }
     ++articleRequestSequence;
     ++chapterRequestSequence;
     currentArticle = null;
@@ -2478,26 +2513,34 @@
     confirmation = 'start-practice';
   }
 
-  async function startPractice(): Promise<void> {
+  async function startPractice(routineReading = false): Promise<void> {
     if (!currentArticle) return;
     const generation = practiceSyncGeneration;
     const principalId = sessionPrincipalId(syncSession);
     const article = currentArticle;
+    const ownsPractice = () => generation === practiceSyncGeneration
+      && principalId === sessionPrincipalId(syncSession) && currentArticle === article && screen === 'practice';
     confirmation = null;
     practiceCount = 0;
     panelOpen = true;
     screen = 'practice';
     if (currentArticle.hasTableOfContents) {
       let waited = 0;
-      while (!chapters.length && waited < 25) {
+      while (!chapters.length && waited < 25 && ownsPractice()) {
         await new Promise((r) => setTimeout(r, 80));
         waited++;
       }
+      if (!ownsPractice()) return;
       const savedChapter = pendingPracticeBookmark?.chapIdx;
       const chapterIndex = savedChapter !== null && savedChapter !== undefined && savedChapter < chapters.length
         ? savedChapter
         : currentChapterIndex ?? orderPracticeChapters(chapters, article.category)[0]?.index ?? 0;
       await loadChapter(chapterIndex);
+      if (routineReading && ownsPractice() && (articleLoadError || currentChapterIndex === null)) {
+        backToCatalog(true);
+        routineStepState = 'unavailable';
+        return;
+      }
     }
     if (
       generation !== practiceSyncGeneration
@@ -2552,7 +2595,9 @@
         startedAtMs,
       };
     }
-    history.pushState({ practice: true }, '', window.location.href);
+    if (!routineReading || history.state?.practice !== true) {
+      history.pushState(routineReading ? { ...history.state, practice: true } : { practice: true }, '', window.location.href);
+    }
     void wakeLock?.request();
     showPracticeFeedback(localeStore.current === 'en' ? '🙏 Namo! Practice session began' : '🙏 Nam mô! Công phu bắt đầu');
   }
@@ -2576,6 +2621,9 @@
   }
 
   function confirmExitPractice(): void {
+    const routineStep = activeRoutine?.steps[routineIndex];
+    const activity = routineStep && routineStepActivity(routineStep);
+    const routineReading = activity && isRoutineReadingMode(activity.mode) && activity.articleId === currentArticle?.id;
     confirmation = null;
     saveCurrentPracticePosition();
     const count = practiceCount;
@@ -2603,6 +2651,11 @@
     }
     finishScriptureEvidence();
     cleanupPracticeResources();
+    if (routineReading) {
+      backToCatalog(true);
+      void advanceRoutine(false);
+      return;
+    }
     screen = 'preview';
     if (typeof window !== 'undefined' && window.history.state?.practice === true) {
       backAfterHandledTransition();
@@ -2653,8 +2706,10 @@
   }
 
   function closeRosary(isFromPopState = false, showSummary = false): void {
+    const completesRoutineStep = showSummary && activeRoutine?.steps[routineIndex]?.kind === 'rosary';
+    const step = activeRoutine?.steps[routineIndex];
+    const endedEarly = step?.kind === 'rosary' && (rosarySession?.acceptedCount ?? 0) < step.count;
     stopRhythm();
-    if (activeRoutine && !routineAdvancing) endRoutine();
     confirmation = null;
     try {
       if (rosaryEndStage !== 'complete') {
@@ -2675,6 +2730,12 @@
     }
     rosaryEndError = '';
     if (rosaryEndStage !== 'complete') void syncClient?.push(syncSession);
+    if (completesRoutineStep) {
+      rosaryEndStage = null;
+      completeRoutineStep('rosary', endedEarly);
+      return;
+    }
+    if (activeRoutine && !routineAdvancing) endRoutine();
     if (showSummary) { rosaryEndStage = 'complete'; return; }
     rosaryEndStage = null;
     screen = rosaryReturnScreen === 'practice' && currentArticle ? 'practice' : 'catalog';
@@ -2701,6 +2762,8 @@
   }
 
   function closeLePhat(count = 0, buddha?: BuddhaInfo, isFromPopState = false, fromRoutine = false): void {
+    const step = activeRoutine?.steps[routineIndex];
+    const completesRoutineStep = !fromRoutine && !routineAdvancing && step?.kind === 'prostration';
     if (count > 0 && storage && buddha) {
       const today = getVietnamIsoDate(new Date());
       const newLog = createPracticeLog({
@@ -2719,8 +2782,12 @@
     }
     screen = lePhatReturnScreen === 'practice' && currentArticle ? 'practice' : 'catalog';
     if (screen === 'practice') suspendScriptureEvidence(false);
-    if (!isFromPopState) closeToolUrl('le-phat');
-    if (activeRoutine && !routineAdvancing && !fromRoutine) endRoutine();
+    if ((fromRoutine || completesRoutineStep) && typeof window !== 'undefined') {
+      const url = withoutToolUrl(new URL(window.location.href));
+      window.history.replaceState({ ...window.history.state, tuTapAction: null, tuTapScreen: screen }, '', url.toString());
+    } else if (!isFromPopState) closeToolUrl('le-phat');
+    if (completesRoutineStep) completeRoutineStep('prostration', count < step.count);
+    else if (activeRoutine && !routineAdvancing && !fromRoutine) endRoutine();
   }
 
   function openPrecepts(mode: 'daily' | 'eight' = 'daily', updateHistory = true, returnScreen: 'catalog' | 'practice' = screen === 'practice' ? 'practice' : 'catalog'): void {
@@ -2739,6 +2806,8 @@
   }
 
   function closePrecepts(fromHistory = false): void {
+    const mode = preceptMode === 'eight' ? 'eight-precepts' : 'precepts';
+    returnRoutineTool(mode);
     screen = preceptReturnScreen === 'practice' && currentArticle ? 'practice' : 'catalog';
     if (screen === 'practice') suspendScriptureEvidence(false);
     if (!fromHistory) closeToolUrl(preceptMode === 'eight' ? 'bat-quan-trai' : 'giu-gioi');
@@ -2841,6 +2910,7 @@
       writeToolUrl(preceptMode === 'eight' ? 'bat-quan-trai' : 'giu-gioi', 'precepts', !isFromPopState, preceptReturnScreen);
       return;
     }
+    returnRoutineTool('abstinence');
     screen = thanhTinhReturnScreen === 'practice' && currentArticle ? 'practice' : 'catalog';
     if (screen === 'practice') suspendScriptureEvidence(false);
     if (!isFromPopState) closeToolUrl('thanh-tinh');
@@ -2947,6 +3017,7 @@
     personalPracticeStorage = {
       ...owner,
       saveRoutine(routine) { const result = owner.saveRoutine(routine); notifyPersonalChange(); return result; },
+      deleteRoutine(id) { const result = owner.deleteRoutine(id); notifyPersonalChange(); return result; },
       saveNickname(value) { const result = owner.saveNickname(value); notifyPersonalChange(); return result; },
     };
     try {
@@ -3048,8 +3119,24 @@
     routineBowingSetup = undefined;
     routineCountdown = 0;
     routineWaiting = false;
+    routineStepState = 'active';
     routinePaused = false;
     routineAdvancing = false;
+  }
+
+  function returnRoutineTool(mode: RoutineMode): void {
+    const step = activeRoutine?.steps[routineIndex];
+    if (step && routineStepActivity(step).mode === mode) routineStepState = 'returned';
+  }
+
+  // Ending a step is an explicit action, even when paused or below its target.
+  // Keep actual tool evidence and the incomplete flag separate from navigation.
+  function completeRoutineStep(mode: RoutineMode, incomplete = false): void {
+    const step = activeRoutine?.steps[routineIndex];
+    if (!step || routineStepActivity(step).mode !== mode || routineAdvancing || routineCountdown > 0) return;
+    if (incomplete) routineIncomplete = true;
+    routinePaused = false;
+    void advanceRoutine(false);
   }
 
   async function completeAutomaticRosary(): Promise<void> {
@@ -3085,9 +3172,12 @@
   }
 
   async function launchRoutineStep(): Promise<void> {
-    const step = activeRoutine?.steps[routineIndex];
-    if (!step) return;
+    const routine = activeRoutine;
+    const step = routine?.steps[routineIndex];
+    if (!routine || !step) return;
+    const { mode, articleId } = routineStepActivity(step);
     routineWaiting = false;
+    routineStepState = 'active';
     routineCountdown = 0;
     try {
       if (step.kind === 'prostration') {
@@ -3113,10 +3203,40 @@
           await startRosaryRhythm({ target: step.count, intervalMs: 60_000 / step.bpm });
           if (rhythmState.error) { routinePaused = true; routineWaiting = true; }
         }
+      } else if (isRoutineReadingMode(mode)) {
+        const article = filterPracticeCatalog(articles, '', ROUTINE_READING_CATEGORIES[mode]).find(item => item.id === articleId);
+        if (!article) {
+          routineStepState = 'unavailable';
+          return;
+        }
+        const request = articleRequestSequence + 1;
+        pendingPracticeBookmark = null;
+        await openArticle(article, false, false, true);
+        if (request === articleRequestSequence && routineStepState === 'active'
+          && activeRoutine?.id === routine.id && activeRoutine.steps[routineIndex]?.id === step.id) {
+          if (currentArticle?.id !== article.id || articleLoadError) {
+            backToCatalog(true);
+            routineStepState = 'unavailable';
+          } else await startPractice(true);
+        }
+      } else if (mode === 'precepts' || mode === 'eight-precepts') {
+        openPrecepts(mode === 'precepts' ? 'daily' : 'eight');
+      } else if (mode === 'abstinence') {
+        openThanhTinh();
+      } else if (mode === 'scripture-copying' || mode === 'name-copying') {
+        await goto(prepareRoutineCopy(mode, {
+          routine, index: routineIndex, startedAt: routineStartedAt, incomplete: routineIncomplete,
+          principal: sessionPrincipalId(syncSession),
+        }));
       } else {
         screen = 'catalog';
       }
-    } catch (cause) { routinePaused = true; routineWaiting = true; reportPracticeEvidenceFailure(cause); }
+    } catch (cause) {
+      if (activeRoutine?.id !== routine.id || activeRoutine.steps[routineIndex]?.id !== step.id) return;
+      if (step.kind === 'dedication' && !isRoutineTextStep(mode)) routineStepState = 'unavailable';
+      else { routinePaused = true; routineWaiting = true; }
+      reportPracticeEvidenceFailure(cause);
+    }
   }
 
   function pauseRoutine(): void {
@@ -3135,7 +3255,8 @@
   }
 
   function continueRoutineNow(): void {
-    if (!activeRoutine || routinePaused) return;
+    if (!activeRoutine) return;
+    routinePaused = false;
     if (routineCountdown > 0) {
       if (routineTimer) clearTimeout(routineTimer);
       routineTimer = null;
@@ -3167,6 +3288,10 @@
         stopRhythm(); finishRosaryEvidence();
         if (rosarySession) throw new Error('practice_evidence_not_saved');
         screen = 'catalog';
+        if (typeof window !== 'undefined' && toolFromUrl(new URL(window.location.href)) === 'rosary') {
+          const url = withoutToolUrl(new URL(window.location.href));
+          window.history.replaceState({ ...window.history.state, tuTapAction: null, tuTapScreen: 'catalog' }, '', url.toString());
+        }
       } else if (step.kind === 'meditation' && meditationSession) {
         if (meditationSession.phase !== 'completed') { routineIncomplete = true; endGuidedMeditation(); }
         if (!finishMeditationEvidence(meditationSession)) throw new Error('practice_evidence_not_saved');
@@ -3174,7 +3299,8 @@
       } else if (step.kind === 'prostration' && screen === 'le-phat') {
         if (lePhatScreen?.finish(true) === false) throw new Error('bowing_log_not_saved');
       }
-      if (skipped && step.kind !== 'dedication') routineIncomplete = true;
+      if (skipped && !isRoutineTextStep(routineStepActivity(step).mode)) routineIncomplete = true;
+      routineStepState = 'active';
       routineBowingSetup = undefined;
       if (routineIndex + 1 >= activeRoutine.steps.length) {
         if (!routineIncomplete) {
@@ -3190,11 +3316,21 @@
           personalSummaries = summaries;
           showPracticeFeedback(isEn ? `Completed ${activeRoutine.name}` : `Đã hoàn thành ${activeRoutine.name}`);
         } else showPracticeFeedback(isEn ? 'Routine ended with skipped steps.' : 'Đã kết thúc thời khóa có bước bỏ qua.');
+        if (typeof window !== 'undefined' && window.history.state?.practice === true) {
+          window.history.replaceState({ ...window.history.state, practice: false }, '', window.location.href);
+        }
         endRoutine();
         screen = 'catalog';
         return;
       }
       audio?.playPracticeCue(step.kind === 'meditation' ? step.cue ?? 'bell' : 'bell');
+      if (!skipped && (step.kind === 'rosary' || isRoutineReadingMode(routineStepActivity(step).mode)
+        || (step.kind === 'prostration' && isRoutineReadingMode(routineStepActivity(activeRoutine.steps[routineIndex + 1]).mode)))) {
+        routineIndex += 1;
+        routineAdvancing = false;
+        await launchRoutineStep();
+        return;
+      }
       routineWaiting = true;
       routineCountdown = 5;
       scheduleRoutineCountdown();
@@ -3880,6 +4016,17 @@
         return;
       }
       const targetTool = toolFromUrl(targetUrl);
+      if (screen === 'practice' && activeRoutine && currentArticle
+        && isRoutineReadingMode(routineStepActivity(activeRoutine.steps[routineIndex]).mode)) {
+        const restoredUrl = withoutToolUrl(targetUrl);
+        restoredUrl.searchParams.set('article', currentArticle.id);
+        if (currentChapterIndex === null) restoredUrl.searchParams.delete('chap');
+        else restoredUrl.searchParams.set('chap', String(currentChapterIndex));
+        history.pushState({ ...history.state, practice: true, articleId: currentArticle.id }, '', restoredUrl.toString());
+        if (confirmation === 'exit-practice') confirmation = null;
+        else requestExitPractice();
+        return;
+      }
       if (rosaryEndStage) {
         if (rosaryEndStage === 'complete') closeRosary(true);
         else { rosaryEndStage = null; writeToolUrl('rosary', 'rosary', false, rosaryReturnScreen); }
@@ -4048,6 +4195,7 @@
     const retryPracticeSessions = () => {
       // Chỉ phát lại outbox đã có khi kết nối trở lại; owner giữ principal và chống gửi trùng.
       void sessionOutbox?.flush().catch(() => undefined);
+      void readerProgress?.flush().catch(() => undefined);
       if (document.visibilityState === 'visible') void personalSync?.active();
     };
 
@@ -4114,7 +4262,10 @@
   <DailyRoutineSession routine={rosaryDedication} index={0} paused={false} countdown={0} waiting={false} showControls={false} onPause={() => {}} onNext={() => { rosaryDedication = null; }} onExit={() => { rosaryDedication = null; }} />
 {/if}
 {#if activeRoutine}
-  <DailyRoutineSession routine={activeRoutine} index={routineIndex} paused={routinePaused} countdown={routineCountdown} waiting={routineWaiting} onPause={pauseRoutine} onNext={continueRoutineNow} onExit={endRoutine} />
+  <DailyRoutineSession routine={activeRoutine} index={routineIndex} paused={routinePaused} countdown={routineCountdown} waiting={routineWaiting}
+    returned={routineStepState === 'returned'} unavailable={routineStepState === 'unavailable'}
+    onPause={pauseRoutine} onNext={continueRoutineNow} onExit={endRoutine}
+    onReopen={() => void launchRoutineStep()} onSkip={() => void advanceRoutine(true)} />
 {/if}
 
 <div
@@ -4136,7 +4287,16 @@
         </div>
       {/if}
       {#if screen === 'catalog'}
-        {#if upgradeTab === 'catalog'}
+        {#if !routineCollapsed}
+          <section class="routine-page" data-practice-route-back aria-labelledby="practice-routines-title">
+            <h1 id="practice-routines-title">{personalPracticeCopy[isEn ? 'en' : 'vi'].myRoutines}</h1>
+            {#if personalPracticeStorage}
+              {#key personalPracticeStorage}<DailyRoutineEditor storage={personalPracticeStorage} articles={localizedArticles} onRun={runRoutine} {dedicationTemplates} />{/key}
+            {:else}
+              <p role="status">{isEn ? 'Loading routines…' : 'Đang tải thời khóa…'}</p>
+            {/if}
+          </section>
+        {:else if upgradeTab === 'catalog'}
         <PracticeCatalog
           activeCategory={activeCategory}
           articles={filteredArticles}
@@ -4180,18 +4340,7 @@
             />
           {/snippet}
           {#snippet recommendations()}
-            <PracticeRecommendations
-              bind:isCollapsed={routineCollapsed}
-              onCollapsedChange={(collapsed) => setCatalogOverlay('thoi-khoa', !collapsed)}
-            >
-              {#snippet routines()}
-                {#if personalPracticeStorage}
-                  {#key personalPracticeStorage}<DailyRoutineEditor storage={personalPracticeStorage} onRun={runRoutine} {dedicationTemplates} />{/key}
-                {:else}
-                  <p role="status">{isEn ? 'Loading routines…' : 'Đang tải thời khóa…'}</p>
-                {/if}
-              {/snippet}
-            </PracticeRecommendations>
+            <PracticeRecommendations onOpen={() => setCatalogOverlay('thoi-khoa', true)} />
           {/snippet}
           {#snippet tracker()}
             <PracticeTracker
@@ -4289,6 +4438,7 @@
           practiceBold={preferences.practiceBold}
           {practiceCount}
           {practiceHtml}
+          routineContext={activeRoutine ? `${activeRoutine.name} · ${isEn ? 'Step' : 'Bước'} ${routineIndex + 1}/${activeRoutine.steps.length}` : undefined}
           practiceTitle={currentChapterContent ? (localeStore.current === 'en' ? getLocalizedChapterTitle(currentChapterContent.title) : currentChapterContent.title) : (localizedCurrentArticle?.title ?? currentArticle.title)}
           showChapterNavigation={chapters.length > 1}
           totalChapters={chapters.length}
@@ -4313,7 +4463,14 @@
         />
       {/if}
 
+      {#snippet practiceFeedback()}
+        {#if rosaryFeedback}
+          <p class="tt-rosary-feedback" role="status" aria-live="polite">{rosaryFeedback}</p>
+        {/if}
+      {/snippet}
+
       <RosaryScreen routineControls={activeRoutine ? routineControls : undefined}
+        feedback={practiceFeedback}
         count={preferences.rosaryCount}
         dailyGoal={rosaryDailyGoal}
         direction={preferences.rosaryDirection}
@@ -4388,9 +4545,7 @@
         />
       {/if}
 
-      {#if rosaryFeedback}
-        <p class="tt-rosary-feedback" role="status" aria-live="polite">{rosaryFeedback}</p>
-      {/if}
+      {#if screen !== 'rosary'}{@render practiceFeedback()}{/if}
 
       {#if rosaryEndStage && !rosaryDedication}
         <RosaryEndDialog
@@ -4455,7 +4610,7 @@
     setup={meditationSetup}
     initialBackgroundArtwork={meditationBackgroundArtwork}
     onClose={() => closeGuidedMeditation()}
-    onEnd={endGuidedMeditation}
+    onEnd={endMeditationStep}
     onPause={pauseGuidedMeditation}
     onResume={resumeGuidedMeditation}
   />
@@ -4474,12 +4629,14 @@
 {/if}
 
 <style>
+  .routine-page{box-sizing:border-box;width:100%;max-width:var(--practice-dialog-width);margin-inline:auto;padding:var(--space-page);color:var(--text)}
+  .routine-page h1{margin-block:0 var(--space-page);font-size:var(--font-size-section-title)}
   .tt-personal-sync{padding:var(--space-page);background:var(--card);border:1px solid var(--border2);border-radius:var(--radius-card);margin-block:var(--space-page)}
 
   .tt-en-fallback-notice{position:sticky;top:var(--nav-h,56px);z-index:120;margin:8px 16px 0;padding:10px 14px;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);color:var(--text2);font-size:var(--font-size-body);line-height:1.5;text-align:center}
   .tt-admin-notice{position:fixed;z-index:960;left:50%;bottom:max(84px,calc(env(safe-area-inset-bottom,0px) + 76px));max-width:min(480px,calc(100% - 32px));margin:0;padding:12px 18px;transform:translateX(-50%);border-radius:999px;background:#3a2a19;color:#fff;box-shadow:0 12px 36px rgba(0,0,0,.24);font-size:var(--font-size-label);font-weight:700;text-align:center}
   .tt-load-error{display:flex;width:min(700px,calc(100% - 32px));align-items:center;justify-content:space-between;gap:12px;margin:16px auto;padding:12px 14px;border:1px solid color-mix(in srgb,var(--red) 45%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--red) 8%,var(--white));color:var(--text2);font-size:var(--font-size-body)}.tt-load-error button{min-height:44px;flex-shrink:0;padding:0 14px;border:0;border-radius:18px;background:var(--gold);color:var(--on-gold);font-family:inherit;font-size:var(--font-size-label);font-weight:700}
-  .tt-rosary-feedback{position:fixed;z-index:960;left:50%;bottom:max(84px,calc(env(safe-area-inset-bottom,0px) + 76px));max-width:min(420px,calc(100% - 32px));margin:0;padding:12px 18px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:#3a2a19;color:#fff;box-shadow:0 12px 36px rgba(0,0,0,.28);font-size:var(--font-size-label);font-weight:700;text-align:center;animation:tt-feedback-in .18s ease-out}
+  .tt-rosary-feedback{position:fixed;z-index:960;left:50%;bottom:max(84px,calc(env(safe-area-inset-bottom,0px) + 76px));max-width:min(420px,calc(100% - 32px));margin:0;padding:12px 18px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.18);border-radius:999px;background:#3a2a19;color:#fff;box-shadow:0 12px 36px rgba(0,0,0,.28);font-size:var(--font-size-label);font-weight:700;text-align:center;pointer-events:none;animation:tt-feedback-in .18s ease-out}
   .tt-page{width:100%;margin:0 auto;padding:calc(var(--practice-topbar-height,calc(64px + var(--app-safe-top,env(safe-area-inset-top,0px)))) + 16px) 0 var(--space-page)}
   .tt-page--preview{padding:0}
   .tt-page--practice{padding:0}

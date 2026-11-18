@@ -4,7 +4,9 @@ import { LEGACY_VISUAL_BASELINES } from '../../src/lib/contracts/legacy-compatib
 import { LOCAL_ONLY_PROXY } from './global-network-guard';
 
 const externalBaseUrl = process.env.SVELTEKIT_BASE_URL;
-const baseURL = externalBaseUrl || 'http://localhost:8787';
+const runtimePort = process.env.TUTAM_E2E_RUNTIME_PORT;
+const baseURL = externalBaseUrl || `http://localhost:${runtimePort || '8787'}`;
+if (runtimePort && !externalBaseUrl) process.env.SVELTEKIT_BASE_URL = baseURL;
 const crossViewportTests = /(?:audio|mobile-layout|tracker-visual|visual-baseline)\.spec\.ts/;
 const localOnly = process.env.TUTAM_E2E_LOCAL_ONLY === '1';
 

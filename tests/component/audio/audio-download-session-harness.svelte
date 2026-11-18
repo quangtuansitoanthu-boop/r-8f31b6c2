@@ -19,6 +19,11 @@
     catalogAlbums = [album, additionalAlbum];
     selectedAlbumId = additionalAlbum.id;
   }
+  export function showAlbum(id: string) {
+    const nextAlbum = { ...album, id, tieu_de: 'Selected story album' };
+    catalogAlbums = [album, nextAlbum];
+    selectedAlbumId = id;
+  }
   export function changeSession(mode: 'logout' | 'account' | 'role' | 'token' | 'remembered') {
     if (mode === 'logout') session.clear();
     else if (mode === 'account') session.set({ ...session.value, user: { ...session.value.user!, id: 'download-owner-b' } });

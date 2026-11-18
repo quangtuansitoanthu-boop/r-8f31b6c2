@@ -129,7 +129,8 @@
   let showCheckInModal = $state(false);
 
   // Audio Player for Chú Lăng Nghiêm (Primary & Fallback Sources)
-  const AUDIO_SOURCES = import.meta.env.VITE_CONTENT_PLATFORM === 'ios'
+  const iosAudioBundle = import.meta.env.VITE_CONTENT_PLATFORM === 'ios';
+  const AUDIO_SOURCES = iosAudioBundle
     ? ['/assets/audio/chu-lang-nghiem.mp3'] : [
     '/assets/audio/chu-lang-nghiem-dieu-am-tinh-tuan-20261023.mp3?v=trim9-20261025',
     'https://quangtu.vn/assets/audio/chu-lang-nghiem-dieu-am-tinh-tuan-20261023.mp3'
@@ -140,6 +141,7 @@
   let localAudioPreparation: Promise<void> | null = null;
   let audioDisposed = false;
   let audioPlayIntent = false;
+  let audioPlayGeneration = 0;
   let audioSeekGeneration = 0;
   let audioPlaybackError = $state('');
   let isPlaying = $state(false);
@@ -201,7 +203,8 @@
       audioEl.volume = volume;
       audioEl.preload = 'auto';
 
-      audioEl.addEventListener('play', () => {
+      audioEl.addEventListener('playing', () => {
+        if (!audioPlayIntent) return;
         isPlaying = true;
         void holdWakeLock();
       });
@@ -234,16 +237,15 @@
       });
 
       audioEl.addEventListener('error', () => {
+        // play() tự xử lý lỗi khi đang mở nguồn; chỉ đổi nguồn ở đây nếu đã phát.
+        if (!audioEl || !audioPlayIntent || !isPlaying) return;
+        isPlaying = false;
         if (currentAudioSourceIndex < AUDIO_SOURCES.length - 1) {
           currentAudioSourceIndex += 1;
-          console.warn(`Audio source failed, switching to fallback [${currentAudioSourceIndex}]:`, AUDIO_SOURCES[currentAudioSourceIndex]);
-          if (audioEl) {
-            audioEl.src = AUDIO_SOURCES[currentAudioSourceIndex];
-            audioEl.load();
-            if (isPlaying) {
-              void audioEl.play().catch(() => {});
-            }
-          }
+          audioEl.src = AUDIO_SOURCES[currentAudioSourceIndex];
+          void playAudio();
+        } else {
+          showAudioPlaybackFailure();
         }
       });
     }
@@ -417,43 +419,59 @@
     if (!open || audioDisposed) return;
     const el = initAudioElement();
     if (!el) return;
+    const generation = ++audioPlayGeneration;
+    const stillRequested = () => generation === audioPlayGeneration && audioPlayIntent && open && !audioDisposed;
     audioPlayIntent = true;
+    if (audioPlaybackError === tt.audio.playbackError && (currentAudioSourceIndex !== 0 || el.error)) {
+      currentAudioSourceIndex = 0;
+      el.src = localAudioBlobUrl ?? AUDIO_SOURCES[0];
+    }
     audioPlaybackError = '';
-    try {
-      await prepareLocalAudio(el);
-      if (audioDisposed || !audioPlayIntent) return;
-      el.loop = isLooping;
-      el.volume = volume;
-      await el.play();
-      if (audioDisposed || !audioPlayIntent || !open) { el.pause(); return; }
-      isPlaying = true;
-      if (timerTargetMinutes > 0 && !isTimerActive) {
-        startCountdownTimer();
-      }
-    } catch (err) {
-      if (audioDisposed || !audioPlayIntent) return;
-      console.warn('Initial play attempt failed, trying fallback source:', err);
-      if (currentAudioSourceIndex < AUDIO_SOURCES.length - 1) {
+    el.loop = isLooping;
+    el.volume = volume;
+    let triedIosBlob = false;
+    for (;;) {
+      try {
+        if (!iosAudioBundle && isNativeApp() && currentAudioSourceIndex === 0 && !localAudioBlobUrl) {
+          // Nếu WebView không tạo được Blob, vẫn thử phát theo đường dẫn tệp trong app.
+          await prepareLocalAudio(el).catch(() => {});
+        }
+        if (!stillRequested()) return;
+        await el.play();
+        if (!stillRequested()) return;
+        isPlaying = true;
+        if (timerTargetMinutes > 0 && !isTimerActive) startCountdownTimer();
+        return;
+      } catch (error) {
+        if (!stillRequested()) return;
+        // Lỗi quyền phát cần một lần chạm mới, đổi tệp không khôi phục được quyền.
+        if (error instanceof DOMException && error.name === 'NotAllowedError') break;
+        if (iosAudioBundle && !triedIosBlob && !localAudioBlobUrl) {
+          triedIosBlob = true;
+          await prepareLocalAudio(el, true).catch(() => {});
+          if (!stillRequested()) return;
+          if (localAudioBlobUrl) continue;
+        }
+        if (currentAudioSourceIndex === AUDIO_SOURCES.length - 1) break;
         currentAudioSourceIndex += 1;
         el.src = AUDIO_SOURCES[currentAudioSourceIndex];
-        el.load();
-        try {
-          await el.play();
-          if (audioDisposed || !audioPlayIntent || !open) { el.pause(); return; }
-          isPlaying = true;
-          if (timerTargetMinutes > 0 && !isTimerActive) {
-            startCountdownTimer();
-          }
-        } catch (fallbackErr) {
-          console.warn('Fallback play attempt failed:', fallbackErr);
-        }
       }
     }
+    showAudioPlaybackFailure();
+  }
+
+  function showAudioPlaybackFailure() {
+    audioPlayIntent = false;
+    isPlaying = false;
+    stopCountdownTimer();
+    if (!isSosAlarmPlaying) releaseWakeLock();
+    audioPlaybackError = tt.audio.playbackError;
   }
 
   async function toggleAudio() {
     if (audioPlayIntent || isPlaying) {
       audioPlayIntent = false;
+      audioPlayGeneration++;
       audioEl?.pause();
       isPlaying = false;
       stopCountdownTimer();
@@ -464,6 +482,7 @@
 
   function stopAudio() {
     audioPlayIntent = false;
+    audioPlayGeneration++;
     audioSeekGeneration++;
     if (audioEl) {
       audioEl.pause();
@@ -905,9 +924,6 @@
             <div class="onboarding-actions">
               <button type="button" class="btn-onboarding-join" onclick={handleConfirmJoinProgram}>
                 {tt.onboarding.joinBtn}
-              </button>
-              <button type="button" class="btn-onboarding-back" onclick={handleClose}>
-                {tt.onboarding.backBtn}
               </button>
             </div>
 
@@ -2329,26 +2345,6 @@
     background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
     transform: translateY(-1px);
     box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5);
-  }
-
-  .btn-onboarding-back {
-    background: rgba(30, 41, 59, 0.7);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 10px;
-    padding: 0.75rem 1.25rem;
-    min-height: 44px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    transition: all 0.2s ease;
-  }
-
-  .btn-onboarding-back:hover {
-    background: rgba(51, 65, 85, 0.8);
-    color: #e2e8f0;
   }
 
   .onboarding-privacy-footer {
@@ -3925,7 +3921,7 @@
   .reference-view :is(.squat-progress-bar){background:var(--border)}
   .reference-view :is(.squat-progress-fill,.recovery-track-fill){background:var(--gold)}
   .reference-view :is(.btn-pledge-cta,.btn-onboarding-join,.btn-checkin,.btn-resisted-success,.btn-reset-streak-cta,.btn-confirm-pledge,.btn-confirm-checkin,.btn-squat-add,.btn-open-rich-text){min-height:44px;background:var(--gold);border-color:var(--gold);border-radius:var(--radius-control);color:var(--on-gold);box-shadow:none}
-  .reference-view :is(.btn-cancel,.btn-cancel-checkin,.btn-onboarding-back,.btn-relapse-trigger,.btn-squat-reset,.stat-pill,.btn-bell-alarm,.btn-toggle-siren,.btn-restart-siren){min-height:44px;background:var(--gold-light);border-color:var(--border);color:var(--brown);box-shadow:none}
+  .reference-view :is(.btn-cancel,.btn-cancel-checkin,.btn-relapse-trigger,.btn-squat-reset,.stat-pill,.btn-bell-alarm,.btn-toggle-siren,.btn-restart-siren){min-height:44px;background:var(--gold-light);border-color:var(--border);color:var(--brown);box-shadow:none}
   .reference-view .btn-checkin.checked-in{background:var(--gold-light);color:var(--brown)}
   .reference-view :is(.sos-alarm-strobe-banner,.sos-alarm-stopped-bar,.sos-banner.alarm-active,.tt-abstinence-alert,.checkin-rule-note,.checkin-solemn-warning,.consequence-bottom-callout){background:var(--gold-light);border-color:var(--danger-text);color:var(--danger-text);box-shadow:none;animation:none}
   .reference-view :is(.sos-alarm-strobe-banner,.sos-banner,.tt-abstinence-alert,.checkin-rule-note) :is(p,strong,.tt-abstinence-text){color:var(--danger-text)}

@@ -3,6 +3,13 @@ import { expect, type Page, type Route } from '@playwright/test';
 const baseUrl = process.env.SVELTEKIT_BASE_URL || 'http://localhost:8787';
 export const TEST_MEMBER_ID = 'e2e-member';
 
+/** English startup resolves chapter assets independently of local dialog interactions. */
+export function isDataApiPath(path: string): boolean {
+  return path.startsWith('/api/')
+    && path !== '/api/public-media/offline-data/english-pack-manifest.json'
+    && !path.startsWith('/api/public-media/offline-data/chapters-en/');
+}
+
 /** Exercise native revalidation while every backend request stays on the local fixture. */
 export async function useNativeApiWithLocalBackend(page: Page, locale: 'vi' | 'en' = 'vi') {
   const origin = new URL(baseUrl).origin;

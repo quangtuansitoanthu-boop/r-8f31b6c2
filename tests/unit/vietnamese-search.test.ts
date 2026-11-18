@@ -58,4 +58,14 @@ describe('vietnamese-search utility', () => {
     expect(matchesPreparedVietnameseSearch(document, ' ')).toBe(true);
     expect(matchesPreparedVietnameseSearch(prepareVietnameseSearchDocument([' ', null]), '́')).toBe(false);
   });
+
+  it('can require whole words for short tokens in a multi-word album search', () => {
+    const options = { matchShortWords: true };
+    const unrelated = prepareVietnameseSearchDocument(['Chuyện nhân quả', 'Lời mở đầu', 'Chưa xác định'], options);
+    const album = prepareVietnameseSearchDocument(['Tịnh độ', 'Bản nguyện A Di Đà'], options);
+    expect(matchesPreparedVietnameseSearch(unrelated, 'A Di Đà')).toBe(false);
+    expect(matchesPreparedVietnameseSearch(album, 'a di da')).toBe(true);
+    expect(matchesPreparedVietnameseSearch(album, 'nguyện a di')).toBe(true);
+    expect(matchesPreparedVietnameseSearch(album, 'độ nguyện')).toBe(true);
+  });
 });

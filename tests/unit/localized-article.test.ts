@@ -13,6 +13,17 @@ import type { LibraryArticle } from '../../src/lib/components/library/article';
 describe('localized-article domain', () => {
   const sampleBookId = 'book_cfab6dea8430aada3d2cf19180dd4d27';
 
+  it('uses the revised description even when a cached article holds the original text', () => {
+    for (const id of ['tt_1781081372340_1_xqcxo', 'book_tt_1781081372340_1_xqcxo']) {
+      const cached = { id, title: 'Sứ Mệnh Độ Vong', summary: 'Mô tả cũ', originalSummary: 'Mô tả cũ' } as LibraryArticle;
+      const english = getLocalizedArticle(cached, 'en');
+      expect(english.summary).toContain('makes no claim');
+      const vietnamese = getLocalizedArticle(english, 'vi');
+      expect(vietnamese.summary).toContain('nhóm chị Hoa');
+      expect(vietnamese.summary).toContain('không khẳng định');
+    }
+  });
+
   it('removes only optional standalone website-source paragraphs in English reading content', () => {
     const body = '<p>Keep the teaching.</p><p style="text-align:justify">Source: nhanqua.com.vn</p><p>Source: https://cafef.vn</p><video><source src="/videos/teaching.mp4"></video>';
     expect(prepareLocalizedReadingContent(body, 'en')).toBe('<p>Keep the teaching.</p><video><source src="/videos/teaching.mp4"></video>');

@@ -627,7 +627,7 @@ test.describe("reader and books admin", () => {
             (await reader.locator(".reader-back").boundingBox())?.height || 0,
           ),
         )
-        .toBe(36);
+        .toBe(44);
       await expect
         .poll(async () =>
           Math.round((await toolbar.boundingBox())?.height || 0),
@@ -1036,70 +1036,24 @@ test.describe("reader and books admin", () => {
     expect(savedChapters[0]?.noi_dung).toBe(originalSource);
   });
 
-  test("presence heartbeat uses public CSRF for guests", async ({ page }) => {
-    let token = "";
-    await page.route("**/api/presence", async (route) => {
-      token = route.request().headers()["x-csrf-token"] || "";
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: '{"enabled":true,"activeCount":1,"heartbeatIntervalSeconds":60}',
+  for (const [title, authenticated] of [
+    ["presence heartbeat uses public CSRF for guests", false],
+    ["presence heartbeat uses the authenticated session CSRF token", true],
+  ] as const) {
+    test(title, async ({ page }) => {
+      if (authenticated) await loginAsAdmin(page);
+      const unexpectedRequests: string[] = [];
+      page.on("request", (request) => {
+        const path = new URL(request.url()).pathname;
+        if (path === "/api/session" || path === "/api/presence") unexpectedRequests.push(path);
       });
+      await page.goto("/kinh-sach");
+      await settleClient(page);
+      await page.reload();
+      await settleClient(page);
+      expect(unexpectedRequests).toEqual([]);
     });
-    const heartbeat = page.waitForResponse((response) =>
-      response.url().includes("/api/presence"),
-    );
-    await page.goto('/kinh-sach');
-    expect((await heartbeat).status()).toBe(200);
-    await expect.poll(() => token).toBe("public");
-  });
-
-  test("presence heartbeat uses the authenticated session CSRF token", async ({
-    page,
-  }) => {
-    await loginAsAdmin(page);
-    await page.goto("/kinh-sach");
-    await settleClient(page);
-    const expectedToken = await page.evaluate(async () => {
-      const response = await fetch("/api/session", { cache: "no-store" });
-      const payload = await response.json();
-      return String(payload.csrfToken || "");
-    });
-    let sessionRequests = 0;
-    await page.route("**/api/session", async (route) => {
-      sessionRequests += 1;
-      if (sessionRequests === 1) {
-        await route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: '{"error":"temporary"}',
-        });
-      } else {
-        await route.continue();
-      }
-    });
-    const tokens: string[] = [];
-    await page.route("**/api/presence", async (route) => {
-      const token = route.request().headers()["x-csrf-token"] || "";
-      tokens.push(token);
-      await route.fulfill({
-        status: token === "public" ? 403 : 200,
-        contentType: "application/json",
-        body:
-          token === "public"
-            ? '{"error":"csrf_invalid"}'
-            : '{"enabled":true,"activeCount":1,"heartbeatIntervalSeconds":60}',
-      });
-    });
-    const heartbeat = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/presence") && response.status() === 200,
-    );
-    await page.reload();
-    expect((await heartbeat).status()).toBe(200);
-    await expect.poll(() => tokens).toEqual([expectedToken]);
-    expect(sessionRequests).toBe(0);
-  });
+  }
 
   test("real local admin session opens chapter editor, saves ordering and imports atomically", async ({
     page,

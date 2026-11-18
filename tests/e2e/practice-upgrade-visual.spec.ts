@@ -41,7 +41,7 @@ for (const dark of [false, true]) {
     const pickerRequests: string[] = [];
     page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/')) pickerRequests.push(request.url()); });
     await page.getByRole('combobox', { name: 'Thêm bước', exact: true }).click();
-    await page.getByRole('dialog', { name: 'Thêm bước', exact: true }).getByRole('button', { name: 'Lễ Phật', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Thêm bước', exact: true }).getByRole('button', { name: 'Lễ Phật & Sám Hối', exact: true }).click();
     await page.locator('summary').filter({ hasText: 'Lễ Phật' }).click();
     await page.getByRole('combobox', { name: 'Vị Phật / Bồ Tát', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'Vị Phật / Bồ Tát', exact: true });

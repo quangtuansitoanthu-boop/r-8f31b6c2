@@ -84,7 +84,11 @@ export function getLocalizedArticle(article: LibraryArticle | null | undefined, 
   // Đảm bảo khôi phục lại tiêu đề, tóm tắt và tác giả tiếng Việt gốc
   const canonicalVi = getCanonicalVietnameseArticle(article.id);
   const targetTitle = article.originalTitle || canonicalVi?.title || article.title;
-  const targetSummary = article.originalSummary ?? canonicalVi?.summary ?? article.summary;
+  // This title's revised description supersedes metadata cached before the wording change.
+  const revisedSummary = ['tt_1781081372340_1_xqcxo', 'tuyen-tap-phap-facebook-quang-tu'].includes(String(article.id).replace(/^book_/u, ''))
+    ? canonicalVi?.summary
+    : undefined;
+  const targetSummary = revisedSummary ?? article.originalSummary ?? canonicalVi?.summary ?? article.summary;
   const targetAuthor = article.originalAuthor || canonicalVi?.author || article.author;
 
   if (

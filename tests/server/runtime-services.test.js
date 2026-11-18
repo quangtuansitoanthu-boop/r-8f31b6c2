@@ -1377,6 +1377,26 @@ describe('server runtime services', () => {
     });
   });
 
+  it('skips a repeated player payload but stores new positions and deletion metadata', async () => {
+    const service = createSyncService(context({ appUserId: 'user-1', displayName: 'Người dùng', role: 'user' }));
+    const state = { albumId: 'a', savedAt: 100, pos: 10 };
+    const revision = async () => (await env.DB.prepare(
+      "SELECT sync_revision FROM pt_player_sync WHERE id = 'google_user-1'",
+    ).first()).sync_revision;
+    const initial = await service.putPlayerSync({ pt_player_state: state });
+    const before = await revision();
+    expect(await service.putPlayerSync({ pt_player_state: state })).toEqual(initial);
+    expect(await revision()).toBe(before);
+    await service.putPlayerSync({ pt_player_state: { ...state, savedAt: 200, pos: 20 } });
+    expect(await revision()).toBeGreaterThan(before);
+    await service.putPlayerSync({ sync_tombstones: { pt_player_state: true } });
+    expect(await service.getPlayerSync()).toMatchObject({ pt_player_state: null });
+    const deleted = await revision();
+    await service.putPlayerSync({ pt_player_state: state });
+    expect(await revision()).toBe(deleted);
+    expect(await service.getPlayerSync()).toMatchObject({ pt_player_state: null });
+  });
+
   it('hydrates the dedicated player owner from legacy aggregate state on a new device', async () => {
     await env.DB.prepare(`
       INSERT INTO user_sync_data

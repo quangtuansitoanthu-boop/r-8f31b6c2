@@ -52,6 +52,27 @@ describe('automatic vegan week publisher', () => {
     }
   });
 
+  it('keeps quick weekday options and desserts with each regional preference', () => {
+    for (const date of ['2026-11-09', '2026-11-16', '2026-11-23']) {
+      const week = prepareVeganWeek(date, 5);
+      for (const region of ['', 'north', 'central', 'south'] as const) {
+        const meals = veganMealPlan(week, region);
+        expect(new Set(meals.flat(2).map(item => item.id)).size).toBe(63);
+        for (const [breakfast] of meals.slice(0, 5)) {
+          expect(breakfast.filter(item => item.minutes <= 20).length).toBeGreaterThanOrEqual(2);
+          expect(breakfast.every(item => item.minutes <= 45)).toBe(true);
+        }
+        for (const [, lunch, dinner] of meals) {
+          for (const side of [lunch[2], dinner[2]]) {
+            expect(side.group).toBe('sides');
+            expect(['dish_103', 'dish_265', 'dish_266']).not.toContain(side.id);
+          }
+        }
+      }
+      expect(week.recipes.find(recipe => recipe.id === 'dish_313')?.ingredients.map(item => item.name)).toContain('Mật mía');
+    }
+  });
+
   it('publishes a separate regional package with 150 distinct recipes and all four regions', async () => {
     const put = vi.fn().mockResolvedValue({});
     const week = '2026-11-23';

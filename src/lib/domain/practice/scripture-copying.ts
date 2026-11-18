@@ -11,15 +11,28 @@ export interface CopyIssue { kind: 'wrong' | 'missing' | 'extra'; expected: stri
 export const COPY_NOTICE = 'Bản chép được tự lưu trên thiết bị này. Chỉ khi bạn bấm “Lưu lên hệ thống”, phần đã chép mới được lưu vào tài khoản và yêu cầu đăng nhập. Gỡ ứng dụng hoặc xóa dữ liệu ứng dụng/dữ liệu trang web có thể làm mất phần chưa lưu lên hệ thống.';
 export function normalizeCopyText(text: string): string { return tokens(copySourceText(text)).map(token => token.key).join(' '); }
 export function isBlockedCopyInput(type: string): boolean { return /^insertFrom(Paste|Drop)/u.test(type); }
+function copyNoteDepth(character: string, depth: number): number {
+  if (character === '(' || character === '（') return depth + 1;
+  if (character === ')' || character === '）') return Math.max(0, depth - 1);
+  return depth;
+}
+
 /** Mask optional instructions without changing original textarea selection offsets. */
-function withoutCopyNotes(text: string): string {
+export function withoutCopyNotes(text: string, replacement = ' '): string {
   let depth = 0;
   return text.split('').map(character => {
-    if (character === '(' || character === '（') { depth++; return ' '; }
-    if ((character === ')' || character === '）') && depth > 0) { depth--; return ' '; }
-    return depth > 0 ? ' ' : character;
+    const inside = depth > 0;
+    depth = copyNoteDepth(character, depth);
+    return inside || depth > 0 ? replacement : character;
   }).join('');
 }
+
+export function hasOpenCopyNote(text: string): boolean {
+  let depth = 0;
+  for (const character of text) depth = copyNoteDepth(character, depth);
+  return depth > 0;
+}
+
 function tokens(text: string) {
   return [...withoutCopyNotes(text).matchAll(/[\p{L}\p{M}\p{N}]+/gu)].map(m => ({ value: m[0].normalize('NFC'), key: m[0].normalize('NFC').toLowerCase(), start: m.index!, end: m.index! + m[0].length }));
 }
