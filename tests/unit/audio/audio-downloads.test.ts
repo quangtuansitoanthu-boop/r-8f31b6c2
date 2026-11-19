@@ -280,6 +280,34 @@ describe('offline album downloads', () => {
     expect(archiveAlbumZipUrl('')).toBeNull();
   });
 
+  it.each([
+    { body: '<html>offline</html>', headers: { 'content-type': 'text/html' }, status: 200 },
+    { body: '<!doctype html><title>offline</title>', headers: { 'content-type': 'application/octet-stream' }, status: 200 },
+    { body: '', headers: { 'content-type': 'video/mp4' }, status: 200 },
+    { body: 'abc', headers: { 'content-range': 'bytes 0-2/8' }, status: 206 },
+    { body: 'ab', headers: { 'content-range': 'bytes 0-2/3' }, status: 206 },
+    { body: 'abc', headers: { 'content-length': '8' }, status: 200 },
+  ])('keeps invalid media out of offline storage ($status, $body)', async ({ body, headers, status }) => {
+    const album = { id: 'offline-invalid', title: 'Album', desc: '', tracks: [{ title: 'Track', url: '/t.mp4' }] };
+    const fetcher = vi.fn(async () => new Response(body, { headers: headers as HeadersInit, status }));
+    await expect(downloadAlbumForOffline(album, { fetcher, authorize: async () => {} })).rejects.toThrow();
+    expect(putOfflineTrack).not.toHaveBeenCalled();
+    expect(putOfflineAlbum).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 206, headers: { 'content-range': 'bytes 0-2/3', 'content-type': 'application/octet-stream' } },
+    { status: 200, headers: { 'content-encoding': 'gzip', 'content-length': '22' } },
+  ])('keeps complete HTTP $status media available with $headers', async ({ headers, status }) => {
+    const album = { id: 'offline-complete', title: 'Album', desc: '', tracks: [{ title: 'Track', url: '/t.mp4' }] };
+    await downloadAlbumForOffline(album, {
+      fetcher: async () => new Response(new Uint8Array([1, 2, 3]), { headers: headers as HeadersInit, status }),
+      authorize: async () => {},
+    });
+    expect(putOfflineTrack).toHaveBeenCalledOnce();
+    expect(putOfflineAlbum).toHaveBeenCalledOnce();
+  });
+
   it('coalesces duplicate starts and persists each completed track once', async () => {
     const authorize = vi.fn().mockResolvedValue(undefined);
     const fetcher = vi.fn().mockImplementation(async (url: string) =>

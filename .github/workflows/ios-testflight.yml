@@ -129,6 +129,10 @@ jobs:
             MARKETING_VERSION=1.0.2 CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
           app="$RUNNER_TEMP/TuTap.xcarchive/Products/Applications/App.app"
           echo "d3b2e1ab2579cb8bb89ade96c4550af77adea000dba2579197215b57867c7cd1  $app/public/images/le-phat/duoc-su-approved.webp" | shasum -a 256 -c -
+          echo "f50dae2dfbe24ba8bad4185ac95c3649c7319437b468ddeeb30d162cb4dde255  $app/public/covers/niem-phat-thap-yeu-phap-thoai.webp" | shasum -a 256 -c -
+          test "$BUILD_NUMBER" -gt 1305
+          test "$(plutil -extract CFBundleShortVersionString raw "$app/Info.plist")" = 1.0.2
+          test "$(plutil -extract CFBundleVersion raw "$app/Info.plist")" = "$BUILD_NUMBER"
           codesign --verify --deep --strict "$app"
           test -d "$app/PlugIns/CalendarWidget.appex"
           codesign --verify --strict "$app/PlugIns/CalendarWidget.appex"

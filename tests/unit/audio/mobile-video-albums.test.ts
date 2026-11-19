@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchTalkAlbums } from '../../../src/lib/browser/content-catalogs';
-import { saveCachedTalkAlbums } from '../../../src/lib/browser/talk-catalog-cache';
+import { getOfflineTalks } from '../../../src/lib/browser/offline-bundled-resolver';
+import { captureTalkCatalogScope, saveCachedTalkAlbums } from '../../../src/lib/browser/talk-catalog-cache';
+import { isIosExcludedContent } from '../../../src/lib/domain/ios-content-policy';
 
 vi.mock('../../../src/lib/browser/talk-catalog-cache', async importOriginal => {
   const actual = await importOriginal<typeof import('../../../src/lib/browser/talk-catalog-cache')>();
@@ -28,6 +30,61 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('mobile streaming talk additions', () => {
+  it('shows all public bundled additions over an older installed catalog without replacing its data', async () => {
+    const bundledIds = bundled.filter((row: { visibility?: string; tracks?: unknown[] }) =>
+      row.visibility === 'public' && row.tracks?.length && !isIosExcludedContent(row),
+    ).map((row: { id: string }) => row.id);
+    const existingId = 'pt_bao_ung_hien_doi';
+    const cachedOnly = { id: 'cached-only', tieu_de: 'Album còn trong cache', visibility: 'public',
+      tracks: [{ title: 'Bài đã lưu', url: '/saved.mp3' }] };
+    const cachedEdition = { ...cachedOnly, id: existingId, anh_dai_dien: 'covers/newer-admin-cover.webp' };
+    await saveCachedTalkAlbums([cachedOnly, cachedEdition]);
+    vi.mocked(saveCachedTalkAlbums).mockClear();
+    vi.mocked(getOfflineTalks).mockResolvedValueOnce([
+      ...bundled, { ...cachedOnly, id: 'bundled-private', visibility: 'private' },
+    ]);
+
+    const fetcher = vi.fn();
+    const albums = await fetchTalkAlbums(fetcher);
+    expect(albums.map(album => album.id).sort()).toEqual([...bundledIds, cachedOnly.id].sort());
+    expect(albums.find(album => album.id === existingId)).toMatchObject(cachedEdition);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(saveCachedTalkAlbums).not.toHaveBeenCalled();
+  });
+
+  it('uses bundled tracks when a cached row for the same album is incomplete', async () => {
+    const packaged = bundled.find((row: { id: string }) => row.id === 'pt_drive_1cf7f2c6a482093d3039c76b8a4ee9b5');
+    await saveCachedTalkAlbums([{ ...packaged, tracks: '[' }]);
+    const fetcher = vi.fn();
+
+    const albums = (await fetchTalkAlbums(fetcher)).filter(album => album.id === packaged.id);
+    expect(albums).toHaveLength(1);
+    expect(albums[0].tracks).toHaveLength(packaged.tracks.length);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('does not restore an incomplete cached private album from an older public bundle', async () => {
+    const packaged = bundled.find((row: { id: string }) => row.id === 'pt_drive_1cf7f2c6a482093d3039c76b8a4ee9b5');
+    const user = { id: 'catalog-admin', email: '', avatarUrl: '', displayName: 'Admin', role: 'admin' };
+    const scope = captureTalkCatalogScope(user.id, user.role);
+    await saveCachedTalkAlbums([{ ...packaged, visibility: 'private', tracks: [] }], scope);
+    const fetcher = vi.fn();
+    const albums = await fetchTalkAlbums(fetcher, undefined, {
+      authenticated: true, user, csrfToken: null, expiresAt: null,
+    });
+
+    expect(albums.some(album => album.id === packaged.id)).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('can read its bundled albums when a legacy cached list contains a null row', async () => {
+    localStorage.setItem('quangtu_cached_talk_catalog_v1', JSON.stringify([null]));
+    const fetcher = vi.fn();
+
+    expect(await fetchTalkAlbums(fetcher)).toEqual(expect.arrayContaining([expect.objectContaining({ id: ids[0] })]));
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('returns the bundled catalog while the cache write is still pending', async () => {
     let finishWrite!: () => void;
     vi.mocked(saveCachedTalkAlbums).mockImplementationOnce(() => new Promise<void>(resolve => { finishWrite = resolve; }));
@@ -72,6 +129,7 @@ describe('mobile streaming talk additions', () => {
       1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 12, 13,
     ]);
     for (const track of album.tracks) {
+      expect(track.title).toMatch(/^PHẨM \d+: \S/u);
       expect(track).toMatchObject({ media_type: 'video', aspect_ratio: '16:9' });
       expect(track.url).toMatch(/^\/api\/audio\/drive\/[A-Za-z0-9_-]+$/u);
       expect(track.duration_sec).toBeGreaterThan(0);
@@ -79,6 +137,26 @@ describe('mobile streaming talk additions', () => {
     }
     expect(JSON.stringify(packaged)).not.toMatch(/youtube|nammodiatangvuongbotat99|Tiến Dũng AI|source_url|source_channel/iu);
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('completes shortened Địa Tạng video chapter names from an installed catalog without rewriting it', async () => {
+    const packaged = bundled.find((item: { id: string }) => item.id === landscapeAlbumId);
+    const old = { ...packaged, tracks: JSON.stringify([
+      { ...packaged.tracks[9], title: 'PHẨM 8 (PHẦN 1)' },
+      { ...packaged.tracks[10], title: 'Phẩm 8: Tên đã được biên tập (Phần 2)' },
+    ]) };
+    await saveCachedTalkAlbums([old, { ...old, id: 'different-album' }]);
+    vi.mocked(saveCachedTalkAlbums).mockClear();
+    const fetcher = vi.fn();
+
+    const albums = await fetchTalkAlbums(fetcher);
+    expect(albums.find(album => album.id === landscapeAlbumId)?.tracks).toEqual([
+      packaged.tracks[9],
+      { ...packaged.tracks[10], title: 'Phẩm 8: Tên đã được biên tập (Phần 2)' },
+    ]);
+    expect(albums.find(album => album.id === 'different-album')?.tracks[0].title).toBe('PHẨM 8 (PHẦN 1)');
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(saveCachedTalkAlbums).not.toHaveBeenCalled();
   });
 
   it('adds the real 16-video album once to an older native cache without replacing old metadata or fetching', async () => {

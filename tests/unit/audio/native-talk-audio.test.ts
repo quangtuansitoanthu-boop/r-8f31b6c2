@@ -69,6 +69,35 @@ it('coalesces foreground and practice clock refreshes through one native state r
   audio.dispose();
 });
 
+it('waits for the wake-up state, the frame hold pause, and a queued seek before exposing the video clock', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 8);
+  let finishRead!: (state: NativeAudioState) => void;
+  let finishPause!: (state: NativeAudioState) => void;
+  let finishSeek!: (state: NativeAudioState) => void;
+  plugin.getState.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+  plugin.pause.mockImplementationOnce(() => new Promise(resolve => { finishPause = resolve; }));
+  plugin.seek.mockImplementationOnce(() => new Promise(resolve => { finishSeek = resolve; }));
+  audio.addEventListener('play', () => { void audio.pause(); }, { once: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+  const ready = vi.fn();
+  const wake = audio.refreshVideoPosition().then(ready);
+  await vi.waitFor(() => expect(finishRead).toBeTypeOf('function'));
+  expect(audio.currentTime).toBe(8);
+  finishRead({ ...state, playing: true, playWhenReady: true, position: 57 });
+  await vi.waitFor(() => expect(finishPause).toBeTypeOf('function'));
+  expect(ready).not.toHaveBeenCalled();
+  audio.currentTime = 90;
+  finishPause({ ...state, position: 57.3 });
+  await vi.waitFor(() => expect(finishSeek).toBeTypeOf('function'));
+  expect(ready).not.toHaveBeenCalled();
+  finishSeek({ ...state, position: 89.9 });
+  await wake;
+  expect(audio.currentTime).toBe(89.9);
+  expect(plugin.getState).toHaveBeenCalledOnce();
+  audio.dispose();
+});
+
 it('syncs lock-screen pause, seeking and autonomous next-track changes', async () => {
   const audio = new NativeTalkAudio(plugin);
   await audio.setQueue(album, 0, 0);
@@ -81,6 +110,120 @@ it('syncs lock-screen pause, seeking and autonomous next-track changes', async (
   expect(audio.currentTime).toBe(65);
   publish({ ...state, trackIndex: 1, playing: true, playWhenReady: true, position: 3 });
   expect(track).toHaveBeenCalledOnce();
+  expect(audio.currentTime).toBe(3);
+  audio.dispose();
+});
+
+it('keeps the latest scrub position through queued native ticks and accepts the confirmed position', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  const seeking = vi.fn(() => audio.currentTime);
+  audio.addEventListener('seeking', seeking);
+  audio.currentTime = 30;
+  expect(seeking).not.toHaveBeenCalled();
+  await audio.setQueue(album, 0, 10);
+  await audio.play();
+  let complete!: (value: NativeAudioState) => void;
+  plugin.seek.mockReturnValueOnce(new Promise<NativeAudioState>(resolve => { complete = resolve; }));
+  audio.currentTime = 80;
+  expect(seeking.mock.results.map(result => result.value)).toEqual([80]);
+  await vi.waitFor(() => expect(plugin.seek).toHaveBeenCalledOnce());
+  const original = { ...state, position: 11, observedAtMs: 100 };
+  publish(original);
+  expect(audio.currentTime).toBe(80);
+  audio.currentTime = 25;
+  expect(seeking.mock.results.map(result => result.value)).toEqual([80, 25]);
+  publish({ ...original, playWhenReady: false, playing: false, observedAtMs: 101 });
+  expect(audio.paused).toBe(true);
+  expect(audio.currentTime).toBe(25);
+  plugin.seek.mockImplementationOnce(async () => (state = { ...state, position: 24.8, observedAtMs: 120 }));
+  complete({ ...state, position: 80, observedAtMs: 105 });
+  await vi.waitFor(() => expect(audio.currentTime).toBe(24.8));
+  publish(original);
+  expect(audio.currentTime).toBe(24.8);
+  publish({ ...state, position: 4, observedAtMs: 130 });
+  expect(audio.currentTime).toBe(4);
+  audio.dispose();
+  audio.currentTime = 99;
+  expect(seeking).toHaveBeenCalledTimes(2);
+});
+
+it('stops applying a pending seek when native playback advances tracks', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 10);
+  let complete!: (value: NativeAudioState) => void;
+  plugin.seek.mockReturnValueOnce(new Promise<NativeAudioState>(resolve => { complete = resolve; }));
+  audio.currentTime = 80;
+  await vi.waitFor(() => expect(plugin.seek).toHaveBeenCalledOnce());
+  const old = { ...state, position: 80, observedAtMs: 40 };
+  publish({ ...state, trackIndex: 1, position: 0, observedAtMs: 50 });
+  complete(old);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  publish(old);
+  expect(audio.src).toBe(album.tracks[1].url);
+  expect(audio.currentTime).toBe(0);
+  audio.dispose();
+});
+
+it('restores the last actual position after a failed seek and reports the error', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 15);
+  plugin.seek.mockRejectedValueOnce(new Error('seek unavailable'));
+  audio.currentTime = 77;
+  await vi.waitFor(() => expect(audio.error?.message).toBe('seek unavailable'));
+  expect(audio.currentTime).toBe(15);
+  audio.dispose();
+});
+
+it('keeps the recovered position without raising a playback error when iOS resets during a seek', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 10);
+  await audio.play();
+  let cancel!: (reason: unknown) => void;
+  plugin.seek.mockReturnValueOnce(new Promise<NativeAudioState>((_, reject) => { cancel = reject; }));
+  const onError = vi.fn();
+  audio.addEventListener('error', onError);
+  audio.currentTime = 40;
+  await vi.waitFor(() => expect(plugin.seek).toHaveBeenCalledOnce());
+  state = { ...state, position: 40, playing: false, playWhenReady: false };
+  publish(state);
+  cancel({ code: 'AUDIO_SERVICES_RESET' });
+  await audio.refreshState();
+  expect(audio.paused).toBe(true);
+  expect(audio.currentTime).toBe(40);
+  expect(onError).not.toHaveBeenCalled();
+  expect(plugin.play).toHaveBeenCalledOnce();
+  audio.dispose();
+});
+
+it('uses a newer lock-screen position when it arrives before the seek response', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 12);
+  let complete!: (value: NativeAudioState) => void;
+  plugin.seek.mockReturnValueOnce(new Promise<NativeAudioState>(resolve => { complete = resolve; }));
+  audio.currentTime = 90;
+  await vi.waitFor(() => expect(plugin.seek).toHaveBeenCalledOnce());
+  publish({ ...state, position: 4, observedAtMs: 80 });
+  expect(audio.currentTime).toBe(90);
+  complete({ ...state, position: 90, observedAtMs: 70 });
+  await vi.waitFor(() => expect(audio.currentTime).toBe(4));
+  audio.dispose();
+});
+
+it('drops a rejected in-flight seek and queued scrubs after a new album is selected', async () => {
+  const audio = new NativeTalkAudio(plugin);
+  await audio.setQueue(album, 0, 12);
+  let fail!: (reason: Error) => void;
+  plugin.seek.mockReturnValueOnce(new Promise<NativeAudioState>((_, reject) => { fail = reject; }));
+  const error = vi.fn();
+  audio.addEventListener('error', error);
+  audio.currentTime = 90;
+  await vi.waitFor(() => expect(plugin.seek).toHaveBeenCalledOnce());
+  audio.currentTime = 45;
+  const next = audio.setQueue({ ...album, id: 'new' }, 0, 3);
+  fail(new Error('previous queue has been cleared'));
+  await next;
+  expect(error).not.toHaveBeenCalled();
+  expect(plugin.seek).toHaveBeenCalledTimes(1);
   expect(audio.currentTime).toBe(3);
   audio.dispose();
 });

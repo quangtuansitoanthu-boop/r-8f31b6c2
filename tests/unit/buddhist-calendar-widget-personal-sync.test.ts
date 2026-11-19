@@ -78,6 +78,22 @@ it('updates and removes same-day personal records from the existing change event
   expect(mocks.replace).toHaveBeenCalledTimes(3);
 });
 
+it.each([false, true])('removes a personal event deleted while its first native publication is in flight (stop=%s)', async dispose => {
+  mocks.read.mockReturnValue([]);
+  stop = startBuddhistCalendarWidgetSync(); await flush();
+  let finish!: () => void;
+  mocks.replace.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  mocks.read.mockReturnValue([event('Giỗ gia đình')]);
+  windowEvents.dispatchEvent(new Event('quangtu:personal-events-changed')); await flush();
+  mocks.read.mockReturnValue([]);
+  windowEvents.dispatchEvent(new Event('quangtu:personal-events-changed')); await flush();
+  if (dispose) { stop(); stop = undefined; }
+  finish(); await flush();
+  expect(mocks.replace.mock.calls.at(-1)?.[0].days[0].personalEventCount).toBe(dispose ? undefined : 0);
+  expect(JSON.stringify(mocks.replace.mock.calls.at(-1)?.[0])).not.toContain('Giỗ gia đình');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 it('moves the native barrier immediately and drains only the latest account after an old write', async () => {
   let finish!: () => void;
   mocks.replace.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));

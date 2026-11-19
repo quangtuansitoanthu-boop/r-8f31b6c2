@@ -856,7 +856,8 @@
       if (Math.abs(panel.scrollTop - top) < 1) return;
       lastFollowPanel = panel; lastFollowTop = top;
       const instant = keyboardOpen || window.matchMedia('(max-width:700px)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches || Math.abs(top - panel.scrollTop) > panel.clientHeight * 2;
-      panel.scrollTo({ top, behavior: instant ? 'instant' : uiScrollBehavior() });
+      if (instant) panel.scrollTop = top;
+      else panel.scrollTo({ top, behavior: uiScrollBehavior() });
       });
     });
     return () => { cancelled = true; if (frame !== undefined) cancelAnimationFrame(frame); };

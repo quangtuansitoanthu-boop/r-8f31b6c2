@@ -5,7 +5,7 @@ import rotationRecipes from '../../docs/plans/vegan-sources/recipes-rotation.jso
 import regions from '../../docs/plans/vegan-sources/regions-existing.json';
 import launchWeek from '../../docs/plans/vegan-sources/schedule-2026-11-09.json';
 import secondWeek from '../../docs/plans/vegan-sources/schedule-2026-11-16.json';
-import { isVeganWeek, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_ROTATION_REVISION, VEGAN_PACKAGE_MAX_BYTES, rotatingVeganDays, veganRecipeScore, vietnamWeek, weekDate, type OfflineRecipe, type VeganWeek } from '../lib/contracts/vegan-week';
+import { isVeganWeek, REGIONAL_VEGAN_FIRST_WEEK, ROTATING_VEGAN_VERSION, VEGAN_RECIPE_REVISION, VEGAN_ROTATION_REVISION, VEGAN_PACKAGE_MAX_BYTES, rotatingVeganDays, veganRecipeScore, vietnamWeek, weekDate, type OfflineRecipe, type VeganWeek } from '../lib/contracts/vegan-week';
 
 const firstAutomaticWeek = '2026-11-23';
 const recipes = catalog.map(({ id, name, group, servings, minutes, ingredients, steps }) =>
@@ -34,7 +34,10 @@ export function prepareVeganWeek(week: string, version: PackageVersion = 1): Veg
   }
 
   if (version === ROTATING_VEGAN_VERSION) {
-    const data: unknown = { version, week, recipes: rotationCatalog, days: rotatingVeganDays(rotationCatalog as OfflineRecipe[], week), metric: true, rotationRevision: VEGAN_ROTATION_REVISION };
+    const data: unknown = {
+      version, week, recipes: rotationCatalog, days: rotatingVeganDays(rotationCatalog as OfflineRecipe[], week),
+      metric: true, rotationRevision: VEGAN_ROTATION_REVISION, recipeRevision: VEGAN_RECIPE_REVISION,
+    };
     if (!isVeganWeek(data, week)) throw new Error('Invalid rotating vegan week package');
     return data;
   }

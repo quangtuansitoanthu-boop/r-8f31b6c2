@@ -1,6 +1,7 @@
 package vn.quangtu.tutam;
 
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -9,6 +10,27 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "ExternalLinks")
 public class ExternalLinksPlugin extends Plugin {
+    @PluginMethod
+    public void openStore(PluginCall call) {
+        String url = call.getString("url");
+        if (!"https://play.google.com/store/apps/details?id=vn.quangtu.tutam".equals(url)) {
+            call.reject("Invalid Play Store URL");
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                intent.setPackage("com.android.vending");
+                getActivity().startActivity(intent);
+                call.resolve();
+            } catch (ActivityNotFoundException error) {
+                openBrowser(call);
+            } catch (RuntimeException error) {
+                call.reject("Unable to open Play Store");
+            }
+        });
+    }
+
     @PluginMethod
     public void openBrowser(PluginCall call) {
         String value = call.getString("url");

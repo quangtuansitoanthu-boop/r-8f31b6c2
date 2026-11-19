@@ -84,14 +84,12 @@ export const softwareGuideSections: GuideSection[] = [
     ],
     "editorialStatus": "verified-software",
     "introduction": [
-      "Ứng dụng Tu tập Phật pháp được kiến tạo như một đạo tràng số thanh tịnh, trợ duyên cho quý Phật tử và hành giả trên bước đường học Phật, huân tu giới đức, trì tụng kinh chú và lắng nghe chánh pháp mỗi ngày. Không gian ứng dụng được quy hoạch hài hòa thành 5 khu vực chính: Trang Chủ, Kinh Sách, Tu Tập, Pháp Thoại và Cá Nhân.",
-      "Trang Chủ mở ra ngày mới an lành với câu pháp ngữ khai tâm, lịch âm dương ngày chay và các lối vào nhanh; Kinh Sách là kho tàng kinh điển, luận giải và sách nhân quả phong phú; Tu Tập là nơi thực hành thời khóa tụng niệm, tọa thiền, niệm Phật và chép kinh tích đức; Pháp Thoại quy tụ các bài giảng âm thanh trầm ấm từ chư tôn đức; và Cá Nhân là góc tu học riêng tư gìn giữ tiến trình công phu tinh tấn của mỗi hành giả.",
-      "Đặc biệt, toàn bộ kho tàng hơn 100 tác phẩm kinh điển lớn, các nghi thức hành trì trang nghiêm cùng các bộ sách khuyến thiện, nhân quả đồ sộ đã được đóng gói sẵn sàng 100% ngoại tuyến (offline) bên trong ứng dụng. Quý đồng tu có thể an tâm mở đọc tức thì bất cứ lúc nào, ở bất kỳ nơi đâu mà hoàn toàn không cần kết nối Internet."
+      "Dùng năm mục Trang chủ, Kinh sách, Tu tập, Pháp thoại và Cá nhân để tìm đúng chức năng. Các bước bên dưới mô tả giao diện hiện tại; một số nút chỉ xuất hiện khi nội dung hoặc tài khoản có hỗ trợ."
     ],
     "topics": [
       {
         "id": "trang-chu-va-tim-kiem",
-        "title": "Trang chủ và Kho tàng Kinh sách",
+        "title": "Trang chủ và tìm kinh sách",
         "keywords": [
           "trang chủ",
           "kinh sách",
@@ -102,56 +100,33 @@ export const softwareGuideSections: GuideSection[] = [
           "kinh điển",
           "nhân quả",
           "tổ sư",
-          "chương hồi"
+          "chương hồi",
+          "Trang chủ và tìm kinh sách",
+          "Home and the reading library"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Trang Chủ là nơi khởi đầu ngày mới an lạc với câu pháp ngữ soi sáng tâm trí, trong khi mục Kinh Sách đóng vai trò như một đại tạng thư thu nhỏ, phụng sự việc tra cứu, nghiền ngẫm và huân tập lời Phật dạy mọi lúc mọi nơi."
-          },
-          {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Trang chủ — Cửa ngõ an lạc mỗi ngày",
-                "text": "Chiêm nghiệm lời Phật dạy khai tâm, theo dõi lịch âm và các ngày thập trai thanh tịnh. Các lối tắt thông minh giúp quý vị tiếp tục ngay bài kinh hay thời khóa đang thực hành dở dang mà không mất thời gian tìm kiếm."
+                "title": "Đi từ thanh điều hướng",
+                "text": "Dùng Trang chủ, Kinh sách, Tu tập, Pháp thoại và Cá nhân để chuyển khu vực. Trang chủ có lịch âm dương, lời nhắc trong ngày, ngày lễ cá nhân và lối vào lịch ăn chay."
               },
               {
-                "title": "Kho tàng Kinh sách đóng gói sẵn 100% Offline",
-                "text": "Hơn 100 tác phẩm đồ sộ được tích hợp trọn vẹn bên trong ứng dụng, sẵn sàng mở đọc tức thì không cần mạng Internet: từ các bộ Đại Tạng Kinh điển Đại thừa, 4 bộ Kinh tạng Nguyên thủy & A-Hàm, các nghi thức hành trì mầu nhiệm, cho đến trọn bộ sách nhân quả kinh điển và trước tác khai thị của chư vị Tổ sư."
+                "title": "Tìm và mở sách",
+                "text": "Vào Kinh sách, nhập tên vào ô tìm kiếm hoặc mở Lọc. Chọn sách, mở mục lục rồi chọn chương. Thư viện của bạn giúp tìm lại sách đang đọc và nội dung đã lưu."
               },
               {
-                "title": "Tìm kiếm thông minh & Phân loại minh bạch",
-                "text": "Nhập tựa kinh, tên phẩm, tác giả hoặc từ khóa Phật học vào thanh tìm kiếm. Hệ thống tự động phân loại theo danh mục: Kinh Điển, Nghi Thức, Sách Nhân Quả, Tác Phẩm Chư Tổ... giúp quý đồng tu nhanh chóng tìm thấy giáo lý cần học."
-              },
-              {
-                "title": "Mục lục đa tầng & Đọc tiếp từ chỗ dừng dở",
-                "text": "Với những bộ đại kinh nhiều tập và hàng trăm chương phẩm, mục lục phân cấp rõ ràng giúp quý vị bao quát toàn bộ tác phẩm. Ứng dụng tự động ghi nhớ chính xác vị trí đang đọc dở để lần mở sau luôn liền mạch dòng cảm thụ."
+                "title": "Tiếp tục đọc",
+                "text": "Mở sách đang đọc hoặc dấu trang để trở về chương và vị trí đã lưu. Danh mục có thể khác nhau giữa iOS, Android và web; một số nội dung chỉ có tiếng Việt."
               }
             ]
-          },
-          {
-            "type": "bullets",
-            "title": "Kho tàng hơn 100 tác phẩm kinh điển và sách nhân quả đóng gói sẵn offline",
-            "items": [
-              "Đại Tạng Kinh Điển Đại Thừa: KINH ĐỊA TẠNG BỒ TÁT BỔN NGUYỆN (trọn bộ 13 phẩm), KINH HOA NGHIÊM (43 tập đồ sộ), KINH KIM CANG BÁT NHÃ, KINH DƯỢC SƯ, KINH VÔ LƯỢNG THỌ, KINH DUY MA CẬT SỞ THUYẾT (14 phẩm), KINH NIỆM PHẬT BA LA MẬT (7 phẩm), KINH ĐẠI BI TÂM ĐÀ LA NI...",
-              "4 Bộ Kinh Tạng Nguyên Thủy & A-Hàm: KINH TRUNG BỘ (trọn vẹn 152 bài kinh), KINH TRƯỜNG BỘ, KINH TIỂU BỘ, KINH TRƯỜNG A-HÀM.",
-              "Các Nghi Thức Hành Trì Mầu Nhiệm: NGHI THỨC TRÌ TỤNG CHÚ ĐẠI BI, THẦN CHÚ THỦ LĂNG NGHIÊM, CHÚ DƯỢC SƯ, CHÚ BẢO KHIẾP ẤN, CHÚ PHẬT ĐẢNH TÔN THẮNG, ĐẠI TÙY CẦU ĐÀ LA NI, NGHI THỨC SÁM HỐI OAN GIA TRÁI CHỦ.",
-              "Trọn Bộ Sách Khuyến Thiện & Nhân Quả: Trọn bộ Báo Ứng Hiện Đời (Tập 1 đến Tập 8 của Cư sĩ Quả Khanh), Sứ Mệnh Độ Vong, Ngọc Lịch Bửu Phiêu (141 chương), Địa Ngục Du Ký, Luân Hồi Du Ký, An Sỹ Toàn Thư (Quyển Thượng & Quyển Hạ), Âm Luật Vô Tình (Tập 1 & Tập 2), Khuyên Người Niệm Phật, Chuyển Họa Thành Phúc...",
-              "Pháp Ngữ Khai Thị Của Chư Tổ: Kinh Thủ Lăng Nghiêm Lược Giảng (10 quyển - Đại sư Tuyên Hóa), Ấn Quang Pháp Sư Văn Sao Tục Biên (117 thiên trọn vẹn), Khai Thị (Đại sư Tuyên Hóa), Niệm Phật Thập Yếu (HT Thích Thiền Tâm), Tuyển tập 518 bài pháp Facebook Quang Từ..."
-            ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Đọc ngoại tuyến tức thì",
-            "text": "Toàn bộ hơn 100 tác phẩm kinh sách chữ kể trên đã nằm trọn vẹn trong ứng dụng ngay sau khi cài đặt. Quý đồng tu không cần kết nối mạng hay tải thêm tệp tin văn bản mà vẫn luôn có một đại tạng kinh thu nhỏ đồng hành bên mình."
           }
         ]
       },
       {
         "id": "tu-tap-tren-web",
-        "title": "Trang Tu Tập — Khóa tụng & công phu hằng ngày",
+        "title": "Tìm công cụ trong trang Tu tập",
         "keywords": [
           "bắt đầu công phu",
           "lễ phật",
@@ -163,49 +138,33 @@ export const softwareGuideSections: GuideSection[] = [
           "mõ",
           "nhạc thiền",
           "tự động cuộn",
-          "hồi hướng"
+          "hồi hướng",
+          "Tìm công cụ trong trang Tu tập",
+          "Find a practice tool"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Trang Tu Tập được thiết kế như một đạo tràng trang nghiêm, quy tụ đầy đủ các phương tiện thiện xảo giúp hành giả dễ dàng thiết lập và duy trì thời khóa công phu đều đặn mỗi ngày."
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Chọn đúng nhóm công phu chuyên biệt",
-                "text": "Mở mục Tu tập và lựa chọn theo nhu cầu thực hành: nhóm Công phu thường nhật (Thiền định, Lần tràng hạt, Lễ Phật & Sám hối); nhóm Biên chép công đức (Chép kinh, Chép danh hiệu Phật); nhóm Thanh tịnh & Giới luật (soi sáng hạnh kiểm); nhóm Kho kinh điển & Nghi thức (Tụng kinh, Trì chú, Nghi thức hành trì)."
+                "title": "Chọn việc muốn thực hành",
+                "text": "Trong Tu tập, phần Đồng Hành Tu Tập có Tiếp tục công phu, Lịch ăn chay đủ dinh dưỡng, Thời khóa tu tập, Công phu của tôi, Quán chiếu và lối vào cộng đồng."
               },
               {
-                "title": "Chọn nghi thức và chuẩn bị thân tâm",
-                "text": "Khi cần trì tụng, chọn đúng pháp môn như NGHI THỨC TRÌ TỤNG CHÚ ĐẠI BI, THẦN CHÚ THỦ LĂNG NGHIÊM, hoặc chọn phẩm kinh trong các bộ kinh lớn. Đọc kỹ phần chuẩn bị trước thời khóa, tề chỉnh y phục, an định tâm ý rồi nhấn \"Bắt Đầu Công Phu\"."
+                "title": "Mở Chế Độ Hành Trì",
+                "text": "Cuộn xuống để chọn thiền, lần tràng hạt, lễ Phật, chép kinh, chép danh hiệu, giữ giới, Bát quan trai, tiết dục, tụng kinh, trì chú hoặc nghi thức. Đọc hướng dẫn của công cụ trước khi bắt đầu."
               },
               {
-                "title": "Tiếng chuông mõ thanh lương & Nhạc thiền trợ duyên",
-                "text": "Trong suốt thời khóa, quý đạo hữu có thể bật tiếng mõ gõ nhịp đều đặn, tiếng chuông ngân trầm bổng hoặc nhạc thiền thanh tịnh. Âm vang mầu nhiệm này trợ duyên đắc lực giúp nhiếp tâm, xua tan tạp niệm và đưa tâm trí về trạng thái tĩnh lặng an nhiên."
-              },
-              {
-                "title": "Biên chép kinh văn & Ghi danh hiệu Phật",
-                "text": "Với pháp môn chép kinh, hành giả có thể gõ từng câu từng chữ theo nguyên tác kinh điển, ứng dụng tự động lưu lại từng nét gõ trên thiết bị. Khi hoàn thành, quý vị có thể lưu lên hệ thống để ghi nhận quá trình tinh tấn bền bỉ."
-              },
-              {
-                "title": "Phát nguyện hồi hướng & Ghi nhận công đức viên mãn",
-                "text": "Sau khi hoàn tất số biến trì tụng hoặc thời lượng tọa thiền, ứng dụng dẫn dắt bài văn hồi hướng trang nghiêm, nguyện đem công đức này trang nghiêm Phật tịnh độ, phổ độ muôn loài. Số biến niệm, số lạy và thời gian thực tu sẽ được ghi nhận chân thực vào sổ tu học cá nhân."
+                "title": "Chọn bài cụ thể",
+                "text": "Ở Tụng, đọc kinh, Trì chú hoặc Nghi thức khác, chọn bài và phẩm cần thực hành. Đọc phần lưu ý nếu bài có hiển thị; không phải mọi nội dung đều có audio hoặc bản dịch."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Giữ tâm an định khi hành trì",
-            "text": "Quý đồng tu có thể chủ động điều chỉnh tốc độ chuông mõ, nhịp tụng và chế độ tự động cuộn chữ trong bảng tùy chọn để thời khóa diễn ra tự nhiên, tương hợp nhất với nhịp thở và tâm niệm của mình."
           }
         ]
       },
       {
         "id": "giao-dien-va-chuyen-dong",
-        "title": "Giao diện, cỡ chữ và hiệu ứng chuyển động",
+        "title": "Giao diện, ngôn ngữ và cỡ chữ",
         "keywords": [
           "giao diện",
           "dark mode",
@@ -214,45 +173,33 @@ export const softwareGuideSections: GuideSection[] = [
           "phông chữ",
           "hiệu ứng chuyển động",
           "giảm chuyển động",
-          "thị lực"
+          "thị lực",
+          "Giao diện, ngôn ngữ và cỡ chữ",
+          "Appearance, language and text size"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Giao diện ứng dụng được thiết kế trang nhã, ấm cúng theo phong cách thanh tịnh của đạo tràng, mang đến cảm giác an tĩnh và nâng niu đôi mắt của hành giả qua từng trang kinh."
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Tùy chỉnh Chế độ Sáng / Tối (Dark Mode)",
-                "text": "Vào Cá nhân → Cài đặt ứng dụng → Giao diện & ngôn ngữ. Chế độ Tối (Dark Mode) dịu nhẹ giúp giảm mỏi mắt tuyệt đối trong những thời khóa công phu khuya hoặc sáng sớm tinh sương khi chưa rạng ngày."
+                "title": "Mở cài đặt",
+                "text": "Vào Cá nhân → Cài đặt ứng dụng → Giao diện & ngôn ngữ. Chọn nền Tự động, Trắng, Be nhạt, Xám, Tím nhạt hoặc Tối; dùng cỡ chữ giao diện để điều chỉnh các màn và nút."
               },
               {
-                "title": "Điều chỉnh Cỡ chữ & Phông chữ trang nghiêm",
-                "text": "Trong trình đọc kinh sách và công phu, hành giả dễ dàng tăng giảm cỡ chữ từ thanh nhã đến thật to rõ thông qua nút A− / A+, đặc biệt phù hợp và thuận tiện cho quý Phật tử lớn tuổi. Nhiều phông chữ thanh nhã được tuyển chọn kỹ lưỡng giúp văn bản kinh điển hiển thị sắc nét, trang trọng."
+                "title": "Đổi ngôn ngữ",
+                "text": "Chọn Tiếng Việt hoặc English. Khi chuyển sang tiếng Anh, chờ gói sách tiếng Anh tải xong; nếu bị gián đoạn, kiểm tra mạng và dung lượng rồi bấm Retry. Ngôn ngữ giao diện không bảo đảm mọi bản ghi âm, bìa sách hay công thức đều đã dịch."
               },
               {
-                "title": "Lựa chọn Hiệu ứng chuyển động (Motion)",
-                "text": "Hiệu ứng gợn sóng nước thiền định và chuỗi hạt lăn nhịp nhàng mang lại cảm giác sống động, an tịnh. Nếu hành giả muốn tập trung cao độ vào câu niệm Phật hoặc tiết kiệm tối đa pin thiết bị, có thể chủ động tắt \"Hiệu ứng chuyển động\" trong phần Cài đặt."
-              },
-              {
-                "title": "Tôn trọng thiết lập trợ năng của hệ thống",
-                "text": "Ứng dụng luôn tôn trọng thiết lập của hệ điều hành. Nếu thiết bị của quý vị đang kích hoạt tính năng \"Giảm chuyển động\" (Reduce Motion), các hoạt họa sẽ tự động tĩnh lặng để bảo đảm sự thoải mái cao nhất cho mắt."
+                "title": "Phân biệt hai cỡ chữ",
+                "text": "Cỡ chữ giao diện khác với cỡ chữ nội dung đọc. Mở Đọc kinh sách hoặc công cụ trong trình đọc để chỉnh phông, cỡ chữ và nền giấy. Hiệu ứng chuyển động có thể tắt; tùy chọn giảm chuyển động của hệ thống vẫn được tôn trọng."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Màu nền trang sách thanh nhã",
-            "text": "Ngoài chế độ tối và sáng, quý độc giả có thể chọn nền giấy ngả vàng be nhạt (Sepia) ấm áp hoặc nền xám dịu mắt, mô phỏng cảm giác cầm trên tay những trang kinh cổ trang nghiêm."
           }
         ]
       },
       {
         "id": "widget-man-hinh-chinh",
-        "title": "Widget tiện ích trên màn hình điện thoại",
+        "title": "Thêm widget lên màn hình chính",
         "keywords": [
           "widget",
           "tiện ích",
@@ -263,44 +210,25 @@ export const softwareGuideSections: GuideSection[] = [
           "pháp thoại",
           "tu tập",
           "android",
-          "ios"
+          "ios",
+          "Thêm widget lên màn hình chính",
+          "Add a home-screen widget"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Đưa những lời nhắc nhở tu học mầu nhiệm ra ngay màn hình chính của điện thoại thông minh qua các Widget tiện ích, giúp quý đồng tu luôn giữ chánh niệm giữa nhịp sống thường nhật tất bật."
-          },
-          {
-            "type": "cards",
-            "items": [
-              {
-                "title": "Widget Lịch Âm & Ngày Chay (Thập trai, Lục trai)",
-                "text": "Hiển thị ngày âm lịch, can chi và đánh dấu rõ ràng những ngày sóc vọng, ngày trai giới theo truyền thống nhà Phật. Chỉ cần nhìn vào màn hình là quý vị kịp thời nhắc nhở bản thân và gia đình giữ gìn thanh tịnh."
-              },
-              {
-                "title": "Widget Tu Tập & Chuỗi Hạt",
-                "text": "Theo dõi tiến độ công phu trong ngày, số câu Phật hiệu đã niệm hoặc hiển thị lời kinh kệ khai tâm. Nhấn trực tiếp vào widget để mở ngay công cụ công phu tương ứng mà không cần thao tác qua nhiều bước."
-              },
-              {
-                "title": "Widget Pháp Thoại Chọn Lọc",
-                "text": "Giúp hành giả tiếp tục lắng nghe bài giảng pháp thoại tâm đắc còn dở dang chỉ với một chạm, biến mọi khoảnh khắc rảnh rỗi thành thời gian thấm nhuần pháp vị."
-              }
-            ]
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Thêm Widget trên Android",
-                "text": "Chạm và giữ vào một vùng trống trên màn hình chính → Chọn mục \"Widget\" (Tiện ích) → Tìm ứng dụng \"Tu tập Phật pháp\" (hoặc \"Tu tập\") → Chọn loại widget (Lịch, Tu tập hoặc Pháp thoại) với kích thước mong muốn rồi kéo thả ra màn hình."
+                "title": "Chọn widget",
+                "text": "Trên Android, nhấn giữ vùng trống ở màn hình chính rồi mở Widget. Trên iPhone/iPad, mở chế độ sửa màn hình chính và bảng thêm tiện ích. Tìm Tu tập, chọn Lịch, Tu tập hoặc Pháp thoại và kích cỡ được hệ điều hành hỗ trợ."
               },
               {
-                "title": "Thêm Widget trên iOS (iPhone / iPad)",
-                "text": "Nhấn giữ một vùng trống trên màn hình chính cho đến khi các ứng dụng rung lắc → Chạm vào dấu cộng (+) ở góc trên màn hình → Tìm \"Tu tập Phật pháp\" (hoặc \"Tu tập\") → Lướt chọn kích thước widget phù hợp rồi nhấn \"Thêm tiện ích\"."
+                "title": "Mở đúng nội dung",
+                "text": "Chạm nội dung hoặc hành động trên widget để vào phần tương ứng trong app. Widget sử dụng dữ liệu đã có; khi chưa có dữ liệu, mở app để thiết lập hoặc thực hành. Chạm mở công cụ không tự ghi nhận hoàn thành."
               },
               {
-                "title": "Sử dụng tiện ích thuận tiện",
-                "text": "Chạm vào widget Lịch để mở chi tiết lịch âm dương; chạm vào widget Pháp thoại để mở trình phát; chạm vào widget Tu tập để bước ngay vào khóa công phu thanh tịnh."
+                "title": "Hiểu thời điểm cập nhật",
+                "text": "Hệ điều hành quyết định lịch làm mới. Widget có thể chưa phản ánh ngay thay đổi khi app đóng; không dùng widget thay cho báo thức hoặc bằng chứng dữ liệu đã đồng bộ."
               }
             ]
           }
@@ -308,7 +236,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "dong-bo-nut-quay-lai-android",
-        "title": "Xử lý phím Quay lại trên Android và cử chỉ iOS an toàn",
+        "title": "Quay lại và đóng bảng đang mở",
         "keywords": [
           "nút quay lại",
           "nút back",
@@ -317,45 +245,29 @@ export const softwareGuideSections: GuideSection[] = [
           "ios",
           "bảo vệ công phu",
           "chốt sổ",
-          "thoát an toàn"
+          "thoát an toàn",
+          "Quay lại và đóng bảng đang mở",
+          "Back navigation and closing panels"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Trong lúc hành giả đang nhiếp tâm tụng kinh, tọa thiền hay lần tràng hạt, việc vô tình chạm vào nút Back trên Android hoặc vuốt mép màn hình trên iOS rất dễ xảy ra. Ứng dụng Tu tập Phật pháp được trang bị cơ chế bảo vệ thông minh để gìn giữ sự liền mạch của thời khóa công phu."
-          },
-          {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Bảo vệ tuyệt đối khóa tu đang hành trì",
-                "text": "Khi đang ở trong phòng công phu (tụng kinh, niệm Phật, lễ bái), nhấn phím Back hoặc vuốt cạnh màn hình sẽ không làm ứng dụng đột ngột thoát ra. Một hộp thoại ân cần sẽ hiển thị để hỏi hành giả có thực sự muốn tạm dừng hay kết thúc khóa tu hay không."
+                "title": "Đóng lớp đang mở trước",
+                "text": "Dùng nút đóng hoặc Quay lại để đóng bảng chọn, hộp công cụ hay hộp thoại trước khi rời màn. Trên Android, nút Back cũng được dùng trong luồng này; trên iOS dùng nút quay lại trong ứng dụng."
               },
               {
-                "title": "Ghi nhận công đức chân thật (Chốt sổ)",
-                "text": "Với thời khóa lần tràng hạt niệm Phật hay lễ Phật sám hối, khi hành giả muốn dừng lại, hãy chọn \"Kết thúc phiên\" → \"Chốt sổ và lưu lại\". Bước này đảm bảo toàn bộ số biến niệm và thời gian thực tu được ghi nhận chuẩn xác vào sổ công đức."
-              },
-              {
-                "title": "Đóng các lớp phụ trước khi rời màn hình",
-                "text": "Khi đang mở bảng Mục lục, bảng Chú giải, bảng Công cụ đọc sách hay xem ảnh thu nhỏ, phím Back sẽ nhẹ nhàng đóng các lớp giao diện này lại trước, giúp hành giả trở về đúng trang kinh đang đọc mà không bị chuyển trang ngoài ý muốn."
-              },
-              {
-                "title": "Trình phát Pháp thoại nền linh hoạt",
-                "text": "Khi quay trở lại các màn hình khác trong lúc đang nghe pháp thoại, bài giảng vẫn tiếp tục phát êm ái ở thanh điều khiển thu nhỏ phía dưới, giúp quý đạo hữu vừa nghe pháp vừa tra cứu kinh văn thuận tiện."
+                "title": "Kết thúc phiên có chủ ý",
+                "text": "Trong lần hạt, thiền, lễ Phật hoặc thời khóa, phân biệt tạm dừng với kết thúc. Đọc hộp xác nhận và tình trạng lưu; nếu báo lỗi lưu, xử lý trước khi xóa dữ liệu hoặc gỡ app."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "An tâm trong từng thời khóa",
-            "text": "Mọi thao tác thoát thời khóa đều có sự xác nhận rõ ràng, giúp quý đồng tu hoàn toàn an tâm gạt bỏ lo âu về kỹ thuật để trọn vẹn đặt tâm vào lời kinh tiếng niệm Phật."
           }
         ]
       },
       {
         "id": "doc-offline-khong-can-mang",
-        "title": "Đọc Ngoại Tuyến (Offline) — Không cần kết nối Internet",
+        "title": "Nội dung nào dùng được khi ngoại tuyến?",
         "keywords": [
           "offline",
           "ngoại tuyến",
@@ -364,101 +276,60 @@ export const softwareGuideSections: GuideSection[] = [
           "đóng gói sẵn",
           "tải pdf",
           "tải audio",
-          "chế độ máy bay"
+          "chế độ máy bay",
+          "Nội dung nào dùng được khi ngoại tuyến?",
+          "What works offline?"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Ứng dụng Tu tập Phật pháp được tạo dựng với tâm nguyện phụng sự người tu học ở mọi hoàn cảnh — dù là tại tư gia, chốn thiền môn thanh vắng, trên những chuyến hành hương xa xôi hay nơi không có sóng điện thoại."
-          },
-          {
-            "type": "cards",
-            "items": [
-              {
-                "title": "Kinh văn & Sách chữ: Đóng gói sẵn 100% Offline",
-                "text": "Hơn 100 tác phẩm đồ sộ gồm toàn bộ Đại Tạng Kinh Điển, 4 bộ Kinh tạng A-Hàm & Nguyên thủy, các Nghi thức hành trì, các bộ Sách nhân quả và Pháp ngữ chư Tổ đều đã được tích hợp sẵn 100% trong bản cài đặt ứng dụng. Quý vị mở ra là đọc được ngay lập tức mà không cần mạng Internet hay tải thêm dữ liệu."
-              },
-              {
-                "title": "Tài liệu PDF & Bản in cổ: Tải 1 lần để đọc ngoại tuyến",
-                "text": "Do đặc thù các tệp sách ảnh PDF có dung lượng lớn, ứng dụng cung cấp nút \"Tải về đọc offline\". Quý vị chỉ cần bấm tải 1 lần khi có kết nối Wifi; sau khi tải xong, tệp PDF sẽ được lưu an toàn trên máy để mở xem bất kỳ lúc nào."
-              },
-              {
-                "title": "Pháp thoại Audio chất lượng cao: Tải về nghe khi đi xa",
-                "text": "Với các bài pháp thoại yêu thích, quý Phật tử có thể tải về danh mục ngoại tuyến của mình để lắng nghe trên máy bay hoặc những vùng sâu xa không có mạng Internet."
-              },
-              {
-                "title": "Tự động lưu giữ vị trí & Dấu trang bền vững",
-                "text": "Vị trí dòng kinh đang đọc dở, các đoạn văn được tô sáng (highlight), các ghi chú và dấu trang cá nhân đều được lưu trữ an toàn ngay trong bộ nhớ thiết bị của quý vị, luôn sẵn sàng phục vụ việc ôn luyện."
-              }
-            ]
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Trải nghiệm đọc kinh văn tức thì",
-                "text": "Mở bất kỳ bộ kinh chữ nào trong kho kinh sách (như KINH ĐỊA TẠNG, KINH HOA NGHIÊM, KINH DUY MA CẬT...), toàn bộ nội dung hiển thị ngay lập tức kể cả khi điện thoại đang bật Chế độ máy bay."
+                "title": "Sách và nghi thức đóng sẵn",
+                "text": "Các bài có trong gói app có thể mở mà không cần mạng. Danh mục phụ thuộc nền tảng và phiên bản; không phải mọi sách, ảnh, PDF, bản dịch hoặc video đều được đóng sẵn."
               },
               {
-                "title": "Tải trước tệp PDF và bài giảng khi có mạng",
-                "text": "Trước những chuyến đi xa hay khóa tu nhập thất, hãy kết nối Wifi và mở các tệp PDF cần nghiên cứu hoặc các bài pháp thoại muốn nghe, nhấn nút Tải về và chờ hệ thống báo đã lưu hoàn tất."
+                "title": "Tải trước phần cần dùng",
+                "text": "Khi còn mạng, dùng nút tải của tài liệu hoặc album được hỗ trợ, chờ hoàn tất rồi mở lại để kiểm tra. PDF, audio và video chưa tải xong vẫn cần mạng. Gói tiếng Anh tải riêng, trừ các nghi thức được đóng sẵn."
               },
               {
-                "title": "Đồng bộ công đức khi có kết nối lại",
-                "text": "Các ghi chép cá nhân, bài chép kinh và lịch sử tu tập được lưu trữ bền vững trên máy. Khi có mạng trở lại, nếu quý vị đăng nhập tài khoản, ứng dụng sẽ tự động sao lưu đồng bộ lên hệ thống để bảo vệ dữ liệu công phu trọn vẹn."
+                "title": "Giữ dữ liệu trên máy",
+                "text": "Không xóa dữ liệu ứng dụng để xử lý lỗi tải. Bản chép, ghi chú hoặc công phu chưa đồng bộ có thể chỉ nằm trên thiết bị; gỡ app hoặc xóa dữ liệu trình duyệt có thể làm mất chúng."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Phụng sự trọn vẹn tinh thần tu học",
-            "text": "Không phụ thuộc vào đường truyền mạng, không quảng cáo phiền toái, ứng dụng Tu tập Phật pháp gìn giữ không gian thanh tịnh tuyệt đối để từng phút giây mở ứng dụng là từng phút giây quý vị được trở về an trú trong chánh niệm."
           }
         ]
       },
       {
         "id": "cap-nhat-noi-dung",
-        "title": "Cập nhật nội dung & Hiệu đính từ máy chủ",
+        "title": "Kiểm tra và tải cập nhật nội dung",
         "keywords": [
           "cập nhật nội dung",
           "sách mới",
           "hiệu đính",
           "bản in mới",
           "đồng bộ kinh sách",
-          "dung lượng tải"
+          "dung lượng tải",
+          "Kiểm tra và tải cập nhật nội dung",
+          "Check and download content updates"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Để kho kinh điển ngày càng thêm phong phú và câu chữ luôn được trau chuốt, hiệu đính chuẩn xác theo các bản dịch uy tín của chư vị Tôn túc, ứng dụng Tu tập Phật pháp cung cấp tính năng cập nhật nội dung nhẹ nhàng ngay tại Trang chủ."
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Kiểm tra nội dung mới ở cuối Trang chủ",
-                "text": "Cuộn xuống cuối Trang chủ của ứng dụng, quý đồng tu sẽ thấy nút \"Cập nhật nội dung\". Bấm vào nút này để ứng dụng đối chiếu xem có bản kinh mới, bài viết mới hoặc bản hiệu đính kinh văn nào từ ban biên tập hay không."
+                "title": "Mở từ Trang chủ",
+                "text": "Tìm Cập nhật nội dung ở Trang chủ rồi bấm để kiểm tra. Cần kết nối mạng; ứng dụng cho xem nội dung và dung lượng trước khi tải."
               },
               {
-                "title": "Xem thông tin & Dung lượng ước tính",
-                "text": "Ứng dụng sẽ hiển thị danh sách các tác phẩm có bản cập nhật cùng dung lượng tải về (thường rất nhẹ, chỉ từ vài trăm KB đến vài MB cho các tệp văn bản). Hành giả nhấn \"Tải nội dung\" để bắt đầu nhận bản mới."
+                "title": "Theo dõi tải",
+                "text": "Chọn cập nhật cần dùng và chờ thông báo hoàn tất. Nếu mạng gián đoạn hoặc thiếu bộ nhớ, khôi phục điều kiện rồi thử lại. Đừng coi việc đã bấm tải là đã có nội dung ngoại tuyến."
               },
               {
-                "title": "Bảo toàn trọn vẹn dữ liệu cá nhân",
-                "text": "Quá trình cập nhật chỉ bổ sung sách mới hoặc hoàn thiện các câu chữ trong văn bản, hoàn toàn không làm ảnh hưởng hay thay đổi lịch sử tu tập, dấu trang, đoạn ghi chú hay sổ công đức của quý vị."
-              },
-              {
-                "title": "Cập nhật nội dung khác với Cập nhật ứng dụng",
-                "text": "Nút này dùng để làm mới kho sách và bài viết bên trong. Khi ứng dụng có thêm các tính năng công phu mới hoặc cải tiến kỹ thuật hệ thống, quý vị sẽ nhận được thông báo cập nhật phiên bản mới thông qua cửa hàng ứng dụng Google Play hoặc App Store."
+                "title": "Phân biệt nội dung với phiên bản app",
+                "text": "Cập nhật nội dung không thay thế bản cập nhật trên App Store hoặc Google Play. Các chức năng và sửa lỗi mới cần cài phiên bản ứng dụng tương ứng."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Tâm nguyện hoàn thiện kho kinh điển",
-            "text": "Đội ngũ phụng sự luôn nỗ lực rà soát từng dấu chấm câu, từng từ Hán-Việt trong kinh điển để mang lại những ấn bản điện tử chuẩn mực và thanh tịnh nhất, trợ duyên tốt nhất cho việc huân tu của đại chúng."
           }
         ]
       }
@@ -488,12 +359,12 @@ export const softwareGuideSections: GuideSection[] = [
     ],
     "editorialStatus": "verified-software",
     "introduction": [
-      "Không gian đọc sách thanh tịnh và trang nghiêm: hỗ trợ đọc sách điện tử và tài liệu PDF chuyên sâu, tự động ghi nhớ trang đọc, tùy chỉnh cỡ chữ lớn cho bậc cao niên, chuyển văn bản thành giọng đọc truyền cảm và trân quý lưu giữ từng lời vàng Phật dạy."
+      "Phân biệt sách văn bản, PDF và bản ghi âm để dùng đúng công cụ. Nội dung đóng sẵn mở ngoại tuyến được; các tệp chưa có trên máy cần tải trước."
     ],
     "topics": [
       {
         "id": "doc-pdf",
-        "title": "Đọc sách văn bản và tài liệu PDF chuyên nghiệp",
+        "title": "Mở sách văn bản và PDF",
         "keywords": [
           "two page",
           "hai trang song song",
@@ -506,31 +377,21 @@ export const softwareGuideSections: GuideSection[] = [
           "mục lục",
           "thanh công cụ",
           "dấu trang",
-          "đọc sách"
+          "đọc sách",
+          "Mở sách văn bản và PDF",
+          "Open text books and PDFs"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Chế độ hiển thị 1 trang hoặc 2 trang song song",
-                "text": "Khi nghiền ngẫm tài liệu PDF, quý đạo hữu có thể linh hoạt chuyển đổi giữa chế độ 1 trang (tối ưu cho màn hình điện thoại di động) hoặc 2 trang song song (tái hiện trọn vẹn cảm giác lật mở cuốn sách giấy truyền thống trên máy tính bảng hoặc màn hình lớn). Kết hợp cùng tính năng thu phóng (zoom) và chỉnh vừa vặn khung hình, từng trang kinh và tôn ảnh chư Phật luôn hiển lộ rõ ràng, trang nghiêm."
+                "title": "Sách văn bản",
+                "text": "Chọn sách trong Kinh sách, mở mục lục rồi chọn chương. Dùng Công cụ để chỉnh cách đọc. Khi quay lại từ sách đang đọc hoặc dấu trang, app khôi phục vị trí đã lưu khi dữ liệu còn sẵn."
               },
               {
-                "title": "Mục lục trực quan & Chuyển bài nhanh chóng",
-                "text": "Hệ thống mục lục chi tiết và dải ảnh thu nhỏ (thumbnails) của từng trang giúp đạo hữu dễ dàng bao quát toàn bộ tác phẩm. Quý vị có thể lướt nhanh đến phẩm kinh, chương sách hoặc tiết mục cần tham cứu mà không mất công lật tìm từng trang một cách thủ công."
-              },
-              {
-                "title": "Thanh công cụ tự ẩn khi cuộn trang thanh tịnh",
-                "text": "Nhằm giúp hành giả trọn vẹn nhiếp tâm vào lời kinh ý đạo, thanh công cụ phía trên sẽ tự động thu gọn êm ái khi quý vị cuộn đọc nội dung. Bất kỳ lúc nào cần mở lại các tính năng điều khiển, đạo hữu chỉ việc chạm nhẹ lên màn hình hoặc khẽ cuộn ngược lên trên."
-              },
-              {
-                "title": "Đánh dấu trang tiện lợi với biểu tượng dấu trang 🔖",
-                "text": "Khi tạm dừng thời khóa đọc tụng, quý vị chỉ cần chạm vào biểu tượng dấu trang 🔖 để lưu lại chính xác trang kinh hoặc đoạn sách đang đọc dở. Hệ thống danh sách dấu trang chu đáo sẽ giúp đạo hữu quay trở lại đúng mạch suy tư bất cứ lúc nào."
-              },
-              {
-                "title": "Tùy biến hiển thị thanh nhã",
-                "text": "Với sách văn bản điện tử, trình đọc cho phép thay đổi màu nền giấy dịu mắt và kích thước chữ đọc tự do; riêng đối với tài liệu scan PDF nguyên bản, tính năng thu phóng tự nhiên bảo toàn trọn vẹn từng nét bút, thủ bản hay mộc bản khắc gỗ truyền thống của chư Tổ sư."
+                "title": "Tài liệu PDF",
+                "text": "Mở tài liệu có nhãn PDF và chờ tải. Dùng điều khiển trang, thu/phóng phù hợp; cỡ chữ và phông của sách văn bản không làm thay đổi chữ in trong trang PDF."
               }
             ]
           }
@@ -538,7 +399,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "chi-tiet-thanh-cong-cu-doc",
-        "title": "10 công cụ đọc sách đắc lực và tùy biến thanh tịnh",
+        "title": "Tùy chỉnh công cụ đọc",
         "keywords": [
           "công cụ đọc",
           "cỡ chữ",
@@ -556,51 +417,25 @@ export const softwareGuideSections: GuideSection[] = [
           "bookerly",
           "merriweather",
           "literata",
-          "san francisco"
+          "san francisco",
+          "Tùy chỉnh công cụ đọc",
+          "Use the reading tools"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "1. Cỡ chữ (A− / A+) từ 13px đến 45px",
-                "text": "Thấu hiểu nhu cầu của chư Tôn đức và quý đạo hữu lớn tuổi mắt mờ, ứng dụng hỗ trợ tăng giảm cỡ chữ linh hoạt từ 13px đến 45px chỉ với thao tác chạm nút A− hoặc A+. Chữ hiển thị to rõ, thanh thoát, giúp việc đọc tụng kinh điển trong thời gian dài luôn nhẹ nhàng, không gây mỏi mắt."
+                "title": "Chữ và nền",
+                "text": "Mở Công cụ đọc để chỉnh A−/A+, phông, chữ đậm, giãn dòng và nền giấy theo những lựa chọn đang hiện. Các tùy chọn này dành cho nội dung văn bản; PDF dùng điều khiển riêng."
               },
               {
-                "title": "2. Phông chữ tao nhã tuyển chọn",
-                "text": "Trong sách văn bản, quý vị có thể tùy ý lựa chọn 4 phông chữ kinh điển được trau chuốt kỹ lưỡng: Bookerly (kinh điển, mực thước), Merriweather (chân phương, rõ nét), Literata (trang nhã, mềm mại) và San Francisco (hiện đại, sáng rõ). Phông chữ được tối ưu để mang lại cảm giác an hòa nhất cho đôi mắt."
+                "title": "Điều hướng và lưu vị trí",
+                "text": "Dùng mục lục để đổi chương; dùng dấu trang và danh sách dấu trang để đánh dấu, mở lại vị trí. Trong màn thực hành kinh/chú có menu nổi, ↑ Đầu và ↓ Cuối đưa về đầu hoặc cuối nội dung đang mở."
               },
               {
-                "title": "3. Trình bày chữ đậm B & Khoảng cách dòng rộng rãi",
-                "text": "Bật chế độ Chữ đậm (B) để tăng độ tương phản rõ nét khi đọc trong điều kiện ánh sáng yếu, kết hợp cùng các mức dãn cách dòng thoáng đạt. Các dòng kinh kệ được dàn trải ngay ngắn, giúp tâm trí dễ dàng an trú dõi theo từng câu chữ mà không bị hoa mắt hay nhầm dòng."
-              },
-              {
-                "title": "4. Nền giấy đọc sách thanh nhã dưỡng mắt",
-                "text": "Dễ dàng chuyển đổi giữa 5 sắc màu nền giấy tinh tế: Tự động (theo hệ điều hành), Trắng sáng (trong trẻo ban ngày), Vàng be dịu mắt (ấm áp, chống lóa), Giấy cổ (trầm lắng nét kinh xưa) và Đen sâu bảo vệ mắt ban đêm. Giao diện toàn app đồng bộ nhịp nhàng, nâng niu thị lực của người học Phật."
-              },
-              {
-                "title": "5. Lưu dấu trang (🔖) & Danh sách dấu trang",
-                "text": "Chạm vào biểu tượng dấu trang 🔖 để tức thời ghi nhớ vị trí câu kinh hoặc trang sách đang chiêm nghiệm. Quý đạo hữu có thể mở danh sách dấu trang để nhìn lại toàn bộ các mốc tu học đã ghi nhớ và chuyển nhanh về đúng vị trí đã lưu."
-              },
-              {
-                "title": "6. Nghe đọc thành tiếng (🔊 Giọng đọc AI / TTS tự động)",
-                "text": "Tính năng chuyển văn bản thành giọng đọc tự động vô cùng tiện lợi khi đôi mắt cần nghỉ ngơi, khi đang làm việc nhà trong chánh niệm hoặc lúc đi bách bộ tịnh tâm. Lời kinh tiếng pháp được cất lên ấm áp, truyền cảm, giúp dòng pháp âm thấm nhuần vào tạng thức."
-              },
-              {
-                "title": "7. Chia sẻ bài pháp quý (📤)",
-                "text": "Nút Chia sẻ (📤) giúp quý đạo hữu lan tỏa chánh pháp và gieo duyên lành đến bạn bè đồng tu. Quý vị có thể gửi trực tiếp liên kết bài viết, trang kinh qua các ứng dụng nhắn tin, mạng xã hội hoặc sao chép nhanh vào bộ nhớ tạm của thiết bị."
-              },
-              {
-                "title": "8. Tải về file sách EPUB tiêu chuẩn",
-                "text": "Ứng dụng Tu tập Phật pháp hỗ trợ xuất và tải file sách theo định dạng EPUB tiêu chuẩn quốc tế. Đạo hữu có thể lưu về máy để đọc trên các thiết bị đọc sách chuyên dụng như Kindle, Kobo, hoặc bổ sung vào kho tàng tàng kinh số cá nhân của mình."
-              },
-              {
-                "title": "9. Cuộn tự động rảnh tay (⬇️)",
-                "text": "Khi kích hoạt chế độ Cuộn tự động (⬇️), trang sách sẽ êm ả lướt đi theo tốc độ quý vị lựa chọn mà không cần chạm tay vào màn hình. Rất thích hợp cho quý hành giả ngồi thiền vị nghe đọc, trì tụng hoặc vừa đọc vừa tĩnh tâm quán chiếu."
-              },
-              {
-                "title": "10. Đóng (✕) & Quay lại mượt mà",
-                "text": "Nút Đóng (✕) hoặc phím Quay lại giúp đóng bảng công cụ, thoát khỏi hộp thoại và trở về danh mục sách một cách mượt mà, bảo toàn trọn vẹn dấu trang và các tùy chỉnh hiển thị vừa thiết lập."
+                "title": "Nghe, cuộn và chia sẻ",
+                "text": "Dùng Đọc thành tiếng hoặc cuộn tự động nếu nội dung có hỗ trợ. Giọng đọc phụ thuộc thiết bị, ngôn ngữ và dữ liệu văn bản, không thay cho bản thu pháp thoại. Chia sẻ liên kết hoặc xuất EPUB khi nút tương ứng có sẵn."
               }
             ]
           }
@@ -608,7 +443,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "ghi-chu-va-trich-dan",
-        "title": "Tô sáng câu Phật dạy tâm đắc & Mục Trích dẫn đã lưu",
+        "title": "Ghi chú và trích dẫn đã lưu",
         "keywords": [
           "highlight",
           "annotation",
@@ -618,34 +453,29 @@ export const softwareGuideSections: GuideSection[] = [
           "trích dẫn đã lưu",
           "bôi đen",
           "tô sáng",
-          "lời phật dạy"
+          "lời phật dạy",
+          "Ghi chú và trích dẫn đã lưu",
+          "Notes and saved quotes"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Trong quá trình đọc tụng kinh điển, khi bắt gặp những câu Phật ngôn khai mở trí tuệ hay lời dạy chấn động tâm thức của chư Tổ, quý đạo hữu chỉ cần chạm giữ và kéo chọn đoạn văn bản tâm đắc. Thanh công cụ tiện ích sẽ lập tức xuất hiện để quý vị tô sáng (Highlight) trang trọng hoặc ghi lại những dòng cảm ngộ sâu sắc của tự thân."
-          },
-          {
-            "type": "bullets",
-            "title": "Các tính năng lưu giữ chánh pháp",
+            "type": "steps",
             "items": [
-              "Tô sáng (Highlight) lời Phật dạy: Chọn các gam màu thanh nhã để làm nổi bật những câu kinh cốt tủy, giúp đoạn văn bừng sáng trên trang sách mỗi khi giở lại chiêm nghiệm.",
-              "Ghi chép suy ngẫm riêng (Pháp đàm nội tâm): Nhập lời suy tư, bài học chuyển hóa hoặc nguyện lực cá nhân ứng với lời Phật dạy ngay trong phần ghi chú đi kèm.",
-              "Tự động gắn nguồn gốc và số trang: Từng câu trích dẫn đều được hệ thống tự động liên kết với tên tác phẩm, chương phẩm và số trang tương ứng (kể cả trên tài liệu PDF), giúp việc đối chiếu tra cứu luôn chuẩn xác.",
-              "Kho tàng tại mục 'Trích dẫn đã lưu': Tất cả lời vàng ý ngọc đã lưu sẽ được quy tụ trang nghiêm tại mục Cá nhân → Trích dẫn đã lưu, trở thành cuốn cẩm nang tu học quý giá đồng hành cùng quý vị theo năm tháng."
+              {
+                "title": "Chọn đoạn muốn lưu",
+                "text": "Trong sách văn bản hỗ trợ chọn chữ, chọn một đoạn rồi dùng hành động tô sáng, ghi chú hoặc lưu trích dẫn đang hiện. Kiểm tra lại nội dung và nơi lưu trước khi rời màn."
+              },
+              {
+                "title": "Tìm lại và chia sẻ",
+                "text": "Vào Cá nhân → Trích dẫn đã lưu để mở lại. Với chức năng tạo ảnh trích dẫn, xem ảnh trước khi lưu hoặc chia sẻ. Lưu trên thiết bị và đồng bộ tài khoản là hai trạng thái khác nhau; xem thông báo thực tế của app."
+              }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Bảo mật và đồng bộ hành trình tu học",
-            "text": "Mọi trích dẫn và ghi chú của quý vị đều được lưu giữ tôn trọng và riêng tư tuyệt đối trên máy. Khi đăng nhập bằng Google hoặc bằng Apple trên iOS, dữ liệu sẽ được đồng bộ an toàn lên hệ thống đám mây, giúp đạo hữu an tâm tu học xuyên suốt trên nhiều thiết bị mà không sợ thất lạc châu ngọc chánh pháp."
           }
         ]
       },
       {
         "id": "pdf-nghe-va-offline",
-        "title": "Tải tài liệu scan PDF nguyên bản đọc offline & Nghe giọng đọc TTS",
+        "title": "Tải PDF và dùng đọc thành tiếng",
         "keywords": [
           "tts",
           "đọc thành tiếng",
@@ -656,27 +486,21 @@ export const softwareGuideSections: GuideSection[] = [
           "80 mb",
           "pdf offline",
           "tài liệu scan",
-          "không cần mạng"
+          "không cần mạng",
+          "Tải PDF và dùng đọc thành tiếng",
+          "PDF downloads and text-to-speech"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Tải tài liệu scan PDF nguyên bản đọc ngoại tuyến (Offline)",
-                "text": "Nhiều bộ kinh sách cổ, mộc bản Hán Nôm và tài liệu nghiên cứu Phật học quý hiếm được lưu trữ dưới dạng bản scan PDF nguyên gốc để giữ trọn tính chân xác lịch sử. Quý đạo hữu chỉ cần nhấn nút \"Tải để đọc offline\" trên thanh công cụ; tệp tài liệu sẽ được tải và lưu trữ an toàn trong bộ nhớ máy (IndexedDB), giúp quý vị an tâm mở đọc mượt mà ngay cả khi không có kết nối mạng Internet."
+                "title": "Tải bản ngoại tuyến",
+                "text": "Ở tài liệu PDF có hỗ trợ, bấm tải và chờ hoàn tất. Mở lại khi không có mạng để kiểm tra. Nếu tệp bị gián đoạn, dùng thử lại thay vì xóa dữ liệu ứng dụng."
               },
               {
-                "title": "Lắng nghe giọng đọc tự động (TTS) truyền cảm",
-                "text": "Với các tài liệu PDF có tích hợp lớp chữ kỹ thuật số (text layer), đạo hữu có thể kích hoạt tính năng Nghe đọc để hệ thống tự động cất lên giọng đọc truyền cảm cho từng trang sách. Đây là pháp trợ duyên tuyệt vời khi quý vị vừa muốn dưỡng đôi mắt nghỉ ngơi, vừa muốn đón nhận dòng pháp âm vi diệu thấm nhuần vào tâm tư."
-              },
-              {
-                "title": "Cuộn trang tự động tĩnh tâm rảnh tay",
-                "text": "Kết hợp chế độ Cuộn tự động cùng tốc độ lướt trang êm ái, quý đạo hữu có thể an tọa tĩnh tâm, chắp tay thành kính hoặc theo dõi bài học mà không cần bận tâm thao tác vuốt màn hình. Khi cần dừng lại để đọc kỹ hay ghi chú một câu kinh, quý vị chỉ cần chạm nhẹ để tạm dừng tính năng cuộn."
-              },
-              {
-                "title": "Chuẩn bị trước những chuyến đi xa",
-                "text": "Trước khi bắt đầu những chuyến đi xa về vùng núi, miền quê vắng hoặc lên máy bay nơi không có sóng mạng, đạo hữu hãy chủ động tải sẵn các bộ kinh PDF yêu thích. Sau khi tải xong, quý vị có thể thử ngắt kết nối mạng và mở lại sách để bảo đảm tài liệu đã sẵn sàng cho những giờ phút tu tập tĩnh lặng."
+                "title": "Hiểu giới hạn giọng đọc",
+                "text": "Đọc thành tiếng cần nội dung chữ và giọng phù hợp trên thiết bị. PDF dạng ảnh quét có thể không có chữ để đọc; không phải mọi tài liệu đều nghe được. Audio pháp thoại cần phát hoặc tải từ phần Pháp thoại."
               }
             ]
           }
@@ -708,7 +532,7 @@ export const softwareGuideSections: GuideSection[] = [
     ],
     "editorialStatus": "verified-software",
     "introduction": [
-      "Hệ thống công cụ trợ duyên tu học và thực hành công phu chuyên sâu: đảnh lễ sám hối đối trước 14 tôn tượng trang nghiêm, lần chuỗi tràng hạt ảo nhiếp tâm niệm Phật, tọa thiền hẹn giờ chuông Bát Nhã thanh tịnh, sổ quán chiếu ba nghiệp Thân - Khẩu - Ý mỗi tối, khóa lễ sáng tối liền mạch, theo dõi lịch Thập trai âm lịch và bản đồ nhiệt tiến độ tinh tấn mỗi ngày."
+      "Chọn công cụ phù hợp, đọc hướng dẫn và ghi nhận đúng phần đã thực hành. Thời khóa kết hợp nhiều hoạt động; món chay hỗ trợ thực đơn và chuẩn bị bữa ăn."
     ],
     "topics": [
       {
@@ -781,12 +605,16 @@ export const softwareGuideSections: GuideSection[] = [
             "label": "Mở Chế độ Lễ Phật & Sám Hối ngay",
             "text": "Bắt đầu thời khóa chiêm bái tôn tượng Phật, cài đặt số lạy và tiếng chuông mõ để đảnh lễ sám hối thanh tịnh thân tâm.",
             "buttonLabel": "Vào Lễ Phật"
+          },
+          {
+            "type": "paragraph",
+            "text": "Trong thời khóa, khi kết thúc bước Lễ Phật, app tiếp tục sang bước sau kể cả chưa đủ mục tiêu; chỉ giữ số lạy thực tế. Kiểm tra tình trạng lưu trước khi rời phiên."
           }
         ]
       },
       {
         "id": "trang-hat-ao",
-        "title": "Tràng Hạt Ảo (Lần chuỗi niệm Phật)",
+        "title": "Lần tràng hạt: đếm tay và nhịp tự động",
         "keywords": [
           "digital rosary",
           "vuốt hạt",
@@ -801,45 +629,33 @@ export const softwareGuideSections: GuideSection[] = [
           "chuỗi hạt",
           "gõ mõ tự động",
           "bất niệm tự niệm",
-          "xả niệm"
+          "xả niệm",
+          "Lần tràng hạt: đếm tay và nhịp tự động",
+          "Rosary beads: manual and automatic counting"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Chọn chuỗi hạt & câu niệm linh ứng",
-                "text": "Vào Tu tập → Lần tràng hạt. Trong mục Tùy chọn, quý Phật tử có thể chọn chuỗi hạt 18, 27, 54, 108 hạt đoạn trừ phiền não trần lao. Ứng dụng tích hợp sẵn hồng danh chư Phật và Bồ Tát. Đồng thời, quý vị có thể tự thêm câu niệm/câu chú riêng biệt bằng cách vào Danh hiệu → Thêm tùy chọn mới..., nhập câu chú hay hồng danh Bổn Tôn rồi lưu vào danh sách hành trì."
+                "title": "Mở phiên",
+                "text": "Vào Tu tập → Lần tràng hạt, đọc giới thiệu rồi bấm Bắt đầu. Trong Tùy chọn, chọn danh hiệu hoặc câu niệm, số hạt, mục tiêu và âm thanh theo các lựa chọn đang có."
               },
               {
-                "title": "Hai phương thức hành trì: Chạm thủ công & Gõ mõ tự động",
-                "text": "Quý Phật tử có thể chọn giữa hai phương thức công phu: Chạm thủ công mang lại cảm giác chân thật với tính năng rung haptic như hạt thật ở từng đầu ngón tay khi lần qua mỗi hạt bồ đề; hoặc chọn Tự động gõ mõ với 4 nhịp: Rất chậm (30 nhịp/phút — 2 giây một nhịp, sâu lắng định tâm), Chậm (40 nhịp/phút — 1,5 giây), Vừa (60 nhịp/phút — 1 giây một nhịp), Tinh tấn (80 nhịp/phút — 0,75 giây, quét sạch tạp niệm)."
+                "title": "Đếm thủ công",
+                "text": "Chạm hoặc vuốt chuỗi hạt, hoặc bấm Niệm một hạt. Trên máy có bàn phím, dùng phím được chỉ dẫn. Kiểm tra số đang lần, số hạt trong chuỗi và số chuỗi hoàn tất."
               },
               {
-                "title": "Nhiếp tâm sâu sắc vào tiềm thức để bước vào cảnh giới \"Bất niệm tự niệm\"",
-                "text": "Hành giả nương vào âm thanh tiếng mõ thanh thoát và nhịp chuỗi quay đều để nhiếp tâm sâu sắc vào tiềm thức. Từng chữ từng câu hồng danh thấu suốt tâm can, phá tan mọi vọng tưởng điên đảo. Khi tâm và tiếng niệm hòa nhập làm một, quý vị sẽ bước vào cảnh giới \"Bất niệm tự niệm\" — không khởi niệm mà câu niệm Phật vẫn tự nhiên tuôn chảy không ngừng."
-              },
-              {
-                "title": "Tiếng chuông xả niệm 3 tiếng và hồi hướng",
-                "text": "Khi chuỗi hạt viên mãn đủ số biến phát nguyện trong phiên, nhịp mõ sẽ dừng lại êm dịu và tiếng chuông xả niệm 3 tiếng vang lên trầm hùng, nhắc nhở hành giả từ từ buông xả, điều hòa hơi thở và bước vào phần tụng đọc văn hồi hướng công đức vô lượng đến khắp pháp giới hữu tình."
-              },
-              {
-                "title": "Chốt sổ và thoát — Bảo toàn công đức",
-                "text": "Khép lại thời khóa, quý đạo hữu bấm Kết thúc phiên, kiểm tra số chuỗi và số biến đã trì niệm, rồi chọn Chốt sổ và thoát để ghi nhận công phu vào sổ nhật ký tu tập. Xin lưu ý không bấm nút Back vội vã để bảo đảm dữ liệu công phu được lưu giữ chu toàn."
+                "title": "Dùng nhịp tự động",
+                "text": "Mở tùy chọn nhịp tự động, đặt nhịp rồi bật khi cần. Phân biệt tạm dừng nhịp, dừng nhịp, đặt lại và kết thúc phiên; đọc xác nhận trước khi đặt lại số đếm. Kết thúc theo số thực tế, không tự coi đủ mục tiêu."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Hơi thở và tiếng niệm hòa làm một",
-            "text": "Lắng nghe từng tiếng mõ và trở về câu niệm khi tâm tán loạn. Âm thanh nền và rung haptic phụ thuộc vào khả năng của từng thiết bị và quyền hệ thống; số biến được tính chính xác theo âm thanh phát ra thực tế, giúp hành giả luôn giữ tâm chân thật trong từng thời khắc."
           }
         ]
       },
       {
         "id": "so-quan-chieu-ca-nhan",
-        "title": "Sổ Quán Chiếu — Nhìn lại Thân, Khẩu, Ý",
+        "title": "Quán chiếu và ghi chép riêng tư",
         "keywords": [
           "sổ soi tâm",
           "sổ quán chiếu",
@@ -848,27 +664,21 @@ export const softwareGuideSections: GuideSection[] = [
           "biệt danh",
           "thân khẩu ý",
           "nhìn lại mình",
-          "sám hối lỗi lầm"
+          "sám hối lỗi lầm",
+          "Quán chiếu và ghi chép riêng tư",
+          "Daily reflection and private writing"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Lắng lòng nhìn lại Thân - Khẩu - Ý mỗi tối",
-                "text": "Mỗi tối trước khi buông mình vào giấc ngủ an lành, quý đạo hữu hãy dành ra vài phút tĩnh lặng đối diện với lòng mình. Mở Sổ quán chiếu, soi rọi lại ba nghiệp Thân - Khẩu - Ý trong suốt một ngày: Thân có giữ giới thanh tịnh, Khẩu có nói lời hòa ái chân thật, Ý có khởi niệm từ bi buông xả? Tự soi gương tâm trong tinh thần tỉnh giác, không tự trách móc mà với tâm nguyện hướng thiện tinh tấn."
+                "title": "Mở quán chiếu",
+                "text": "Trong Tu tập, chọn Quán chiếu việc thiện ác trong ngày. Đọc hướng dẫn rồi nhìn lại việc đã làm, điều cần sửa và điều muốn thực hành tiếp."
               },
               {
-                "title": "Ghi nhận điều thiện lành và sám hối lỗi lầm",
-                "text": "Trong trang sổ tâm linh, hành giả hoan hỷ ghi nhận điều thiện lành đã gieo trong ngày (bố thí, giúp người, tụng kinh, phóng sinh, khởi tâm lành) để nuôi dưỡng hạt giống Bồ Đề; đồng thời thành tâm sám hối lỗi lầm sơ suất đã phạm phải. Nhờ phát lồ tự tâm mà nghiệp chướng tiêu trừ, tâm hồn nhẹ nhõm thanh lương."
-              },
-              {
-                "title": "Bảo mật lưu riêng tư 100% trên thiết bị",
-                "text": "Mọi dòng tâm sự, nỗi niềm sám hối hay việc thiện thầm kín trong Sổ quán chiếu đều được lưu riêng tư 100% trên thiết bị của quý Phật tử. Dữ liệu hoàn toàn không gửi lên máy chủ khi chưa có sự cho phép, tạo nên một không gian tịnh cốc an toàn tuyệt đối để hành giả tự quán chiếu thân tâm mỗi ngày."
-              },
-              {
-                "title": "Chia sẻ ẩn danh với Biệt danh lên cộng đồng gieo duyên",
-                "text": "Khi có những bài học sám hối sâu sắc hoặc việc thiện lành muốn lan tỏa nhằm khích lệ tinh thần tu tập của đại chúng, quý vị có thể tùy tâm chọn chia sẻ. Ứng dụng bảo vệ danh tính tuyệt đối bằng cách chia sẻ ẩn danh với Biệt danh trang nghiêm do quý vị tự chọn, không bao giờ lộ tên tài khoản, email hay thông tin cá nhân."
+                "title": "Chọn đúng nơi lưu",
+                "text": "Lưu riêng tư và chia sẻ cộng đồng là những lựa chọn khác nhau. Chỉ dùng nút chia sẻ khi muốn công khai phần nội dung đó. Không ghi thông tin nhạy cảm của người khác; nhật ký riêng không mặc nhiên được đăng lên cộng đồng."
               }
             ]
           }
@@ -876,7 +686,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "cong-dong-sam-hoi-tuy-hy",
-        "title": "Cộng Đồng — Sám hối & Tùy hỷ công đức",
+        "title": "Cộng đồng và quyền riêng tư",
         "keywords": [
           "cộng đồng",
           "phát lồ",
@@ -886,35 +696,29 @@ export const softwareGuideSections: GuideSection[] = [
           "bài của tôi",
           "sám hối cộng đồng",
           "tùy hỷ thiện lành",
-          "phước đức ngang bằng"
+          "phước đức ngang bằng",
+          "Cộng đồng và quyền riêng tư",
+          "Community and privacy"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Hai bảng tin thanh tịnh: Phát Lồ Sám Hối & Tùy Hỷ Thiện Lành",
-                "text": "Nơi cộng đồng Tu tập Phật pháp, quý Phật tử cùng hội tụ trong hai không gian đạo tràng trang nghiêm: \"Phát Lồ Sám Hối\" — nơi những tâm hồn can đảm bộc bạch lầm lỗi để cầu xin mười phương chư Phật chứng minh và đại chúng trợ duyên tịnh hóa; và \"Tùy Hỷ Thiện Lành\" — nơi tỏa ngát hương thơm từ những nghĩa cử cao đẹp, việc thiện lành khắp muôn nơi."
+                "title": "Chọn tham gia",
+                "text": "Mở Tham gia cộng đồng hoặc Cùng nhau tinh tấn để xem mục tiêu chung. Đọc điều kiện, chọn tham gia và dùng công cụ tương ứng. Chỉ phiên hợp lệ mới được tính theo điều kiện của từng mục tiêu."
               },
               {
-                "title": "Không bình luận tranh cãi, chỉ gửi lời cầu nguyện mẫu trang nghiêm",
-                "text": "Để giữ gìn cõi mạng như chốn thiền môn thanh tịnh, ứng dụng hoàn toàn không bình luận tranh cãi hay tán gẫu thị phi. Quý đạo hữu chỉ gửi lời cầu nguyện mẫu trang nghiêm và lời chúc phúc thiêng liêng như: \"Nguyện Tam Bảo gia hộ tiêu trừ nghiệp chướng\", \"Nam Mô A Di Đà Phật\", \"Tùy hỷ tán thán công đức lành\"... Mỗi tài khoản gửi một lời chúc nguyện chí thành duy nhất cho mỗi bài đăng để năng lượng luôn thuần khiết."
-              },
-              {
-                "title": "Mục \"Bài của tôi\" & Quản trị lời nguyện đạo vị",
-                "text": "Tại mục \"Bài của tôi\", quý Phật tử dễ dàng xem lại các bài phát lồ hoặc việc thiện mình đã gửi, cảm nhận trọn vẹn sự nâng đỡ tinh thần từ những lời cầu nguyện ấm áp của chư đạo hữu đồng tu. Quý vị cũng có thể chủ động gỡ bài đăng của mình bất cứ lúc nào khi tâm nguyện đã viên mãn."
+                "title": "Quản lý hiển thị",
+                "text": "Kiểm tra lựa chọn chia sẻ, bảng xếp hạng và trạng thái đang tu tập trong phần quyền riêng tư. Bình luận hoặc hồ sơ đang chờ duyệt chưa chắc đã công khai. Có thể báo cáo hoặc chặn qua menu của nội dung hoặc thành viên."
               }
             ]
-          },
-          {
-            "type": "paragraph",
-            "text": "Kinh điển Phật giáo dạy rằng: Hoan hỷ tùy hỷ được phước đức ngang bằng người làm việc thiện. Khi thấy người khác gieo trồng phước điền hay chân thành phát lồ sám hối, tâm ta khởi niềm hoan hỷ tán thán, không mảy may ghen ghét đố kỵ thì chính tâm ấy đã thâu nhận trọn vẹn công đức thanh tịnh vô biên."
           }
         ]
       },
       {
         "id": "khoa-le-hang-ngay",
-        "title": "Khóa Lễ Hằng Ngày — Hành trì liền mạch",
+        "title": "Tạo và thực hành thời khóa",
         "keywords": [
           "khóa lễ",
           "thời khóa",
@@ -926,27 +730,25 @@ export const softwareGuideSections: GuideSection[] = [
           "chú đại bi",
           "lăng nghiêm",
           "địa tạng",
-          "cầu an cầu siêu"
+          "cầu an cầu siêu",
+          "Tạo và thực hành thời khóa",
+          "Create and follow a practice routine"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Tạo thời khóa sáng, tối liền mạch trang nghiêm",
-                "text": "Tại màn hình Tu tập, mở Thời khóa tu tập để tạo thời khóa sáng, tối liền mạch hoặc đặt tên theo ý nguyện tu học. Dùng bảng chọn Thêm bước để thêm Lễ Phật, Tọa thiền, Niệm Phật hoặc Hồi hướng theo thứ tự phù hợp. Hành giả chủ động định lượng số lạy, thời gian tọa thiền, câu niệm và số biến thích hợp với sức khỏe và thời gian của mình."
+                "title": "Tạo thời khóa",
+                "text": "Vào Tu tập → Thời khóa tu tập → Tạo thời khóa mới. Đặt tên rồi dùng Thêm bước; cần ít nhất hai bước. Có thể thêm phát nguyện sám hối, thiền, lần hạt, lễ Phật, hai công cụ chép, giữ giới, Bát quan trai, tiết dục, kinh, chú, nghi thức và hồi hướng."
               },
               {
-                "title": "Các bài văn hồi hướng kinh điển chuẩn mực (Chú Đại Bi, Lăng Nghiêm, Địa Tạng)",
-                "text": "Ứng dụng tích hợp sẵn các bài văn hồi hướng kinh điển chuẩn mực được trích nguyên từ chánh tạng: NGHI THỨC TRÌ TỤNG CHÚ ĐẠI BI, NGHI THỨC TRÌ TỤNG THẦN CHÚ THỦ LĂNG NGHIÊM và KINH ĐỊA TẠNG BỒ TÁT BỔN NGUYỆN. Những áng văn từ bi vô lượng giúp mở rộng dung lượng tâm, đem công đức phụng hiến khắp pháp giới chúng sinh cùng quy về bến giác."
+                "title": "Chỉnh từng bước",
+                "text": "Mở bước để chọn nội dung và mục tiêu phù hợp. Dùng nút lên/xuống để đổi thứ tự, hoặc bỏ bước. Với kinh/chú/nghi thức và bản chép, chọn đúng nội dung muốn dùng rồi lưu thời khóa."
               },
               {
-                "title": "Tùy chỉnh danh tánh cầu an cầu siêu trọn vẹn đạo hiếu",
-                "text": "Quý Phật tử có thể dễ dàng tùy chỉnh danh tánh cầu an cầu siêu trong bài văn hồi hướng riêng của mình: điền danh tánh ông bà cha mẹ hiện tiền để cầu an tai qua nạn khỏi, hoặc tên tuổi cửu huyền thất tổ, chư hương linh quá vãng, thai nhi sản nạn để cầu siêu vãng sanh tịnh độ. Lời nguyện chí thành xuất phát từ đáy lòng sẽ cảm thông đến mười phương chư Phật."
-              },
-              {
-                "title": "Hành trì xuyên suốt, không gián đoạn đạo tâm",
-                "text": "Khi bắt đầu thời khóa, ứng dụng tự động dẫn dắt hành giả qua từng nghi thức một cách uyển chuyển. Quý vị có thể tạm dừng khi cần thiết hoặc chuyển bước khi hoàn tất. Sau khi đọc tụng trọn vẹn văn hồi hướng, bấm xác nhận hoàn thành để dâng trọn vẹn phước duyên của thời khóa lên Tam Bảo chứng minh."
+                "title": "Thực hành theo thứ tự",
+                "text": "Mở thời khóa đã lưu và bắt đầu. Tạm dừng khi cần; khi kết thúc một bước, app tiếp tục sang bước sau dù chưa đạt mục tiêu. Dữ liệu giữ số lượng, thời gian thực tế; không tự tăng thành đủ mục tiêu. Kiểm tra thông báo lưu trước khi rời phiên."
               }
             ]
           }
@@ -954,7 +756,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "dong-bo-ca-nhan-48-gio",
-        "title": "Lưu cá nhân & Đồng bộ sau 48 giờ",
+        "title": "Hiểu trạng thái lưu và đồng bộ công phu",
         "keywords": [
           "48 giờ",
           "48 tiếng",
@@ -964,28 +766,33 @@ export const softwareGuideSections: GuideSection[] = [
           "khôi phục thời khóa",
           "đồng bộ đám mây",
           "đổi thiết bị",
-          "bảo tồn dữ liệu"
+          "bảo tồn dữ liệu",
+          "Hiểu trạng thái lưu và đồng bộ công phu",
+          "Understand practice saving and synchronization"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Toàn bộ thời khóa công phu, bài văn hồi hướng tùy chỉnh chứa chan tâm nguyện và biệt danh cộng đồng của quý đạo hữu đều được lưu trữ tức thì trên máy. Dù quý vị đang tu tập ở nơi thâm sơn cùng cốc hay chốn hải đảo xa xôi hoàn toàn mất sóng Internet, ứng dụng vẫn vận hành trơn tru và bảo tồn trọn vẹn mọi dữ liệu."
-          },
-          {
-            "type": "paragraph",
-            "text": "Để giữ gìn sự tĩnh lặng tối đa cho người tu và bảo vệ tài nguyên hệ thống, ứng dụng thực hiện cơ chế đồng bộ thông minh lên đám mây sau 48 giờ khi có thay đổi mới kể từ lần đồng bộ thành công trước đó. Nếu không có chỉnh sửa nào, ứng dụng tuyệt đối không gửi dữ liệu mạng, giúp thiết bị tiết kiệm pin và vận hành êm ả."
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Bảo tồn dữ liệu khi đổi thiết bị",
-            "text": "Nhờ cơ chế lưu trữ đám mây an toàn, khi quý Phật tử nâng cấp sang điện thoại mới hoặc cài đặt lại ứng dụng, chỉ cần đăng nhập tài khoản tu tập là có thể bảo tồn dữ liệu khi đổi thiết bị, khôi phục lại trọn vẹn thời khóa, văn hồi hướng và chuỗi ngày công phu quý báu mà không lo thất lạc."
+            "type": "steps",
+            "items": [
+              {
+                "title": "Lưu trên thiết bị",
+                "text": "App giữ dữ liệu thực hành theo từng công cụ. Xem Công phu của tôi hoặc tiến độ để kiểm tra. Bản chép, nhật ký riêng, tệp tải về và công phu không dùng cùng một cơ chế lưu."
+              },
+              {
+                "title": "Đồng bộ tài khoản",
+                "text": "Đăng nhập cùng tài khoản và có mạng để đồng bộ phần dữ liệu được hỗ trợ. Có dữ liệu được gom hoặc chờ gửi; không coi mốc 48 giờ là cam kết mọi dữ liệu đã lên máy chủ. Kiểm tra trạng thái và thử lại nếu app báo lỗi."
+              },
+              {
+                "title": "Trước khi đổi máy",
+                "text": "Bản chép cần dùng Lưu lên hệ thống nếu muốn lưu vào tài khoản. Không xóa dữ liệu máy cũ trước khi kiểm tra phần cần giữ đã lưu thành công; tệp ngoại tuyến và nhật ký riêng có thể không được khôi phục trên máy mới."
+              }
+            ]
           }
         ]
       },
       {
         "id": "toa-thien-hen-gio",
-        "title": "Tọa thiền & Hẹn giờ chuông tĩnh tâm",
+        "title": "Thiền có hướng dẫn và chế độ Tập trung",
         "keywords": [
           "meditation timer",
           "15 phút",
@@ -997,27 +804,25 @@ export const softwareGuideSections: GuideSection[] = [
           "tọa thiền",
           "chuông bát nhã",
           "xả thiền",
-          "điều thân điều tức"
+          "điều thân điều tức",
+          "Thiền có hướng dẫn và chế độ Tập trung",
+          "Guided meditation and Focus mode"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Thời lượng 15, 30, 45, 60 phút hoặc tùy chỉnh",
-                "text": "Vào Tu tập → Thiền định. Quý đạo hữu có thể tùy duyên lựa chọn thời lượng 15, 30, 45, 60 phút hoặc tùy chỉnh số phút theo sức khỏe và công phu thiền định của mình. Dù là 15 phút an trú giữa trưa bận rộn hay 60 phút tĩnh tọa chuyên sâu lúc canh khuya, từng phút giây định tĩnh đều mang lại nguồn năng lượng an lạc màu nhiệm."
+                "title": "Thiết lập trước khi bắt đầu",
+                "text": "Vào Tu tập → Thiền định. Chọn thời lượng ở Thời gian; xem các thẻ Nhạc thiền, Âm thanh và Ảnh nền để chọn theo nhu cầu. Cảm biến chuyển động là tùy chọn, không bắt buộc để ghi nhận phiên thiền."
               },
               {
-                "title": "Đệm 30 giây buông xả muôn duyên, điều thân điều tức",
-                "text": "Khi bấm Bắt đầu thiền, ứng dụng dành riêng khoảng đệm 30 giây buông xả muôn duyên, điều thân điều tức. Trong 30 giây thiêng liêng này, hành giả buông bỏ mọi lo toan công việc trần thế, điều chỉnh tư thế ngồi vững vàng ngay ngắn (kiết già hoặc bán già), buông lỏng toàn thân, theo dõi hơi thở ra vào êm nhẹ để tâm ý lắng trong như mặt hồ không gợn sóng."
+                "title": "Bắt đầu phiên",
+                "text": "Bấm Bắt đầu thiền; màn thiết lập cho biết thời gian chuẩn bị và chuông mở/kết phiên. Kiểm tra âm lượng, chế độ im lặng và quyền của thiết bị nếu không nghe được. Theo dõi thời gian trong phiên, không coi chuông là báo thức chắc chắn khi hệ điều hành hạn chế app."
               },
               {
-                "title": "Ba tiếng chuông bát nhã mở đầu và xả thiền",
-                "text": "Thời khắc tĩnh tọa bắt đầu với ba tiếng chuông bát nhã mở đầu và xả thiền. Ba tiếng chuông đầu trầm hùng ngân vang như tiếng sấm thức tỉnh tánh giác, đưa hành giả vào cõi tịch tĩnh. Trong suốt thời gian thiền, tiếng nhạc thiền suối reo thanh tịnh hộ niệm chánh niệm. Khi hết giờ, ba tiếng chuông bát nhã xả thiền nhẹ nhàng ngân lên, báo hiệu hành giả xoa mặt, xoa tay chân và từ từ xuất định."
-              },
-              {
-                "title": "Ghi nhận thời lượng thực tế vào Sổ công phu",
-                "text": "Khi kết thúc phiên thiền, thời gian tọa thiền thực tế sẽ được ghi nhận trang nghiêm vào Sổ công phu. Nếu có duyên sự bất ngờ cần dừng sớm, ứng dụng vẫn ghi nhận đúng số phút quý vị đã an trú, khích lệ tâm Bồ Đề tinh tấn mỗi ngày."
+                "title": "Vào và thoát Tập trung",
+                "text": "Trong phiên, bấm Tập trung để chỉ xem hoa sen và lời hướng dẫn hít thở. Bấm Thoát tập trung phía trên hoặc dùng thao tác quay lại được hỗ trợ để trở về điều khiển; đồng hồ phiên vẫn tiếp tục. Tạm dừng và kết thúc là thao tác riêng."
               }
             ]
           }
@@ -1025,7 +830,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "goi-y-va-tien-do",
-        "title": "Lịch Thập Trai, Tiến độ & Bản đồ nhiệt (Heatmap)",
+        "title": "Lịch, công phu và danh hiệu tu tập",
         "keywords": [
           "lịch âm",
           "ngày vía",
@@ -1037,27 +842,25 @@ export const softwareGuideSections: GuideSection[] = [
           "bản đồ nhiệt",
           "chuỗi ngày tinh tấn",
           "chiến dịch cộng tu",
-          "thiệp hồi hướng"
+          "thiệp hồi hướng",
+          "Lịch, công phu và danh hiệu tu tập",
+          "Calendar, practice records and titles"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Lịch Thập trai, ngày Vía Phật âm lịch",
-                "text": "Ứng dụng tự động tính toán lịch Thập trai, ngày Vía Phật âm lịch chuẩn xác theo tiết khí Á Đông. Nhắc nhở 10 ngày trai giới thanh tịnh theo Kinh Địa Tạng (mùng 1, 8, 14, 15, 18, 23, 24, 28, 29, 30 âm lịch) cùng các ngày vía chư Phật, Bồ Tát để quý Phật tử kịp thời phát nguyện ăn chay, giữ giới, phóng sinh và tu tạo phước báu vô lượng."
+                "title": "Xem lịch",
+                "text": "Trang chủ hiển thị ngày âm/dương, dải tuần và nút Xem lịch tháng. Chọn ngày để đọc thông tin tương ứng; các lời nhắc hôm nay không phải xác nhận bạn đã thực hành."
               },
               {
-                "title": "Bản đồ nhiệt (Heatmap) chuỗi ngày tinh tấn",
-                "text": "Vào Tu tập → Công phu của tôi để chiêm ngưỡng bản đồ nhiệt (Heatmap) chuỗi ngày tinh tấn. Mỗi ô vuông màu xanh rạng rỡ đại diện cho một ngày quý vị tinh tấn đảnh lễ, lần hạt hay tọa thiền. Chuỗi ngày công phu nối dài như chuỗi ngọc báu trang nghiêm pháp thân, hun đúc chí nguyện giải thoát kiên cường."
+                "title": "Xem công phu",
+                "text": "Mở Công phu của tôi hoặc Cá nhân → Tiến độ tu tập để xem theo ngày, tuần, tháng, năm và chi tiết tên công phu, số lượng, đơn vị. Dùng ghi nhận thủ công cho phần thực hành ngoài app nếu chức năng đó đang có."
               },
               {
-                "title": "Chiến dịch cộng tu kết duyên đại chúng",
-                "text": "Hòa mình vào chiến dịch cộng tu cùng hàng vạn đạo hữu bốn phương: đồng lòng hướng về một đại nguyện, chung tay trì tụng hàng triệu biến Chú Đại Bi hay câu Phật hiệu A Di Đà. Năng lượng đại chúng thanh tịnh tương dung tạo thành biển phước lành che chở muôn loài vượt qua tai ương ách nạn."
-              },
-              {
-                "title": "Thiệp hồi hướng công đức lan tỏa thiện duyên",
-                "text": "Sau mỗi buổi công phu hoặc khi hoàn mãn chiến dịch, hành giả có thể kết xuất thiệp hồi hướng công đức trang nghiêm với hình ảnh tôn tượng Phật quang minh, ghi nhận số lạy, số biến niệm và lời văn chúc nguyện thanh tịnh để lưu niệm hoặc gửi tặng thân quyến đồng tu gieo duyên Bồ Đề."
+                "title": "Huy hiệu và danh hiệu",
+                "text": "Trang chủ và Tài khoản hiển thị huy hiệu/danh hiệu theo dữ liệu tu tập của tài khoản. Tài khoản có nhãn Danh hiệu tu tập. Trạng thái chưa có dữ liệu khác với đã đạt một bậc; khi đồng bộ chưa xong, kiểm tra lại kết nối và tài khoản."
               }
             ]
           }
@@ -1065,7 +868,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "che-do-thanh-tinh",
-        "title": "Tiết dục bảo thân — Lời ngọc từ Thọ Khang Bảo Giám",
+        "title": "Tiết dục bảo thân và nhật ký riêng",
         "keywords": [
           "tiết dục bảo thân",
           "thanh tịnh tâm",
@@ -1078,27 +881,21 @@ export const softwareGuideSections: GuideSection[] = [
           "ấn quang",
           "thọ khang bảo giám",
           "điểm danh thanh tịnh",
-          "chuyển hóa dục niệm"
+          "chuyển hóa dục niệm",
+          "Tiết dục bảo thân và nhật ký riêng",
+          "Restraint practice and private journal"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Tiết dục bảo thân theo Thọ Khang Bảo Giám và lời dạy của Ấn Quang Đại Sư",
-                "text": "Hành giả thực hành tiết dục bảo thân theo Thọ Khang Bảo Giám và lời dạy của Ấn Quang Đại Sư — vị Tổ sư Tịnh Độ Tông cả đời tha thiết khuyên răn người đời gìn giữ nguyên khí, tiết chế sắc dục để bảo vệ tính mạng, bồi dưỡng trí tuệ và vun đắp gốc rễ đạo đức gia đình. Giữ gìn thân tâm trong sạch là bước đi vững chãi đầu tiên để thoát khỏi lưới ái trần ai."
+                "title": "Mở công cụ",
+                "text": "Vào Tu tập → Tiết dục bảo thân, đọc hướng dẫn rồi chọn việc muốn theo dõi. Công cụ hỗ trợ tự nhìn lại và duy trì thói quen; không thay thế tư vấn chuyên môn khi bạn cần hỗ trợ sức khỏe."
               },
               {
-                "title": "Điểm danh thanh tịnh nuôi dưỡng chính khí",
-                "text": "Mỗi ngày trôi qua giữ trọn đạo hạnh, hành giả mở ứng dụng điểm danh thanh tịnh. Từng dấu mốc thanh khiết được ghi nhận là một lời thề son sắt với lương tâm, giúp nguyên khí dần hồi phục, thần sắc sáng sủa, tâm trí an định và tích lũy âm đức sâu dày cho con cháu."
-              },
-              {
-                "title": "Nghe niệm Phật/trì chú chuyển hóa dục niệm tức thời",
-                "text": "Khi đối diện nghịch duyên hay khi ngọn lửa dục vọng bất chợt bùng khởi, hãy mở ngay tính năng nghe niệm Phật/trì chú chuyển hóa dục niệm: lắng lòng theo tiếng niệm Phật A Di Đà trầm hùng, trì tụng Thần Chú Chuẩn Đề hoặc Chú Lăng Nghiêm oai lực. Dòng nước chánh niệm vi diệu sẽ lập tức dập tắt tâm lửa dục, đưa tâm thức trở về bến đỗ an lành."
-              },
-              {
-                "title": "Phát nguyện cộng tu nương tựa uy đức đạo tràng",
-                "text": "Cùng tham gia phát nguyện cộng tu thanh tịnh với đại chúng đồng tu. Được nương tựa vào chí nguyện kiên cố và từ trường thanh lương của chư huynh đệ, hành giả sẽ được tiếp thêm dũng lực to lớn để chiến thắng tập khí ngàn đời, gìn giữ thân tâm ngọc ngà dâng lên Tam Bảo."
+                "title": "Hiểu nơi lưu",
+                "text": "Theo dõi chuỗi ngày, các lần vượt qua thôi thúc và ghi chép theo nút đang hiện. Nhật ký riêng lưu trên thiết bị, không mặc nhiên đồng bộ như số liệu tiến độ. Kiểm tra tùy chọn chia sẻ trước khi gửi bất kỳ nội dung nào."
               }
             ]
           }
@@ -1106,7 +903,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "cai-dat-nhac-nho-tu-tap",
-        "title": "Cài đặt Nhắc nhở Tu tập & Thọ Khang Bảo Giám",
+        "title": "Cài lời nhắc và ngày lễ cá nhân",
         "keywords": [
           "nhắc nhở",
           "thọ khang bảo giám",
@@ -1119,27 +916,25 @@ export const softwareGuideSections: GuideSection[] = [
           "cài đặt app",
           "thông báo",
           "android",
-          "ios"
+          "ios",
+          "Cài lời nhắc và ngày lễ cá nhân",
+          "Set reminders and personal observances"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Nhắc nhở ăn chay Thập trai, ngày Vía, giờ công phu sáng/tối",
-                "text": "Vào Cá nhân → Cài đặt app → Nhắc nhở tu tập. Bật tính năng nhắc nhở ăn chay Thập trai, ngày Vía, giờ công phu sáng/tối. Ứng dụng tự động thông báo trước ngày chay âm lịch và giờ hành trì quy củ, giúp quý Phật tử gác lại vạn sự bận rộn để đúng giờ lên đèn, tọa thiền dâng hương cúng dường Tam Bảo."
+                "title": "Mở cài đặt nhắc",
+                "text": "Vào Cá nhân → Cài đặt ứng dụng. Mở Lịch âm & giới hạnh để chọn Thập Trai, Thọ Khang Bảo Giám và ngày vía; chọn giờ, nhắc trước và trong ngày theo các tùy chọn có sẵn."
               },
               {
-                "title": "Cài đặt nội dung và giờ giấc thời khóa linh hoạt",
-                "text": "Quý vị có thể tùy chỉnh giờ giấc cho khóa lễ sáng (như 4h30 hay 5h00 để thức tỉnh định lực) và khóa lễ tối (như 19h30 hay 21h00 để gội rửa bụi trần), cũng như đặt tên riêng cho từng lịch nhắc nhở. Tiếng chuông báo trang nghiêm sẽ nhẹ nhàng nhắc gọi đạo tâm đúng thời khắc."
+                "title": "Thêm ngày riêng",
+                "text": "Dùng Ngày lễ cá nhân ở Trang chủ hoặc Cài đặt để nhập tên ngày, chọn âm lịch/dương lịch và cách nhắc. Kiểm tra ngày quy đổi theo năm hiện tại, nhất là ngày âm hoặc tháng nhuận."
               },
               {
-                "title": "Cấp quyền thông báo đúng chuẩn Android & iOS",
-                "text": "Để lời nhắc thiêng liêng luôn vang lên đúng giờ:\n- Trên iOS: Bấm Cho phép khi ứng dụng yêu cầu quyền thông báo; kiểm tra lại trong Cài đặt hệ thống → Thông báo → Tu tập Phật pháp.\n- Trên Android: Cấp quyền thông báo đúng chuẩn Android & iOS, bao gồm quyền \"Thông báo\" và quyền \"Báo thức và lời nhắc\" (Alarms & Reminders) trong cài đặt ứng dụng để chuông nhắc không bị hệ điều hành tắt hoặc làm trễ khi điện thoại ngủ sâu hoặc tiết kiệm pin."
-              },
-              {
-                "title": "Khởi động ứng dụng duy trì mạch nhắc nhở",
-                "text": "Sau khi khởi động lại máy hoặc cập nhật ứng dụng, quý Phật tử hãy mở ứng dụng Tu tập Phật pháp một lần để hệ thống tự động tái kích hoạt toàn bộ lịch trình chuông báo, bảo đảm dòng chảy công phu luôn được hộ niệm chu toàn."
+                "title": "Kiểm tra quyền hệ thống",
+                "text": "Chỉ cấp quyền khi cần dùng thông báo. iOS kiểm tra trong Cài đặt hệ thống → Thông báo; Android có thể cần thêm quyền Báo thức và lời nhắc khi app yêu cầu. Tiết kiệm pin, chế độ tập trung và cài đặt hệ thống có thể làm trễ hoặc ẩn thông báo; không bảo đảm chuông đúng phút trong mọi trường hợp."
               }
             ]
           }
@@ -1147,7 +942,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "chep-kinh-tren-app",
-        "title": "Chép kinh trên app — Biên chép công đức & Rèn luyện định lực",
+        "title": "Chép kinh: chọn nguồn, tự gõ và lưu",
         "keywords": [
           "chép kinh",
           "gõ kinh",
@@ -1156,27 +951,105 @@ export const softwareGuideSections: GuideSection[] = [
           "chánh niệm",
           "kinh mẫu",
           "chữ mờ",
-          "lưu lên hệ thống"
+          "lưu lên hệ thống",
+          "Chép kinh: chọn nguồn, tự gõ và lưu",
+          "Sutra copying: choose, type and save"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Gõ từng câu kinh rèn luyện định lực và chánh niệm",
-                "text": "Vào Tu tập → Chép kinh, chọn bộ kinh tôn quý và phẩm kinh cần phụng chép (như Kinh Địa Tạng, Kinh Dược Sư, Kinh Pháp Hoa, Chú Đại Bi...). Gõ từng câu kinh rèn luyện định lực và chánh niệm: từng phím gõ xuống với trọn vẹn dấu tiếng Việt là một hạt ngọc định tâm, gom hết tâm ý buông lung quay về lời Phật dạy. Ứng dụng không hỗ trợ sao chép, dán hay kéo thả chữ để gìn giữ sự chí thành tuyệt đối của công đức chép kinh."
+                "title": "Chọn bộ kinh",
+                "text": "Vào Tu tập → Chép kinh. Chọn Kinh Địa Tạng Bồ Tát Bổn Nguyện, Kinh Diệu Pháp Liên Hoa hoặc Kinh Thủ Lăng Nghiêm, rồi chọn phẩm/quyển. Bấm Xem hướng dẫn và tiếp tục, đọc hướng dẫn rồi bấm Tôi đã đọc, tiếp tục chép."
               },
               {
-                "title": "Chế độ chữ mờ đối chiếu, khung kinh mẫu trang nghiêm",
-                "text": "Quý Phật tử có thể tùy chọn hiển thị: Bật chế độ chữ mờ đối chiếu để chữ mẫu hiện mờ ảo ngay trong ô nhập liệu giúp theo sát từng từ ngữ; hoặc mở khung kinh mẫu song hành bên cạnh để đối chiếu trọn vẹn từng câu kệ, đoạn văn theo đúng nguyên bản chánh kinh."
+                "title": "Dùng kinh mẫu",
+                "text": "Chọn đoạn ở Kinh mẫu; dùng đoạn trước/sau, tùy chọn cỡ chữ hoặc thu gọn phần điều khiển. Kinh mẫu theo vị trí đang gõ ở chế độ được hỗ trợ. Bật Chữ mờ nếu muốn nhìn mẫu trong vùng viết; tự gõ vào Bản chép của bạn."
               },
               {
-                "title": "Rà soát đoạn kinh & Chuyển hóa nét chữ thanh tịnh",
-                "text": "Sử dụng nút \"Rà soát đoạn này\" sau mỗi đoạn hoàn thành để kiểm tra chính tả và dấu câu. Khi từng chữ đều chuẩn xác với bản kinh truyền thống, đoạn kinh sẽ hoan hỷ hoàn tất, nhắc nhở tâm ý hành giả đã trọn vẹn hòa nhập vào ánh sáng trí tuệ của Đức Thế Tôn."
+                "title": "Rà soát và lưu",
+                "text": "Bấm Rà soát để xem phần cần kiểm tra; rà soát là tham khảo, không tự sửa toàn bộ bản chép. Bản nháp tự lưu trên thiết bị. Muốn lưu vào tài khoản, đăng nhập rồi dùng Lưu lên hệ thống và kiểm tra kết quả. Gỡ app/xóa dữ liệu có thể làm mất phần chỉ lưu trên máy."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "an-chay-thuc-don-cong-thuc",
+        "keywords": [
+          "Ăn chay: thực đơn, công thức và đi chợ",
+          "Vegan meals, recipes and shopping"
+        ],
+        "title": "Ăn chay: thực đơn, công thức và đi chợ",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Mở và chọn thực đơn",
+                "text": "Từ Trang chủ hoặc Tu tập, mở Lịch ăn chay đủ dinh dưỡng. Ở Hôm nay, chỉnh số người và chọn ưu tiên Tất cả, Bắc, Trung hoặc Nam. Đổi vùng có thể đổi món gợi ý."
               },
               {
-                "title": "Lưu bản nháp an toàn và lưu lên hệ thống",
-                "text": "Từng câu kinh quý vị vừa gõ đều được hệ thống tự động lưu bản nháp an toàn tức thời trên thiết bị, không bao giờ lo mất dữ liệu khi gián đoạn công việc. Khi hoàn thành thời khóa, bấm \"Lưu lên hệ thống\" để công đức biên chép ngàn đời được ghi danh vĩnh viễn vào tài khoản tu tập cá nhân."
+                "title": "Xem công thức",
+                "text": "Bấm Xem cạnh món. Kiểm tra thời gian, nguyên liệu và Cách nấu; dùng nút số người để đổi lượng, A−/A+ để chỉnh chữ. Thời gian hấp, ủ, ngâm không nhất thiết tăng theo số người. Tên món và công thức có thể còn bằng tiếng Việt khi giao diện là English."
+              },
+              {
+                "title": "Lập danh sách đi chợ",
+                "text": "Mở Lịch tuần & Đi chợ để xem theo ngày và phần mua sắm; Nguyên liệu hôm nay tổng hợp phần của ngày đang xem. Menu món dùng để tìm món ngoài danh sách gợi ý. Kiểm tra lại nguyên liệu thực tế, dị ứng và khẩu phần của gia đình; dinh dưỡng là thông tin tham khảo."
+              },
+              {
+                "title": "Dùng ngoại tuyến",
+                "text": "Thực đơn và công thức đã đóng sẵn hoặc tải về dùng được khi mất mạng. Nội dung tuần mới cần kiểm tra và tải khi có kết nối. Không phải mọi công thức đều có ảnh hoặc video."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "chep-danh-hieu-tren-app",
+        "keywords": [
+          "Chép danh hiệu Phật, Bồ Tát",
+          "Copy Buddha and Bodhisattva names",
+          "chép danh hiệu",
+          "sacred names",
+          "sacred-name copying"
+        ],
+        "title": "Chép danh hiệu Phật, Bồ Tát",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Chọn danh hiệu",
+                "text": "Trong Tu tập, mở Chép danh hiệu Phật, Bồ Tát. Chọn danh hiệu và đọc hướng dẫn; nhập trong vùng chép theo mẫu, theo dõi số câu thực tế."
+              },
+              {
+                "title": "Lưu và quay lại thời khóa",
+                "text": "Kiểm tra trạng thái lưu bản chép và dùng chức năng lưu tài khoản nếu được hỗ trợ/yêu cầu. Khi mở từ thời khóa, dùng điều khiển quay lại của luồng đó để tiếp tục. Không xem mục tiêu 108 câu là số đã hoàn thành."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "giu-gioi-va-bat-quan-trai",
+        "keywords": [
+          "Giữ giới và Thọ Bát quan trai",
+          "Precept Practice and Eight Precepts"
+        ],
+        "title": "Giữ giới và Thọ Bát quan trai",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Giữ giới thanh tịnh",
+                "text": "Vào Tu tập → Giữ giới thanh tịnh để đọc và tự nhìn lại Ngũ giới, Thập thiện nghiệp. Dùng phần ghi nhận theo hướng dẫn đang hiện; đánh dấu là tự ghi nhận, không phải chứng nhận từ người hướng dẫn."
+              },
+              {
+                "title": "Bát quan trai",
+                "text": "Mở Thọ Bát quan trai giới, đọc hướng dẫn và nghi thức, kiểm tra thời gian rồi tự phát nguyện khi sẵn sàng. Theo dõi việc thực hành một ngày một đêm theo hướng dẫn; ứng dụng không thay thế sự hướng dẫn của chư Tăng hoặc người có trách nhiệm."
               }
             ]
           }
@@ -1206,12 +1079,12 @@ export const softwareGuideSections: GuideSection[] = [
     ],
     "editorialStatus": "verified-software",
     "introduction": [
-      "Kho tàng pháp âm tuyển chọn những bài giảng sâu sắc từ chư Tôn đức và thiện tri thức, giúp quý Phật tử huân tập chánh kiến, nuôi dưỡng bồ đề tâm và thảnh thơi thính pháp mọi lúc, mọi nơi."
+      "Tìm album, chọn bài và dùng trình phát đang có. Chỉ album hỗ trợ mới có video hoặc tải ngoại tuyến; ngôn ngữ tùy từng bản thu."
     ],
     "topics": [
       {
         "id": "dieu-khien-phap-thoai",
-        "title": "Trình phát âm thanh & Điều khiển tiện lợi",
+        "title": "Nghe pháp thoại và xem video",
         "keywords": [
           "mini player",
           "trình phát",
@@ -1223,27 +1096,25 @@ export const softwareGuideSections: GuideSection[] = [
           "tua 10 giây",
           "tua 30 giây",
           "nhớ vị trí",
-          "nghe dở"
+          "nghe dở",
+          "Nghe pháp thoại và xem video",
+          "Listen to talks and watch video"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Trình phát âm thanh nền liên tục (Background Audio)",
-                "text": "Dòng pháp âm vẫn tiếp tục vang vọng liền mạch ngay cả khi quý vị tắt màn hình điện thoại hoặc chuyển sang ứng dụng khác trong sinh hoạt thường nhật, giúp tâm trí luôn an định theo lời pháp mà vẫn tiết kiệm pin tối đa."
+                "title": "Chọn album và bài",
+                "text": "Vào Pháp thoại, tìm album hoặc mở Tìm kiếm và bộ lọc; dùng Top 10 nếu muốn xem danh sách tương ứng. Mở album và chọn bài. Album có nhãn Video mới có phần hình được hỗ trợ."
               },
               {
-                "title": "Trình phát thu nhỏ (Mini Player) linh hoạt",
-                "text": "Khi chuyển sang đọc kinh, tra cứu sách hay xem lịch tu tập, trình phát sẽ tự động thu nhỏ gọn gàng ở góc dưới màn hình. Quý vị có thể dễ dàng tạm dừng, phát tiếp hoặc chạm nhẹ vào thanh phát để mở lại giao diện đầy đủ."
+                "title": "Điều khiển bài đang phát",
+                "text": "Dùng phát/tạm dừng, thanh tua và lựa chọn bài ở trình phát. Hộp Nghe tiếp mở lại tiến độ đã lưu khi có sẵn. Trình phát nhỏ giúp quay lại bài đang nghe khi chuyển màn; không cần mở một bài thứ hai."
               },
               {
-                "title": "Điều khiển qua màn hình khóa & nút tai nghe Bluetooth",
-                "text": "Thuận tiện tạm dừng, phát tiếp, chuyển bài hoặc tua tới lui 10–30 giây trực tiếp từ màn hình khóa, trung tâm điều khiển (Media Session) hay nút bấm trên tai nghe không dây khi đang kinh hành, làm việc hay di chuyển."
-              },
-              {
-                "title": "Tự động nhớ vị trí nghe dở dang",
-                "text": "Ứng dụng tự động ghi nhớ chính xác thời khắc bài giảng đang nghe dang dở. Mỗi khi mở lại, quý vị chỉ cần nhấn phát để tiếp tục nối dòng thính pháp mà không cần phải nhọc công tìm kiếm hay tua lại từ đầu."
+                "title": "Xem toàn màn hình",
+                "text": "Với video hỗ trợ, mở toàn màn hình. Thanh điều khiển tự ẩn khi đang phát; chạm để hiện lại. Khi tạm dừng, đang tải hoặc thao tác, điều khiển tiếp tục hiện. Nếu tua chưa xong, chờ hình/tiếng tải lại; phát trực tuyến cần mạng."
               }
             ]
           }
@@ -1251,7 +1122,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "luu-va-loc-phap-thoai",
-        "title": "Bộ sưu tập cá nhân & Tải nghe Offline",
+        "title": "Tìm lại và tải pháp thoại ngoại tuyến",
         "keywords": [
           "favorites",
           "yêu thích",
@@ -1266,31 +1137,29 @@ export const softwareGuideSections: GuideSection[] = [
           "duration",
           "thời lượng",
           "tải về",
-          "offline"
+          "offline",
+          "Tìm lại và tải pháp thoại ngoại tuyến",
+          "Find and download talks for offline use"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Danh sách Yêu thích (❤️)",
-                "text": "Chạm vào biểu tượng trái tim ở mỗi album hoặc bài giảng tâm đắc để lưu vào bộ sưu tập Yêu thích. Đây là nơi quý vị dễ dàng tìm lại những lời dạy khai sáng, tiếp thêm nguồn năng lượng bình an mỗi ngày."
+                "title": "Tìm lại nội dung",
+                "text": "Dùng tìm kiếm, bộ lọc, sắp xếp và các mục gần đây/yêu thích đang có. Danh mục, tên và ngôn ngữ phụ thuộc album; phần tiếng Anh không làm bản thu tiếng Việt thành tiếng Anh."
               },
               {
-                "title": "Lưu bài Nghe sau",
-                "text": "Khi bắt gặp bài giảng hay nhưng chưa tiện lắng nghe ngay, hãy chạm vào biểu tượng dấu trang 🔖 để đưa vào danh sách Nghe sau, giúp quý vị thong thả thưởng thức trọn vẹn vào thời khắc thanh tịnh thích hợp."
+                "title": "Tải bài được hỗ trợ",
+                "text": "Bấm tải ở bài hoặc album có hỗ trợ, đăng nhập nếu được yêu cầu và chờ tải hoàn tất. Kiểm tra trạng thái rồi thử mở ngoại tuyến. Chưa tải xong, mất tệp hoặc thiếu dung lượng có thể khiến bài chưa nghe được khi mất mạng."
               },
               {
-                "title": "Nhật ký Nghe gần đây",
-                "text": "Mục Nghe gần đây lưu giữ dấu chân thính pháp của bạn, giúp nhanh chóng mở lại các bài pháp thoại vừa thưởng thức và tiếp tục những thời khóa còn dang dở."
+                "title": "Nghe nền",
+                "text": "Phát nền và điều khiển màn hình khóa phụ thuộc nền tảng, loại nội dung và cấu hình thiết bị. Nội dung video hoặc nguồn nhúng có thể có giới hạn riêng; không phải mọi nguồn đều tải hoặc phát nền được."
               },
               {
-                "title": "Bộ lọc đa năng theo Giảng sư, Chủ đề, Thời lượng",
-                "text": "Dễ dàng tìm thấy bài giảng khế hợp căn cơ thông qua bộ lọc đa chiều: theo danh tôn Giảng sư khả kính, Chủ đề tu học (Phật pháp căn bản, Thiền định, Tịnh độ, Nhân quả...) và Thời lượng phù hợp với quỹ thời gian của bạn."
-              },
-              {
-                "title": "Tải về nghe Offline khi không có mạng",
-                "text": "Với các bài giảng hỗ trợ lưu ngoại tuyến, quý vị chỉ cần nhấn nút Tải về để lưu trữ trực tiếp trên thiết bị. Bạn có thể an tâm nghe pháp thanh tịnh trên những chuyến đi xa, nơi núi rừng hay khi không có kết nối Internet."
+                "title": "Để nghe sau",
+                "text": "Dùng biểu tượng dấu trang 🔖 của album để thêm hoặc bỏ khỏi Nghe sau. Mở mục 🔖 Nghe sau để tìm lại các album đã chọn; đánh dấu nghe sau không tải tệp âm thanh về máy."
               }
             ]
           }
@@ -1316,12 +1185,12 @@ export const softwareGuideSections: GuideSection[] = [
     ],
     "editorialStatus": "verified-software",
     "introduction": [
-      "Hành trình tu tập và những giọt công đức vun bồi qua năm tháng luôn được nâng niu gìn giữ, giúp quý Phật tử an tâm tiếp nối công phu trên mọi thiết bị."
+      "Đăng nhập để dùng các phần tài khoản và đồng bộ được hỗ trợ. Luôn phân biệt dữ liệu trên máy, dữ liệu đã lưu vào tài khoản và nội dung công khai."
     ],
     "topics": [
       {
         "id": "dang-nhap-va-dong-bo",
-        "title": "Đăng nhập và đồng bộ bảo tồn công phu",
+        "title": "Đăng nhập và giữ dữ liệu giữa các thiết bị",
         "keywords": [
           "google login",
           "apple login",
@@ -1330,41 +1199,33 @@ export const softwareGuideSections: GuideSection[] = [
           "tiến độ đọc",
           "đổi máy",
           "đổi điện thoại",
-          "bảo tồn công phu"
+          "bảo tồn công phu",
+          "Đăng nhập và giữ dữ liệu giữa các thiết bị",
+          "Sign in and keep supported data across devices"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Đăng nhập vào tài khoản",
-                "text": "Tại mục Cá nhân → Tài khoản & Đăng nhập, quý vị có thể đăng nhập bằng Google. Trên iOS, quý vị cũng có thể đăng nhập bằng Apple."
+                "title": "Đăng nhập tùy nhu cầu",
+                "text": "Có thể đọc, nghe nội dung công khai và dùng nhiều công cụ khi chưa đăng nhập. Vào Cá nhân → Tài khoản để đăng nhập bằng nhà cung cấp đang hiện. App Android/iOS hiện dùng Google hoặc Apple theo nền tảng; không tìm nút Facebook nếu màn không có. Quý vị có thể đăng nhập bằng Google. Trên iOS, quý vị cũng có thể đăng nhập bằng Apple."
               },
               {
-                "title": "Đăng nhập bằng Apple trên thiết bị iOS",
-                "text": "Trên các thiết bị iPhone và iPad, ứng dụng hỗ trợ Đăng nhập bằng Apple với tính năng ẩn danh email bảo mật cao, giúp quý đồng đạo an tâm tuyệt đối về quyền riêng tư dữ liệu."
+                "title": "Dùng cùng tài khoản",
+                "text": "Khi đổi máy, chọn đúng nhà cung cấp và tài khoản đã dùng trước. Kiểm tra hồ sơ và trạng thái tải/đồng bộ. Đăng nhập không tự chứng minh mọi bản chép, nhật ký riêng hoặc tệp tải trên máy cũ đã được đưa lên tài khoản."
               },
               {
-                "title": "Bảo tồn dữ liệu công phu khi đổi điện thoại",
-                "text": "Khi nâng cấp máy mới hoặc cài đặt lại ứng dụng, chỉ cần đăng nhập cùng một tài khoản, toàn bộ dữ liệu thời khóa (số biến trì chú, số hạt niệm Phật, số lạy sám hối), các câu trích dẫn tâm đắc và lịch sử tu học đều được khôi phục vẹn nguyên."
-              },
-              {
-                "title": "Lưu bài chép kinh lên hệ thống",
-                "text": "Đối với các bài gõ kinh, ứng dụng sẽ lưu bản nháp ngay trên máy. Để bảo tồn bền vững và đồng bộ sang thiết bị khác, quý Phật tử hoan hỷ nhấn nút Lưu lên hệ thống sau mỗi thời khóa hoàn mãn."
+                "title": "Khi cần đăng nhập lại",
+                "text": "Khôi phục mạng rồi thử lại theo thông báo. Không xóa dữ liệu ứng dụng trước khi lưu phần đang dở. Đăng xuất khác với xóa tài khoản; đọc xác nhận của từng thao tác."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Lưu ý về tệp âm thanh & sách ngoại tuyến",
-            "text": "Các tệp âm thanh pháp thoại và sách PDF tải về nghe/đọc ngoại tuyến được lưu tại bộ nhớ riêng của thiết bị hiện tại. Khi đổi máy mới, quý vị chỉ cần tải lại các tệp này để tiếp tục trải nghiệm ngoại tuyến mượt mà."
           }
         ]
       },
       {
         "id": "an-toan-cong-dong",
-        "title": "Bảo vệ đạo tràng thanh tịnh, báo cáo và chặn người dùng",
+        "title": "Báo cáo, chặn và quản lý nội dung cộng đồng",
         "keywords": [
           "báo cáo",
           "chặn",
@@ -1372,23 +1233,21 @@ export const softwareGuideSections: GuideSection[] = [
           "cộng đồng",
           "kiểm duyệt",
           "đạo tràng thanh tịnh",
-          "bình luận"
+          "bình luận",
+          "Báo cáo, chặn và quản lý nội dung cộng đồng",
+          "Report, block and manage community content"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Môi trường đạo tràng thanh tịnh",
-                "text": "Ứng dụng Tu tập Phật pháp hướng tới kiến tạo một không gian tu học trang nghiêm, thanh tịnh và hòa hợp giữa những người con Phật. Chúng con luôn trân quý những lời đạo từ ái, đóng góp chân thành và sự sẻ chia giáo lý chánh tri kiến từ quý Phật tử."
+                "title": "Báo cáo nội dung",
+                "text": "Mở menu của bình luận, phản hồi hoặc thành viên, chọn báo cáo và nêu lý do. Gửi đúng nội dung cần xem xét, không đăng thông tin cá nhân của người khác để minh họa."
               },
               {
-                "title": "Báo cáo nội dung không phù hợp",
-                "text": "Khi bắt gặp bình luận mang ngôn từ thô thiển, kích động, quảng cáo hoặc sai lệch chánh pháp, quý vị có thể chọn biểu tượng tùy chọn tại bình luận đó, nhấn Báo cáo và chọn lý do. Ban quản trị sẽ nhanh chóng tiếp nhận và xử lý để giữ gìn đạo tràng thanh tịnh."
-              },
-              {
-                "title": "Chặn và bỏ chặn người dùng",
-                "text": "Để bảo hộ tâm bình an trước những tương tác bất thiện, quý vị có thể chọn Chặn người dùng để ẩn toàn bộ nội dung của họ. Bất cứ khi nào muốn mở lòng từ ái, quý vị có thể vào Cá nhân → Danh sách người đã chặn để thao tác Bỏ chặn dễ dàng."
+                "title": "Chặn và kiểm tra quyền riêng tư",
+                "text": "Dùng Chặn để hạn chế thành viên trong các khu vực cộng đồng được hỗ trợ. Kiểm tra danh sách chặn và lựa chọn chia sẻ trong Cài đặt. Nội dung chờ duyệt hoặc bị từ chối có trạng thái riêng; không có nghĩa đã đăng công khai."
               }
             ]
           }
@@ -1396,30 +1255,28 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "xoa-tai-khoan",
-        "title": "Quyền tự chủ dữ liệu & Xóa tài khoản vĩnh viễn",
+        "title": "Đăng xuất và xóa tài khoản",
         "keywords": [
           "xóa tài khoản",
           "apple",
           "mã xác nhận",
           "tự chủ dữ liệu",
           "quyền riêng tư",
-          "bảo mật"
+          "bảo mật",
+          "Đăng xuất và xóa tài khoản",
+          "Sign out and delete an account"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Quyền tự chủ dữ liệu của quý Phật tử",
-                "text": "Chúng con luôn tôn trọng quyền riêng tư và quyền tự quyết định thông tin cá nhân của mỗi hành giả. Quý vị có toàn quyền yêu cầu xóa bỏ tài khoản và dữ liệu cá nhân bất cứ lúc nào tại mục Cá nhân → Xóa tài khoản."
+                "title": "Tìm thao tác tài khoản",
+                "text": "Vào Cá nhân → Tài khoản khi đã đăng nhập. Chọn Đăng xuất nếu chỉ muốn kết thúc phiên trên thiết bị. Chọn Xóa tài khoản chỉ khi muốn thực hiện việc xóa theo mô tả và xác nhận của app."
               },
               {
-                "title": "Mã xác nhận bảo mật nghiêm ngặt",
-                "text": "Vì công đức và hành trình tu tập tích lũy qua năm tháng là vô cùng quý báu, để tránh thao tác nhầm lẫn, hệ thống yêu cầu quý vị nhập chính xác chuỗi mã xác nhận hiển thị ngẫu nhiên trên màn hình trước khi thực hiện. Với tài khoản Apple, hệ thống sẽ xác thực bảo mật qua Apple ID."
-              },
-              {
-                "title": "Xóa vĩnh viễn dữ liệu trên hệ thống",
-                "text": "Sau khi hoàn tất xác nhận, toàn bộ hồ sơ cá nhân, lịch sử công phu, bài chép kinh và mọi dữ liệu liên quan sẽ được xóa vĩnh viễn khỏi máy chủ trung tâm mà không thể khôi phục. Xin quý vị hoan hỷ cân nhắc kỹ lưỡng trước khi quyết định."
+                "title": "Đọc thông báo trước khi xác nhận",
+                "text": "Xóa tài khoản có thể làm mất dữ liệu gắn với tài khoản theo chính sách. Không coi đăng xuất, gỡ ứng dụng hoặc xóa một tệp tải là xóa tài khoản. Nếu có lỗi, kiểm tra trạng thái thay vì suy đoán thao tác đã xong."
               }
             ]
           }
@@ -1427,7 +1284,7 @@ export const softwareGuideSections: GuideSection[] = [
       },
       {
         "id": "ket-noi-facebook-quan-tri",
-        "title": "Kết nối Facebook và nhập bài khuyến thiện (Dành cho Quản trị)",
+        "title": "Kết nối Facebook dành cho quản trị",
         "keywords": [
           "facebook connect",
           "facebook ledger",
@@ -1438,31 +1295,23 @@ export const softwareGuideSections: GuideSection[] = [
           "ledger",
           "sổ cái facebook",
           "quang từ",
-          "khuyến thiện"
+          "khuyến thiện",
+          "Kết nối Facebook dành cho quản trị",
+          "Facebook connection for administrators"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Khu vực quản trị nhập bài từ Facebook Quang Từ",
-                "text": "Tính năng chuyên biệt dành riêng cho ban biên tập và quản trị viên nhằm kết nối trực tiếp với trang Facebook Quang Từ, tự động đồng bộ hóa và lưu trữ sổ cái bài viết (facebook ledger) để tuyển chọn những bài pháp lành, câu chuyện nhân quả vào kho sách khuyến thiện của ứng dụng."
+                "title": "Phân biệt với đăng nhập",
+                "text": "Mục kết nối hoặc nhập bài Facebook là công cụ quản trị khi tài khoản có quyền phù hợp, không phải hướng dẫn đăng nhập Facebook cho app mobile. Tài khoản thông thường không cần thao tác này."
               },
               {
-                "title": "Theo dõi nhật ký nhập bài và duyệt nội dung",
-                "text": "Quản trị viên theo dõi tiến trình qua nhật ký nhập bài (import ledger) để kiểm tra các bài viết mới, tiến hành hiệu đính câu chữ, phân loại chủ đề và phê duyệt chu đáo trước khi chính thức phát hành bài đọc cho đại chúng."
-              },
-              {
-                "title": "Duy trì kết nối an toàn và cấp quyền",
-                "text": "Nếu phiên kết nối hết hạn hoặc hệ thống yêu cầu cấp lại quyền truy cập, quản trị viên chỉ cần thực hiện theo hướng dẫn trong bảng điều khiển quản trị. Không sử dụng các phương thức ngoài luồng nhằm bảo đảm tính toàn vẹn và bảo mật của dữ liệu."
+                "title": "Dùng đúng giao diện được cấp quyền",
+                "text": "Chỉ làm theo các nút và quyền thực tế trong khu vực quản trị. Không dán token hay thông tin đăng nhập vào bình luận hoặc hỗ trợ cộng đồng; khi không thấy công cụ, liên hệ người quản trị."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "warning",
-            "title": "Phân quyền khu vực quản trị",
-            "text": "Chức năng này chỉ hiển thị và phục vụ riêng cho tài khoản được phân quyền quản trị viên phụ trách nội dung. Quý Phật tử sử dụng tài khoản thông thường không cần bận tâm về thao tác này."
           }
         ]
       }

@@ -170,6 +170,15 @@ describe('offline PDF storage', () => {
     expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ percent: 100 }));
   });
 
+  it('does not commit a partial PDF beginning with a valid PDF signature', async () => {
+    const persistRecord = vi.fn();
+    await expect(downloadPdfForOffline({ documentId: 'partial', title: 'PDF', sourceUrl: '/file.pdf' }, {
+      fetcher: async () => new Response('%PDF-1.7', { status: 206, headers: { 'content-range': 'bytes 0-7/4000' } }),
+      persistRecord,
+    })).rejects.toThrow();
+    expect(persistRecord).not.toHaveBeenCalled();
+  });
+
   it('rejects incomplete/corrupt records and treats browser eviction as unavailable', async () => {
     const record = await completeRecord();
     expect(validateOfflinePdfRecord({ ...record, status: 'partial' })).toBe('incomplete');

@@ -166,6 +166,23 @@ it('retains partial public download counts before the album completion record ex
   expect((await database.readOfflineLibrarySnapshot()).trackCounts[track.albumId]).toBe(1);
 });
 
+it('replaces a broken legacy track on retry and counts only usable media as downloaded', async () => {
+  const track = { url: '/api/audio/drive/legacy-broken', albumId: 'album', title: 'Track',
+    blob: new Blob(['music']), downloadedAt: 1, visibility: 'public' as const };
+  await database.putOfflineTrack(track);
+  const stored = databases.get('tutam_offline_audio')!.get('tracks')!;
+  for (const blob of [new Blob([]), new Blob(['<html></html>'], { type: 'text/html' })]) {
+    stored.set(track.url, { ...track, blob });
+    expect(await database.getOfflineTrack(track.url)).toBeNull();
+    expect(await database.offlineAlbumStatus(track.albumId, [track.url])).toBe('none');
+  }
+  const album = { id: track.albumId, title: 'Album', visibility: 'public' as const, desc: '', tracks: [track] };
+  const fetcher = vi.fn(async () => new Response(track.blob));
+  await downloads.downloadAlbumForOffline(album, { authorize: async () => {}, fetcher });
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(await database.offlineAlbumStatus(track.albumId, [track.url])).toBe('downloaded');
+});
+
 it('retains but does not guess access to legacy blobs when public catalog proof is unavailable', async () => {
   const track = { url: '/api/audio/drive/unknown-legacy-file', albumId: 'unknown-legacy', title: 'Unknown legacy', blob: new Blob(['retained bytes']), downloadedAt: 1 };
   await database.putOfflineTrack(track);

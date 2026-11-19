@@ -150,6 +150,11 @@ export class AudioPlayerController {
   private fallbackStage = 0;
   private fallbackTrack?: AudioTrack;
   private wantsPlayback = false;
+  private videoFrameHolds = new Set<symbol>();
+  private videoPause?: symbol;
+  private videoTrack?: { url: string; generation: number };
+  private startingPlay?: symbol;
+  private announcingPlay = false;
   private pendingMetadataResume?: () => void;
   private pendingResumeTarget?: { generation: number; seconds: number };
   private pendingSeekTarget?: number;
@@ -182,6 +187,10 @@ export class AudioPlayerController {
       this.tickSleepTimer();
     }
     if (document.visibilityState === 'hidden') {
+      if (this.videoFrameHolds.size) {
+        this.videoFrameHolds.clear();
+        if (this.wantsPlayback && this.videoTrack?.generation === this.loadGeneration) void this.play();
+      }
       this.savePosition();
       void this.pushRemoteSync(true);
     }
@@ -374,8 +383,9 @@ export class AudioPlayerController {
     const access: OfflineAudioAccess = { session: this.session, album, isCurrent: () => generation === this.loadGeneration };
     if (this.audio instanceof NativeTalkAudio && !await canAccessAudioAlbum(album, access).catch(() => false)) return false;
     if (generation !== this.loadGeneration) return false;
+    this.forgetVideoHolds();
     this.clearPublicSourceTimeout();
-    this.wantsPlayback = false;
+    this.setPlaybackIntent(false);
     this.fallbackStage = 0;
     this.fallbackTrack = undefined;
     this.releasePracticePlayback();
@@ -472,9 +482,62 @@ export class AudioPlayerController {
     await this.play();
   }
 
+  get videoPlaybackRequested(): boolean { return this.wantsPlayback; }
+
+  private get viewingVideo(): boolean {
+    const track = this.snapshot.album?.tracks[this.snapshot.trackIndex];
+    return Boolean(track && (track.media_type === 'video' || track.url === this.videoTrack?.url));
+  }
+
+  private setPlaybackIntent(requested: boolean): void {
+    if (this.wantsPlayback === requested) return;
+    this.wantsPlayback = requested;
+    this.audio.dispatchEvent(new Event('videoplaybackintent'));
+  }
+
+  private forgetVideoHolds(): void {
+    this.videoFrameHolds.clear();
+    this.videoPause = undefined;
+    this.videoTrack = undefined;
+    this.startingPlay = undefined;
+  }
+
+  private pauseForVideoFrame(): void {
+    if (this.videoPause || (this.audio.paused && !this.startingPlay)) return;
+    const token = this.videoPause = Symbol();
+    const completion = this.audio.pause();
+    // DOM audio dispatches pause when the command takes effect. Native also
+    // acknowledges no-op pauses, which have no corresponding player event.
+    if (completion) void completion.finally(() => { if (this.videoPause === token) this.videoPause = undefined; });
+  }
+
+  holdVideoPlayback(url: string): () => void {
+    if (!url || this.snapshot.album?.tracks[this.snapshot.trackIndex]?.url !== url || document.visibilityState === 'hidden') return () => {};
+    const generation = this.loadGeneration;
+    this.videoTrack = { url, generation };
+    const lease = Symbol();
+    this.videoFrameHolds.add(lease);
+    if (this.videoFrameHolds.size === 1) {
+      this.suspendDharmaTalkEvidence();
+      this.pauseForVideoFrame();
+      if (this.wantsPlayback && !this.snapshot.playing) this.patch({ playing: true });
+    }
+    return () => {
+      if (!this.videoFrameHolds.delete(lease) || this.videoFrameHolds.size || !this.wantsPlayback || generation !== this.loadGeneration) return;
+      void this.play();
+    };
+  }
+
   async play(): Promise<void> {
-    if (!this.audio.src) return;
-    this.wantsPlayback = true;
+    if (!this.audio.src || this.announcingPlay) return;
+    this.announcingPlay = true;
+    try { this.setPlaybackIntent(true); }
+    finally { this.announcingPlay = false; }
+    if (!this.wantsPlayback) return;
+    if (this.videoFrameHolds.size) {
+      this.patch({ playing: true, error: null });
+      return;
+    }
     const generation = this.loadGeneration;
     const intent = this.playbackIntentGeneration;
     const source = this.audio.src;
@@ -482,15 +545,22 @@ export class AudioPlayerController {
     this.armPublicSourceTimeout();
     if (this.seekPreparation) {
       await this.seekPreparation;
-      if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration) return;
+      if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || this.videoFrameHolds.size) return;
     }
+    const attempt = this.startingPlay = Symbol();
     try {
       if (this.audio.ended) this.seek(0);
-      await this.audio.play();
+      if (this.videoFrameHolds.size) return;
+      if (this.audio instanceof NativeTalkAudio) {
+        await this.audio.play(() => generation === this.loadGeneration && intent === this.playbackIntentGeneration
+          && this.wantsPlayback && !this.videoFrameHolds.size && this.startingPlay === attempt);
+      } else await this.audio.play();
+      if (this.startingPlay !== attempt) return;
     } catch (cause) {
-      if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src
+      if (this.startingPlay !== attempt || this.videoFrameHolds.size || generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src
         || (cause instanceof Error && cause.name === 'AbortError')) return;
       if (!(cause instanceof Error && cause.name === 'NotAllowedError') && this.tryPublicSourceFallback()) return;
+      if (this.viewingVideo) this.setPlaybackIntent(false);
       this.patch({
         playing: false,
         error: this.snapshot.retry > 0 ? this.snapshot.error
@@ -499,8 +569,10 @@ export class AudioPlayerController {
             : 'Không thể phát bài — vui lòng kiểm tra kết nối hoặc thử bài khác.',
       });
       return;
+    } finally {
+      if (this.startingPlay === attempt) this.startingPlay = undefined;
     }
-    if (generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src) return;
+    if (this.videoFrameHolds.size || generation !== this.loadGeneration || intent !== this.playbackIntentGeneration || source !== this.audio.src) return;
     const target = this.pendingResumeTarget;
     if (target?.generation === this.loadGeneration) {
       this.seek(target.seconds);
@@ -509,7 +581,7 @@ export class AudioPlayerController {
   }
 
   pause(): void {
-    this.wantsPlayback = false;
+    this.setPlaybackIntent(false);
     this.clearPublicSourceTimeout();
     this.playbackIntentGeneration += 1;
     clearTimeout(this.retryTimer);
@@ -651,7 +723,8 @@ export class AudioPlayerController {
    * opening the album again can still offer to resume.
    */
   close(): void {
-    this.wantsPlayback = false;
+    this.forgetVideoHolds();
+    this.setPlaybackIntent(false);
     this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.finishDharmaTalkEvidence();
@@ -682,7 +755,8 @@ export class AudioPlayerController {
   }
 
   destroy(): void {
-    this.wantsPlayback = false;
+    this.forgetVideoHolds();
+    this.setPlaybackIntent(false);
     this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.finishDharmaTalkEvidence();
@@ -829,11 +903,14 @@ export class AudioPlayerController {
         const index = (event as CustomEvent<number>).detail;
         const album = this.snapshot.album;
         if (!album?.tracks[index] || index === this.snapshot.trackIndex) return;
+        this.forgetVideoHolds();
+        this.setPlaybackIntent(false);
         this.clearPublicSourceTimeout();
         this.finishDharmaTalkEvidence();
         this.clearPendingResume();
         this.pendingSeekTarget = undefined;
         this.snapshot = { ...this.snapshot, trackIndex: index, currentTime: this.audio.currentTime, duration: this.audio.duration };
+        this.setPlaybackIntent(!this.audio.paused && !this.audio.ended);
         this.reportAlbumPlay.select(album.id, album.tracks[index].url);
         this.emit();
         if (this.snapshot.playing) this.resumeDharmaTalkEvidence();
@@ -844,12 +921,23 @@ export class AudioPlayerController {
           return;
         }
         if (this.audio instanceof NativeTalkAudio && this.audio.isPracticePlayback) return;
-        const state = (event as CustomEvent<{ sleepRemainingMs: number; sleepAtEnd: boolean; speed: number }>).detail;
+        const state = (event as CustomEvent<NativeAudioState>).detail;
+        if (this.videoFrameHolds.size && this.wantsPlayback && !state.playWhenReady && !state.sleepAtEnd
+          && !state.sleepRemainingMs && (this.snapshot.sleepTimerRemainingMs > 0 || this.snapshot.sleepTimerEndOfTrack)) {
+          this.setPlaybackIntent(false);
+          this.patch({ playing: false });
+        }
         this.snapshot = { ...this.snapshot, speed: state.speed, sleepTimerRemainingMs: state.sleepRemainingMs, sleepTimerEndOfTrack: state.sleepAtEnd };
       });
     }
     this.audio.addEventListener('play', () => {
       if (this.isPracticeAudio()) return;
+      if (this.viewingVideo && !this.startingPlay && !this.videoPause) this.setPlaybackIntent(true);
+      if (this.videoFrameHolds.size) {
+        this.pauseForVideoFrame();
+        this.patch({ playing: this.wantsPlayback });
+        return;
+      }
       this.sleepTimerLastTick = this.nowMs();
       this.patch({ playing: true, error: null });
     });
@@ -866,6 +954,11 @@ export class AudioPlayerController {
         };
         this.sleepTimerLastTick = now;
       }
+      if (this.videoPause) {
+        if (!(this.audio instanceof NativeTalkAudio)) this.videoPause = undefined;
+        if (this.wantsPlayback) return;
+      }
+      if (this.viewingVideo) this.setPlaybackIntent(false);
       this.patch({ playing: false });
     });
     this.audio.addEventListener('loadedmetadata', () => {
@@ -887,10 +980,14 @@ export class AudioPlayerController {
       if (this.snapshot.sleepTimerRemainingMs > 0 || this.snapshot.sleepTimerEndOfTrack) {
         this.tickSleepTimer();
       }
-      if (Date.now() - this.lastSavedAt > 2_000) this.savePosition();
+      if (!this.videoFrameHolds.size && !this.videoPause && Date.now() - this.lastSavedAt > 2_000) this.savePosition();
     });
     this.audio.addEventListener('playing', () => {
       if (this.isPracticeAudio()) return;
+      if (this.videoFrameHolds.size) {
+        this.pauseForVideoFrame();
+        return;
+      }
       this.clearPublicSourceTimeout();
       if (this.snapshot.album) void this.reportAlbumPlay.playing();
       this.resumeDharmaTalkEvidence();
@@ -902,6 +999,7 @@ export class AudioPlayerController {
     });
     this.audio.addEventListener('ended', () => {
       if (this.isPracticeAudio()) return;
+      if (this.viewingVideo) this.setPlaybackIntent(false);
       this.clearPublicSourceTimeout();
       this.reportAlbumPlay.ended();
       this.finishDharmaTalkEvidence();
@@ -1071,6 +1169,7 @@ export class AudioPlayerController {
       }, RETRY_DELAYS[retry - 1]);
       return;
     }
+    if (this.viewingVideo) this.setPlaybackIntent(false);
     this.patch({ retry: 0, error: 'Không thể phát bài — vui lòng kiểm tra kết nối mạng.' });
   }
 
@@ -1210,7 +1309,8 @@ export class AudioPlayerController {
   }
 
   private stopPlaybackForPrincipalChange(): void {
-    this.wantsPlayback = false;
+    this.forgetVideoHolds();
+    this.setPlaybackIntent(false);
     this.clearPublicSourceTimeout();
     this.releasePracticePlayback();
     this.loadGeneration += 1;

@@ -11,7 +11,7 @@
   import { getOfflineTrack } from '$lib/browser/offline-audio-database';
   import { setImmersiveFullscreen } from '$lib/browser/native-fullscreen';
 
-  let { url, title, landscape = false, expanded = $bindable(true), onBack }: { url: string; title: string; landscape?: boolean; expanded?: boolean; onBack: () => void } = $props();
+  let { url, title, poster, landscape = false, expanded = $bindable(true), onBack }: { url: string; title: string; poster?: string; landscape?: boolean; expanded?: boolean; onBack: () => void } = $props();
   const localeStore = getLocaleContext();
   const text = $derived(talkVideoText[localeStore.current === 'en' ? 'en' : 'vi']);
   let video = $state<HTMLVideoElement | null>(null);
@@ -24,6 +24,7 @@
   let figure = $state<HTMLElement | null>(null);
   let immersiveOwned = $state(false);
   let loading = $state(true);
+  let bufferingTimer: ReturnType<typeof setTimeout> | undefined;
   let retryCount = $state(0);
   let hudVisible = $state(true);
   let hudActivity = $state(0);
@@ -61,7 +62,27 @@
 
   function shrink(): void { expanded = false; }
 
+  function clearBufferingTimer(): void {
+    clearTimeout(bufferingTimer);
+    bufferingTimer = undefined;
+  }
+
+  function framesReady(): void {
+    clearBufferingTimer();
+    loading = false;
+  }
+
+  function framesWaiting(): void {
+    if (loading || unavailable || bufferingTimer !== undefined) return;
+    // Một lần tua có thể báo waiting trong vài khung hình.
+    bufferingTimer = setTimeout(() => {
+      bufferingTimer = undefined;
+      loading = true;
+    }, 650);
+  }
+
   function retryVideo(): void {
+    clearBufferingTimer();
     unavailable = false;
     loading = true;
     retryCount += 1;
@@ -96,6 +117,7 @@
     return () => {
       mounted = false;
       cancelled = true;
+      clearBufferingTimer();
       document.removeEventListener('fullscreenchange', fullscreenChanged);
       document.removeEventListener('keydown', keyboardActivity, true);
       document.removeEventListener('pointerdown', pointerActivity, true);
@@ -133,7 +155,11 @@
     async function connect(): Promise<void> {
       try {
         const player = await getAudioPlayer();
-        if (!cancelled) dispose = attachTalkVideoMirror(player.audio, surface!, document, () => { unavailable = true; });
+        if (cancelled) return;
+        dispose = attachTalkVideoMirror(player.audio, surface!, document, () => { unavailable = true; }, {
+          hold: () => player.holdVideoPlayback(url),
+          wantsPlayback: () => player.videoPlaybackRequested,
+        });
       } catch { if (!cancelled) unavailable = true; }
     }
     void connect();
@@ -149,12 +175,13 @@
 <figure bind:this={figure} class="talk-video" class:expanded class:landscape>
   <div class="video-stage" role="group" aria-label={title} onpointerdown={hudPointerDown} onfocusin={hudFocusIn} onfocusout={hudFocusOut}>
   <div class="video-media">
-  <video bind:this={video} src={videoSource || undefined} muted playsinline preload="metadata" aria-label={title}
-    onloadeddata={() => { loading = false; }} onwaiting={() => { loading = true; }} onplaying={() => { loading = false; }}
+  <video bind:this={video} src={videoSource || undefined} {poster} muted playsinline preload="auto" aria-label={title}
+    onloadeddata={framesReady} oncanplay={framesReady} onplaying={framesReady} onwaiting={framesWaiting}
+    onseeked={(event) => { if (event.currentTarget.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) framesReady(); }}
     onerror={() => {
       const fallback = videoSource.startsWith('https://media.quangtu.vn/') ? publicMediaFallback(videoSource) : undefined;
       if (fallback) videoSource = fallback;
-      else { unavailable = true; loading = false; }
+      else { unavailable = true; framesReady(); }
     }}></video>
   {#if landscape && !expanded}<button class="video-expand" bind:this={expandButton} type="button" onclick={() => void enterFullscreen()} aria-label={text.enterFullscreen} title={text.enterFullscreen}><Expand size={20} aria-hidden="true" /></button>{/if}
   </div>
@@ -176,7 +203,7 @@
     {#if landscape}
       {#if unavailable}
         <p role="status">{text.videoUnavailable}</p><button type="button" onclick={retryVideo}>{text.retry}</button>
-      {:else if loading}<p role="status">{text.loading}</p>{/if}
+      {:else if loading}<p class="video-loading" role="status">{text.loading}</p>{/if}
       <VideoTransport {title} compact={!expanded} onErrorChange={(value) => { transportError = value; }} />
     {:else if expanded}
       <VideoTransport {title} onErrorChange={(value) => { transportError = value; }} />
@@ -205,7 +232,8 @@
   }
   .landscape:not(.expanded) video { aspect-ratio: 16 / 9; block-size: auto; }
   .landscape .video-caption > p { color: inherit; padding: var(--space-page); }
-  .landscape:not(.expanded) .video-caption { display: block; padding: 0; }
+  .landscape:not(.expanded) .video-caption { position: relative; display: block; padding: 0; }
+  .landscape .video-caption > .video-loading { position: absolute; inset-inline-start: 0; inset-block-end: 100%; padding: .5em .75em; background: var(--video-surface); color: var(--video-ink); pointer-events: none; }
 
   video { display: block; inline-size: 100%; block-size: min(25dvh, 14rem); object-fit: contain; background: var(--video-surface); }
   .video-caption { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .5em; min-inline-size: 0; padding: .75em; }

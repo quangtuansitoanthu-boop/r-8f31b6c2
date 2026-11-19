@@ -8,6 +8,8 @@ import type { TalkAlbum } from '$lib/components/audio/AudioCatalog.svelte';
 import { isHomepageArticleVisible } from '$lib/domain/library/homepage-visibility';
 import { sortPracticeCatalog, type PracticeArticleSummary, type PracticeCategory } from '$lib/domain/practice/state';
 import { compareContentRecency } from '$lib/domain/content-recency';
+import { completeDiaTangVideoTrackTitle } from '$lib/domain/dia-tang-video-metadata';
+import { bundledTalkCover } from '$lib/domain/talk-cover-overrides';
 import { normalizeCoverSrc } from '$lib/domain/cover-url';
 import { resolvePdfUrl } from '$lib/utils/pdf-url';
 import { isNativeApp } from './native-platform';
@@ -88,6 +90,7 @@ const PRACTICE_CATEGORIES = new Set<string>(['KINH PHẬT', 'TRÌ CHÚ', 'NGHI T
 const ADMIN_CATALOG_PAGE_SIZE = 500;
 export const LEGACY_TALK_SPEAKER = 'Chưa xác định';
 export type TalkDurationFilter = 'all' | 'short' | 'medium' | 'long' | 'unknown';
+export type TalkFormatFilter = 'all' | 'video' | 'audio';
 
 const VIEWS_CACHE_KEY = 'quangtu_views_cache';
 const VIEWS_SYNC_TIME_KEY = 'quangtu_views_last_sync_time';
@@ -106,8 +109,10 @@ export function matchesTalkMetadataFilters(
   album: TalkAlbum,
   speaker: string,
   duration: TalkDurationFilter,
+  format: TalkFormatFilter = 'all',
 ): boolean {
   if (speaker !== 'all' && talkSpeaker(album) !== speaker) return false;
+  if (format !== 'all' && !album.tracks.some(track => (track.media_type ?? 'audio') === format)) return false;
   if (duration === 'all') return true;
   const seconds = talkDurationSeconds(album);
   if (duration === 'unknown') return seconds == null;
@@ -299,7 +304,7 @@ export async function fetchHomepageArticles(
     .sort(compareContentRecency);
 }
 
-function normalizeTracks(value: unknown): TalkAlbum['tracks'] {
+function normalizeTracks(albumId: string, value: unknown): TalkAlbum['tracks'] {
   let parsed = value;
   if (typeof value === 'string') {
     try {
@@ -317,7 +322,7 @@ function normalizeTracks(value: unknown): TalkAlbum['tracks'] {
     if (!title || !url) return [];
     const duration = row.duration_sec == null ? undefined : Number(row.duration_sec);
     return [{
-      title,
+      title: completeDiaTangVideoTrackTitle(albumId, title),
       url,
       ...(row.media_type === 'video' ? { media_type: 'video' as const } : {}),
       ...(row.media_type === 'video' && row.aspect_ratio === '16:9' ? { aspect_ratio: '16:9' as const } : {}),
@@ -327,18 +332,20 @@ function normalizeTracks(value: unknown): TalkAlbum['tracks'] {
 }
 
 function mapTalkAlbum(row: TalkAlbumRow): TalkAlbum {
+  const id = String(row.id ?? '');
+  const cover = row.anh_dai_dien == null ? null : String(row.anh_dai_dien);
   return {
-    id: String(row.id ?? ''),
+    id,
     tieu_de: String(row.tieu_de ?? ''),
     mo_ta: String(row.mo_ta ?? ''),
     chu_de: String(row.chu_de ?? 'Pháp ngữ'),
     dien_gia: row.dien_gia == null ? null : String(row.dien_gia).trim() || null,
     archive_id: row.archive_id == null ? null : String(row.archive_id),
-    anh_dai_dien: row.anh_dai_dien == null ? null : String(row.anh_dai_dien),
+    anh_dai_dien: cover && isNativeApp() ? bundledTalkCover(id, cover) : cover,
     visibility: String(row.visibility ?? 'public'),
     ngay_dang: row.ngay_dang == null ? null : String(row.ngay_dang),
     created_at: row.created_at == null ? null : String(row.created_at),
-    tracks: normalizeTracks(row.tracks)
+    tracks: normalizeTracks(id, row.tracks)
   };
 }
 
@@ -417,7 +424,7 @@ export async function fetchTalkAlbums(fetcher: typeof fetch, signal?: AbortSigna
 async function fetchScopedTalkAlbums(fetcher: typeof fetch, scope: TalkCatalogScope, signal?: AbortSignal): Promise<TalkAlbum[]> {
   // 1. Kiểm tra bộ nhớ đệm (Local-First: load ngay lập tức từ IndexedDB / localStorage)
   const [cachedCatalog, savedItems] = await Promise.all([readCachedTalkCatalog(scope), savedContentItems()]);
-  let cachedRows = cachedCatalog?.rows ?? null;
+  let cachedRows = cachedCatalog?.rows.filter(row => row && typeof row === 'object') ?? null;
   const manualTalks = savedItems.filter(item => item.kind === 'talk').map(item => item.row);
   assertTalkCatalogScope(scope);
   if (manualTalks.length) {
@@ -448,36 +455,31 @@ async function fetchScopedTalkAlbums(fetcher: typeof fetch, scope: TalkCatalogSc
     }
   }
   if (cachedRows && cachedRows.length > 0) {
+    let albums = cachedRows.map(mapTalkAlbum);
     if (isNativeApp()) {
+      const bundledRows = await getOfflineTalks();
+      // Bản cache thiếu mục lục không được che bản đóng gói. Giữ chặn theo ID nếu đã biết album là riêng tư.
+      const cachedIds = new Set(albums
+        .filter(album => album.visibility === 'private' || (album.tieu_de && album.tracks.length > 0))
+        .map(album => album.id));
+      const missing = bundledRows.filter(row => typeof row.id === 'string' && row.id
+        && row.visibility === 'public' && !cachedIds.has(row.id));
+      if (missing.length) albums.push(...missing.map(mapTalkAlbum));
+
       const baoUngAlbumId = 'pt_bao_ung_hien_doi';
-      const needsBaoUngCover = (row: CachedTalkAlbumRow) => {
-        if (row.id !== baoUngAlbumId) return false;
-        const cover = normalizeCoverSrc(row.anh_dai_dien).split('#')[0];
+      const needsBaoUngCover = (album: TalkAlbum) => {
+        if (album.id !== baoUngAlbumId) return false;
+        const cover = normalizeCoverSrc(album.anh_dai_dien).split('#')[0];
         return !cover || cover === '/covers/bao-ung-hien-doi-tap-1-20261022.webp';
       };
-      const additions = new Set([
-        'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4',
-        'pt_drive_c435791b562e6f6e9d345b414df4a273',
-        'pt_drive_0cbcd85f1caa5411a50fb3edf38156d3',
-        baoUngAlbumId,
-      ]);
-      for (const row of cachedRows) additions.delete(String(row.id));
-      if (additions.size || cachedRows.some(needsBaoUngCover)) {
-        const bundledRows = await getOfflineTalks();
+      if (albums.some(needsBaoUngCover)) {
         const packagedCover = bundledRows.find(row => row.id === baoUngAlbumId)?.anh_dai_dien;
-        if (packagedCover) {
-          cachedRows = cachedRows.map(row => needsBaoUngCover(row) ? { ...row, anh_dai_dien: packagedCover } : row);
-        }
-        const missing = bundledRows.filter(row => additions.has(String(row.id)));
-        if (missing.length) {
-          // Bổ sung metadata đóng gói ngay, ghi cache sau khi đã có danh sách.
-          cachedRows = [...cachedRows, ...missing];
-          void saveCachedTalkAlbums(cachedRows, scope).catch(() => undefined);
+        if (typeof packagedCover === 'string' && packagedCover) {
+          albums = albums.map(album => needsBaoUngCover(album) ? { ...album, anh_dai_dien: packagedCover } : album);
         }
       }
     }
-    return (cachedRows as TalkAlbumRow[])
-      .map(mapTalkAlbum)
+    return albums
       .filter((album) => album.id && album.tieu_de && album.tracks.length > 0 && isContentAvailable(album))
       .sort(compareContentRecency);
   }

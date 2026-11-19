@@ -24,6 +24,11 @@ const event: LunarEventNotificationInfo = {
 };
 
 describe('daily Thập Trai notification', () => {
+  it('attributes a standalone abstinence reminder to the book in both languages', () => {
+    const abstinence = { ...event, isThapTrai: false, viaName: null, kiengDam: { reason: 'Đẩu giáng', harm: '' } };
+    expect(createLunarReminder(abstinence, 'vi').options.body).toContain('theo sách Thọ Khang Bảo Giám');
+    expect(createLunarReminder(abstinence, 'en').options.body).toContain('the book Shou Kang Bao Jian');
+  });
   it.each([1, 9, 10, 11, 24, 30])('uses the correct lunar day prefix for day %i', (lunarDay) => {
     const reminder = createLunarReminder({ ...event, lunarDay });
     expect(reminder.options.body).toContain(`${lunarDay <= 10 ? 'mùng' : 'ngày'} ${lunarDay}/7`);

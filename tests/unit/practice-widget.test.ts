@@ -162,6 +162,29 @@ it('expires yesterday accepted streak at Vietnam midnight through the existing d
   expect(fetch).not.toHaveBeenCalled();
 });
 
+it.each([false, true])('restores the account that was already applied when another account write is in flight (stop=%s)', async dispose => {
+  const { startPracticeWidgetSync } = await import('../../src/lib/browser/practice-widget');
+  let owner = 'alice';
+  const changeOwner = (next: string) => {
+    owner = next;
+    windowEvents.dispatchEvent(new Event('quangtu:session-changed'));
+  };
+  client.setQueryData(serverStateKeys.practiceCommunity.progress('alice'), currentProgress());
+  client.setQueryData(serverStateKeys.practiceCommunity.progress('bob'), { ...currentProgress(), streaks: { current: 9, longest: 18 } });
+  stop = startPracticeWidgetSync(client, () => ({ authenticated: true, user: { id: owner } }));
+  await flush();
+  let finish!: () => void;
+  native.replaceSnapshot.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  changeOwner('bob');
+  await flush();
+  changeOwner('alice');
+  if (dispose) { stop(); stop = undefined; }
+  finish();
+  await flush();
+  expect(native.replaceSnapshot.mock.calls.at(-1)?.[0].streakDays).toBe(dispose ? null : 14);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 it('does not publish an initial fallback summary until a real accepted query result replaces it', async () => {
   const { startPracticeWidgetSync } = await import('../../src/lib/browser/practice-widget');
   const key = serverStateKeys.practiceCommunity.progress('alice');

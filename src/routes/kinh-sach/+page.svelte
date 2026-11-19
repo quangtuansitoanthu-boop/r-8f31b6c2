@@ -47,6 +47,7 @@
   const t = $derived(localeStore.t);
 
   let query = $state('');
+  let searchInput: HTMLInputElement;
   let libraryOpen = $state(false);
   let filtersOpen = $state(false);
   const libraryHash = $derived(page.url.hash);
@@ -434,14 +435,15 @@
     </details>
     <div class="toolbar">
       <div class="toolbar-inner">
-        <label class="search-wrap" class:has-query={Boolean(query)}>
-          <span class="visually-hidden">{isEnglish ? "Search books" : localizeUi("Tìm kiếm bài viết")}</span>
+        <div class="search-wrap" class:has-query={Boolean(query)}>
           {#if !query}<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>{/if}
-          <input class="search-input" type="search" aria-label={isEnglish ? "Search books" : localizeUi("Tìm kiếm bài viết")} placeholder={t.library.searchPlaceholder} bind:value={query} />
+          <input class="search-input" type="search" aria-label={isEnglish ? "Search books" : localizeUi("Tìm kiếm bài viết")} placeholder={t.library.searchPlaceholder} bind:this={searchInput} bind:value={query} />
           {#if query}
-            <button class="search-clear-btn" type="button" aria-label={localizeUi("Xóa tìm kiếm")} onclick={() => { query = ''; }}>✕</button>
+            <button class="search-clear-btn" type="button" aria-label={localizeUi("Xóa tìm kiếm")} onclick={() => { query = ''; searchInput.focus(); }}>
+              <span aria-hidden="true">✕</span>
+            </button>
           {/if}
-        </label>
+        </div>
         <button class="library-options-toggle" type="button" aria-expanded={filtersOpen} aria-controls="library-options" onclick={() => filtersOpen = !filtersOpen}><SlidersHorizontal size={18} aria-hidden="true" />{isEnglish ? 'Filter' : localizeUi('Lọc')}{activeSection !== 'all' || activeTag ? ' •' : ''}</button>
         <TopTenDialog title={localizeUi("Top 10 sách được xem nhiều nhất")} {loading} unit={localizeUi("lượt xem")}
           error={''}
@@ -532,8 +534,8 @@
   .kinh-sach-container :global(.search-wrap){display:flex;align-items:center;gap:calc(var(--space-page)/4);max-width:none;min-width:0;padding-right:calc(var(--space-page)/4);border:1px solid var(--border2);border-radius:var(--radius-feature);background:var(--bg2);overflow:hidden}
   .kinh-sach-container :global(.search-wrap:focus-within){outline:2px solid var(--gold);outline-offset:2px}
   .kinh-sach-container :global(.search-input){flex:1;min-width:0;min-height:44px;padding-right:0;border:0;background:transparent;box-shadow:none}
-  .kinh-sach-container :global(.search-input[type="search"]::-webkit-search-cancel-button){-webkit-appearance:none;appearance:none}
-  .kinh-sach-container :global(.search-wrap.has-query .search-input){padding-left:44px}
+  .kinh-sach-container :global(.search-input[type="search"]::-webkit-search-cancel-button){display:none}
+  .kinh-sach-container :global(.search-wrap.has-query .search-input){padding-left:var(--touch-target-size)}
   .kinh-sach-container :global(.search-clear-btn){left:0;right:auto}
   .library-options-toggle{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--space-page) / 4);min-height:44px;padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--card);color:var(--text);font:600 13px var(--font-app);white-space:nowrap;cursor:pointer}
   .library-options-toggle:focus-visible,.library-my-quotes:focus-visible{outline:2px solid var(--gold);outline-offset:2px}

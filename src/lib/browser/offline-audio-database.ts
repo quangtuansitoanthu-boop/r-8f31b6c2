@@ -2,6 +2,7 @@ import { getBrowserSessionSnapshot } from '$lib/stores/session.svelte';
 import { currentTalkCatalogScope, readCachedTalkCatalog } from './talk-catalog-cache';
 import { resolveOfflineBundledResponse } from './offline-bundled-resolver';
 import { hasVerifiedTalkCatalog } from './talk-catalog-proof';
+import { isMediaErrorDocument } from './download-integrity';
 
 export const OFFLINE_AUDIO_DATABASE = 'tutam_offline_audio';
 export const OFFLINE_AUDIO_VERSION = 1;
@@ -91,8 +92,13 @@ async function catalogProof(context: AccessContext, strict = false): Promise<Cat
   })();
   const result = await context.proof; context.assertCurrent(); return result;
 }
+function hasUsableBlob(track: OfflineTrack): boolean {
+  const blob = track.blob;
+  return blob?.size > 0 && typeof blob.slice === 'function' && typeof blob.type === 'string' && !isMediaErrorDocument(blob.type);
+}
 async function readableTrack(record: OfflineTrack, context: AccessContext, albumId?: string): Promise<OfflineTrack | null> {
   context.assertCurrent();
+  if (!hasUsableBlob(record)) return null;
   if (owned(record, context)) return record;
   if (!context.ownedAlbums) context.ownedAlbums = (async () => {
     const db = await openOfflineAudioDatabase(), tx = db.transaction('albums', 'readonly');
@@ -212,7 +218,8 @@ export async function putOfflineTrack(track: OfflineTrack, access?: OfflineAudio
     try {
       assertPrivateWrite(track, context);
       // Một URL public dùng chung không bị đổi thành private bởi album tải sau.
-      if ((previous.result as OfflineTrack | undefined)?.visibility === 'public' && track.visibility === 'private') return;
+      const saved = previous.result as OfflineTrack | undefined;
+      if (saved?.visibility === 'public' && track.visibility === 'private' && hasUsableBlob(saved)) return;
       store.put({ ...track, albumId: String(track.albumId) });
     } catch (error) { writeError = error; transaction.abort(); }
   };

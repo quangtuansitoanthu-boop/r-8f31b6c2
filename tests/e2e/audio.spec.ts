@@ -48,11 +48,15 @@ test.describe('Pháp Thoại public and download contracts', () => {
       await page.clock.fastForward(1);
       await expect(notice).toHaveCount(0);
       await expect(reader).toBeVisible();
+      // Let the native API fixture finish its in-flight reading requests before page teardown.
+      await page.unrouteAll({ behavior: 'wait' });
     });
   }
 
+  const dreamStories = 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ';
   for (const [albumId, noticeText] of [
-    ['pt_drive_c435791b562e6f6e9d345b414df4a273', 'Các câu chuyện được kể trong album này đều từ những giấc mơ độ vong của chị Hoa và các anh thầy pháp, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ'],
+    ['pt_drive_c435791b562e6f6e9d345b414df4a273', dreamStories],
+    ['pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4', dreamStories],
     ['pt_drive_74959767068eaae1db4846f62b62eda8', 'Sách này dựa trên trải nghiệm cá nhân trong các giấc mộng của cư sĩ Dương Sinh ở Thánh Hiền đường, quý vị tin thì suy ngẫm, không tin xem giải trí'],
     ['pt_1781961851755', 'Các câu chuyện được kể trong album này đều từ những giấc mơ của cư sĩ Thích Nữ Huệ Hiền, đây đều là các trải nghiệm cá nhân, do đó quý vị tin thì quý vị suy ngẫm, không tin xem giải trí ạ'],
   ]) {
@@ -63,6 +67,12 @@ test.describe('Pháp Thoại public and download contracts', () => {
     await page.route(/\/api\/talks(?:\?|$)/u, route => route.fulfill({ json: [album] }));
     await page.goto('/phap-thoai');
     await settleClient(page);
+    const withSavedPosition = albumId === 'pt_drive_f72e42f4cbb7db4312f96f4a1f28e2b4';
+    if (withSavedPosition) {
+      await page.evaluate(({ key, id }) => {
+        localStorage.setItem(key, JSON.stringify({ albumId: id, trackIndex: 0, pos: 63, savedAt: Date.now() }));
+      }, { key: memberStorageKey(`tutam_pt_pos_${albumId}`), id: albumId });
+    }
     await page.clock.install({ time: new Date('2026-11-18T08:00:00Z') });
     await page.clock.pauseAt(new Date('2026-11-18T08:00:01Z'));
     const extraApiRequests: string[] = [];
@@ -87,11 +97,25 @@ test.describe('Pháp Thoại public and download contracts', () => {
     const storyBounds = await notice.boundingBox();
     expect(offlineBounds).not.toBeNull();
     expect(storyBounds!.y).toBeGreaterThanOrEqual(offlineBounds!.y + offlineBounds!.height);
+    const prompt = page.getByRole('dialog', { name: 'Tiếp tục nghe pháp thoại' });
+    if (withSavedPosition) {
+      await page.clock.runFor(500);
+      await expect(prompt).toContainText('1:03');
+      await expect(prompt).toBeFocused();
+      const promptBounds = await prompt.boundingBox();
+      const noticeBounds = await notice.boundingBox();
+      expect(promptBounds!.y).toBeGreaterThanOrEqual(noticeBounds!.y + noticeBounds!.height);
+    }
     await page.screenshot({ path: test.info().outputPath('approved-album-story-notice.png') });
-    await page.clock.fastForward(9999);
+    await page.clock.fastForward(withSavedPosition ? 9499 : 9999);
     await expect(notice).toBeVisible();
     await page.clock.fastForward(1);
     await expect(notice).toHaveCount(0);
+    if (withSavedPosition) {
+      await prompt.getByRole('button', { name: 'Đóng đề nghị nghe tiếp' }).click();
+      await page.clock.runFor(280);
+      await expect(prompt).toHaveCount(0);
+    }
     expect(extraApiRequests).toEqual([]);
   });
   }

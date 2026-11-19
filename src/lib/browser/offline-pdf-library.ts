@@ -7,6 +7,7 @@ import { normalizeCoverSrc } from '$lib/domain/cover-url';
 import { compareContentRecency } from '$lib/domain/content-recency';
 import { resolvePdfUrl } from '$lib/utils/pdf-url';
 import { isNativeApp } from './native-platform';
+import { isContentAvailable } from './ios-content-policy';
 import { getOfflineArticleCatalog } from './offline-bundled-resolver';
 import { listOfflinePdfMetadata, normalizePdfPrincipal, offlinePdfRecordKey } from './offline-pdf-database';
 import { updatedArticleRows } from './offline-content-packages';
@@ -134,6 +135,7 @@ async function loadCombinedOfflineLibrary(
   throwIfAborted(signal);
   try {
     for (const record of records) {
+      if (!isContentAvailable({ id: record.documentId, title: record.title })) continue;
       if (record.ownerId === ownerId && record.key === offlinePdfRecordKey(ownerId, record.documentId) && !seenIds.has(record.documentId)) {
         seenIds.add(record.documentId);
         result.push({

@@ -27,10 +27,16 @@ it('maps iOS bundled audio to a local asset and preserves remote and Android URL
   expect(nativeTalkUrl('https://media.quangtu.vn/talk.mp3')).toBe('https://media.quangtu.vn/talk.mp3');
 });
 
+it('disables video decoding in the Android audio service before restoring a queue', () => {
+  const source = readFileSync('android/app/src/main/java/vn/quangtu/tutam/audio/DharmaPlaybackService.java', 'utf8');
+  const beforeRestore = source.split('DharmaAudioWidgetStore.restore(this, player);')[0];
+  expect(beforeRestore).toMatch(/player\.setTrackSelectionParameters\(player\.getTrackSelectionParameters\(\)\.buildUpon\(\)\s*\.setTrackTypeDisabled\(C\.TRACK_TYPE_VIDEO, true\)\.build\(\)\)/);
+});
+
 it('reloads a failed iOS audio item at its retained position before attempting playback again', () => {
   const source = readFileSync('ios/App/App/DharmaAudioPlugin.swift', 'utf8');
   const playback = source.split('private func startPlayback() throws {')[1]?.split('private func pausePlayback()')[0] ?? '';
-  const retry = /if player\.currentItem\?\.status == \.failed \{([\s\S]*?)\}/.exec(playback);
+  const retry = /if [^\n{]*player\.currentItem\?\.status == \.failed[^\n{]*\{([\s\S]*?)\}/.exec(playback);
   expect(retry, 'the shared native play path must replace a failed AVPlayerItem').not.toBeNull();
   const branch = retry?.[1] ?? '';
   expect(branch).toMatch(/try loadTrack\(position: retainedPosition, autoplay: true\)\s+return/);

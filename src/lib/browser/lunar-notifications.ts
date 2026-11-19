@@ -49,7 +49,7 @@ export function createLunarReminder(rawInfo: LunarEventNotificationInfo, locale?
     } else if (info.kiengDam) {
       title = 'Reminder: Abstinence Day';
       const harm = info.kiengDam.harm ? `, risk if not observed: "${info.kiengDam.harm}"` : '';
-      body = `Today is an abstinence day according to the Shou Kang Bao Jian calendar, reason: "${info.kiengDam.reason}"${harm}`;
+      body = `Today is an abstinence day according to the book Shou Kang Bao Jian, reason: "${info.kiengDam.reason}"${harm}`;
     }
   } else {
     const dayPrefix = info.lunarDay <= 10 ? 'mùng' : 'ngày';
@@ -66,7 +66,7 @@ export function createLunarReminder(rawInfo: LunarEventNotificationInfo, locale?
     } else if (info.kiengDam) {
       title = 'Nhắc nhở: Kiêng Hành Dâm';
       const harm = info.kiengDam.harm ? `, tác hại nếu không kiêng dâm: "${info.kiengDam.harm}"` : '';
-      body = `Hôm nay là ngày kiêng thủ dâm, hành dâm (kể cả vợ chồng) theo Thọ Khang Bảo Giám, lý do: "${info.kiengDam.reason}"${harm}`;
+      body = `Hôm nay là ngày kiêng thủ dâm, hành dâm (kể cả vợ chồng) theo sách Thọ Khang Bảo Giám, lý do: "${info.kiengDam.reason}"${harm}`;
     }
   }
 

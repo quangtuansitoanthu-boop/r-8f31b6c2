@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchHomepageWithOfflinePdfs } from '$lib/browser/offline-pdf-library';
+import { readPdfOfflineState } from '$lib/browser/pdf-offline-downloads';
 import { OFFLINE_PDF_RECORD_VERSION, offlinePdfRecordKey, type OfflinePdfRecord } from '$lib/browser/offline-pdf-database';
 
 const fallbackMocks = vi.hoisted(() => ({ native: vi.fn(() => false), bundled: vi.fn() }));
@@ -21,6 +22,19 @@ function download(ownerId: string, documentId = 'saved-pdf'): OfflinePdfRecord {
 }
 
 describe('homepage offline PDF fallback', () => {
+  it.each([true, false])('honors platform-specific visibility for PDFs saved on earlier versions (native=%s)', async native => {
+    fallbackMocks.native.mockReturnValue(native);
+    fallbackMocks.bundled.mockResolvedValue([]);
+    const allowed = download('reader-a');
+    const webOnly = download('reader-a', 'tt_1781529439696');
+    const renamed = { ...download('reader-a', 'legacy-title-only'), title: 'Trở về từ xứ tuyết' };
+    const result = await fetchHomepageWithOfflinePdfs(async () => { throw new TypeError('offline'); },
+      'member', 'reader-a', undefined, async () => [allowed, webOnly, renamed]);
+    expect(result.articles.map(row => row.id).sort()).toEqual((native ? [allowed] : [allowed, webOnly, renamed]).map(r => r.documentId).sort());
+    const read = vi.fn(async () => webOnly);
+    expect(await readPdfOfflineState(webOnly, read)).toBe(native ? null : webOnly);
+    expect(read).toHaveBeenCalledTimes(native ? 0 : 1);
+  });
   it.each([429, 500, 503])('keeps the native public bundled library available during HTTP %s without restoring downloaded records', async status => {
     fallbackMocks.native.mockReturnValue(true);
     fallbackMocks.bundled.mockImplementation(async () => [

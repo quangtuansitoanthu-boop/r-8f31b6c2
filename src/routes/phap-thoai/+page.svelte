@@ -33,6 +33,7 @@
     matchesTalkMetadataFilters,
     talkSpeaker,
     type TalkDurationFilter,
+    type TalkFormatFilter,
   } from '$lib/browser/content-catalogs';
   import { invalidateTalkState, serverStateKeys } from '$lib/browser/server-state';
   import { getSessionContext, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
@@ -58,15 +59,18 @@
 
   let catalogEnabled = $state(false);
   let query = $state('');
+  let searchInput: HTMLInputElement;
   let topic = $state<'all' | 'favorite' | 'listen_later' | 'recent' | 'offline' | string>('all');
   let speaker = $state('all');
   let duration = $state<TalkDurationFilter>('all');
+  let format = $state<TalkFormatFilter>('all');
   let sort = $state<'popular' | 'newest' | 'title' | 'tracks'>('popular');
   let filterOpen = $state(false);
-  const activeFilterCount = $derived((speaker !== 'all' ? 1 : 0) + (duration !== 'all' ? 1 : 0) + (sort !== 'popular' ? 1 : 0));
+  const activeFilterCount = $derived([speaker !== 'all', duration !== 'all', format !== 'all', sort !== 'popular'].filter(Boolean).length);
   function resetFilters() {
     speaker = 'all';
     duration = 'all';
+    format = 'all';
     sort = 'popular';
   }
   let recentAlbumIds = $state<string[]>([]);
@@ -268,7 +272,7 @@
       if (topic === 'listen_later' && !listenLaterAlbumIds.includes(album.id)) return false;
       if (topic === 'offline' && !offlineAlbumIds.includes(album.id)) return false;
       if (!['all', 'favorite', 'listen_later', 'recent', 'offline'].includes(topic) && (album.chu_de || 'Pháp ngữ') !== topic) return false;
-      if (!matchesTalkMetadataFilters(album, speaker, duration)) return false;
+      if (!matchesTalkMetadataFilters(album, speaker, duration, format)) return false;
       return !documents || matchesPreparedVietnameseSearch(documents[index], searchQuery);
     });
 
@@ -354,6 +358,7 @@
         matchesVietnameseSearch(a.tieu_de, needle)
       );
       if (matched) {
+        if (!matchesTalkMetadataFilters(matched, 'all', 'all', format)) format = 'all';
         selectedAlbumId = matched.id;
       } else {
         selectedAlbumId = targetId;
@@ -405,6 +410,8 @@
         pushedAlbumHistory = false;
         handleSelectAlbum(null, false, true);
       } else {
+        const linked = albums.find(album => album.id === targetId);
+        if (linked && !matchesTalkMetadataFilters(linked, 'all', 'all', format)) format = 'all';
         selectedAlbumId = targetId;
       }
     };
@@ -423,7 +430,7 @@
     const openVideoAlbum = (event: Event) => {
       const albumId = (event as CustomEvent<{ albumId?: unknown }>).detail?.albumId;
       if (typeof albumId !== 'string' || !albumId) return;
-      query = ''; topic = 'all'; speaker = 'all'; duration = 'all';
+      query = ''; topic = 'all'; speaker = 'all'; duration = 'all'; format = 'all';
       selectedAlbumId = albumId;
     };
     window.addEventListener('quangtu:open-video-album', openVideoAlbum);
@@ -521,14 +528,15 @@
   <div class="pt-toolbar">
     <div class="pt-toolbar-inner">
       <div class="pt-toolbar-main">
-        <label class="pt-search-wrap">
-          <span class="sr-only">{t.talks.searchPlaceholder}</span>
+        <div class="pt-search-wrap">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input class="pt-search" bind:value={query} type="search" placeholder={t.talks.searchPlaceholder} />
+          <input class="pt-search" bind:this={searchInput} bind:value={query} type="search" aria-label={t.talks.searchPlaceholder} placeholder={t.talks.searchPlaceholder} />
           {#if query}
-            <button type="button" class="pt-search-clear" onclick={() => query = ''} aria-label={localeStore.current === 'en' ? 'Clear search' : 'Xóa tìm kiếm'}>✕</button>
+            <button type="button" class="pt-search-clear" onclick={() => { query = ''; searchInput.focus(); }} aria-label={localeStore.current === 'en' ? 'Clear search' : 'Xóa tìm kiếm'}>
+              <span aria-hidden="true">✕</span>
+            </button>
           {/if}
-        </label>
+        </div>
         <div class="pt-toolbar-end">
           <button type="button" class="filter-toggle" aria-expanded={filterOpen} aria-controls="talk-options" onclick={() => filterOpen = !filterOpen}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6" /></svg>
@@ -538,7 +546,7 @@
           <TopTenDialog title={localizeUi("Top 10 album được nghe nhiều nhất")} unit={t.talks.playCountUnit} loading={playsQuery.isPending}
             error={playsQuery.isError ? localizeUi('Chưa tải được lượt nghe. Vui lòng thử lại sau.') : ''}
             items={topAlbums.map((album) => ({ id: album.id, title: album.tieu_de, count: album.playCount ?? 0, image: parseAudioArtwork(album.anh_dai_dien).src }))}
-            onOpen={(id) => { query = ''; topic = 'all'; speaker = 'all'; duration = 'all'; selectedAlbumId = id; }} />
+            onOpen={(id) => { query = ''; topic = 'all'; speaker = 'all'; duration = 'all'; format = 'all'; selectedAlbumId = id; }} />
           {#if !loading && (!error || albums.length > 0)}
             <span class="pt-count">{filtered.length} {t.talks.albumUnit}</span>
           {/if}
@@ -548,11 +556,22 @@
   </div>
   <div id="talk-options" hidden={!filterOpen}>
   <div class="pt-options">
-      {#if speaker !== 'all' || duration !== 'all' || sort !== 'popular' || query.trim()}
-        <div class="filter-summary" aria-live="polite"><span>{speaker !== 'all' ? speaker : localizeUi("Mọi giảng sư")} · {duration !== 'all' ? localizeUi("Đã chọn thời lượng") : localizeUi("Mọi thời lượng")}</span><button type="button" class="filter-reset" onclick={() => { speaker = 'all'; duration = 'all'; sort = 'popular'; query = ''; }}>{localizeUi("Xóa lọc")}</button></div>
+      {#if activeFilterCount || query.trim()}
+        <div class="filter-summary" aria-live="polite">
+          <span>{speaker !== 'all' ? speaker : localizeUi("Mọi giảng sư")} · {duration !== 'all' ? localizeUi("Đã chọn thời lượng") : localizeUi("Mọi thời lượng")}{#if format !== 'all'} · {format === 'video' ? t.talks.formatVideo : t.talks.formatAudio}{/if}</span>
+          <button type="button" class="filter-reset" onclick={() => { resetFilters(); query = ''; }}>{localizeUi("Xóa lọc")}</button>
+        </div>
       {/if}
       <div class="pt-filter-chips" class:filters-open={filterOpen} id="talk-filters">
         <label class="pt-chip-wrap"><span>{localizeUi("Chủ đề")}</span><select class="pt-chip-select" bind:value={topic} aria-label={localizeUi("Chủ đề")}><option value="all">{t.talks.tabAll}</option><option value="favorite">{t.talks.tabFavorite}</option><option value="listen_later">{t.talks.tabListenLater}</option><option value="recent">{t.talks.tabRecent}</option>{#if offlineCount}<option value="offline">{t.talks.tabOffline}</option>{/if}{#each topics as name (name)}<option value={name}>{topicIcon(name)} {localizeTalkTopic(name, localeStore.current)}</option>{/each}</select></label>
+        <label class="pt-chip-wrap">
+          <span>{t.talks.filterFormat}</span>
+          <select class="pt-chip-select" bind:value={format}>
+            <option value="all">{t.talks.formatAll}</option>
+            <option value="video">{t.talks.formatVideo}</option>
+            <option value="audio">{t.talks.formatAudio}</option>
+          </select>
+        </label>
         <label class="pt-chip-wrap"><span>{localizeUi("Người giảng")}</span><select class="pt-chip-select" bind:value={speaker} aria-label={t.talks.allSpeakers}><option value="all">{localizeUi("Mọi giảng sư")}</option>{#each speakers as name (name)}<option value={name}>{name}</option>{/each}</select></label>
         <label class="pt-chip-wrap"><span>{localizeUi("Thời lượng")}</span><select class="pt-chip-select" bind:value={duration} aria-label={t.talks.allDurations}><option value="all">{localizeUi("Mọi thời lượng")}</option><option value="short">{localizeUi("Dưới 15'")}</option><option value="medium">15–45'</option><option value="long">{localizeUi("Trên 45'")}</option><option value="unknown">{localizeUi("Chưa rõ")}</option></select></label>
         <label class="pt-chip-wrap"><span>{localizeUi("Sắp xếp")}</span><select class="pt-chip-select" bind:value={sort} aria-label={localizeUi("Sắp xếp")}><option value="popular">{localizeUi("Nghe nhiều nhất")}</option><option value="newest">{localizeUi("Mới nhất")}</option><option value="title">A–Z</option><option value="tracks">{localizeUi("Nhiều bài")}</option></select></label>
@@ -616,11 +635,13 @@
   .pt-toolbar-main{display:flex;flex-direction:column;align-items:stretch;gap:var(--radius)}
   .pt-search-wrap{position:relative;display:block;min-width:0;width:100%}
   .pt-search-wrap svg{position:absolute;top:50%;left:10px;transform:translateY(-50%);color:var(--muted);pointer-events:none}
-  .pt-search{width:100%;padding:6px 12px 6px 30px;border:1.5px solid var(--border2);border-radius:12px;outline:none;background:var(--bg);color:var(--text);font-family:inherit;font-size:16px;line-height:normal;transition:border-color .15s,background .15s}
+  .pt-search{width:100%;padding:6px var(--touch-target-size) 6px 30px;border:1.5px solid var(--border2);border-radius:12px;outline:none;background:var(--bg);color:var(--text);font-family:inherit;font-size:16px;line-height:normal;transition:border-color .15s,background .15s}
+  .pt-search::-webkit-search-cancel-button{display:none}
   .pt-search:focus{border-color:var(--gold);background:var(--white)}
   :global([data-theme="dark"]) .pt-search:focus{background:var(--bg2)}
-  .pt-search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:17px;height:17px;display:grid;place-items:center;border:0;background:var(--bg3);color:var(--muted);border-radius:999px;font-size:9.5px;cursor:pointer;line-height:1;transition:background .15s,color .15s}
-  .pt-search-clear:hover{background:var(--gold-muted);color:var(--gold)}
+  .pt-search-clear{position:absolute;inset-inline-end:0;top:50%;transform:translateY(-50%);width:var(--touch-target-size);height:var(--touch-target-size);display:grid;place-items:center;padding:0;border:0;border-radius:var(--radius-feature);background:transparent;color:var(--muted);cursor:pointer}
+  .pt-search-clear span{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--bg3);font-size:9.5px;line-height:1}
+  .pt-search-clear:is(:hover,:focus-visible) span{background:var(--gold-muted);color:var(--gold)}
   @keyframes pt-toast-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
   .pt-filter-chips{display:flex;align-items:center;gap:6px;flex-shrink:0}
   .pt-chip-wrap{display:grid;grid-template-columns:calc(var(--space-page) * 4.5) minmax(0,1fr);align-items:center;gap:var(--radius);min-width:0;color:var(--text2);font-size:var(--font-size-label)}

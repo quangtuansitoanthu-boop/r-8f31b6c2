@@ -54,6 +54,9 @@ public class DharmaPlaybackService extends MediaSessionService {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setSeekBackIncrementMs(10000).setSeekForwardIncrementMs(30000)
             .build();
+        // WebView đã giải mã hình của MP4, dịch vụ phát nền chỉ cần phần tiếng.
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true).build());
         // Phục hồi trước listener/ticker để queue rỗng lúc cold start không xóa snapshot.
         DharmaAudioWidgetStore.restore(this, player);
         org.json.JSONObject savedDisplay = DharmaAudioWidgetStore.read(this).optJSONObject("display");

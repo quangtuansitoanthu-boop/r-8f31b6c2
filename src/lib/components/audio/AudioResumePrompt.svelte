@@ -8,12 +8,13 @@
     trackTitle: string;
     positionSeconds: number;
     visible: boolean;
+    inline?: boolean;
     onStartOver: () => void;
     onResume: () => void;
     onClose: () => void;
   }
 
-  let { trackTitle, positionSeconds, visible, onStartOver, onResume, onClose }: Props = $props();
+  let { trackTitle, positionSeconds, visible, inline = false, onStartOver, onResume, onClose }: Props = $props();
   let dialog = $state<HTMLElement | null>(null);
 
   $effect(() => {
@@ -47,7 +48,7 @@
   }
 </script>
 
-<div class:show={visible} class="pt-resume-dialog" data-dialog-glass role="dialog" aria-label={label("Tiếp tục nghe pháp thoại", "Resume Dharma audio")} aria-live="polite" tabindex="-1" bind:this={dialog} onkeydown={trapFocus}>
+<div class:show={visible} class:inline class="pt-resume-dialog" data-dialog-glass role="dialog" aria-label={label("Tiếp tục nghe pháp thoại", "Resume Dharma audio")} aria-live="polite" tabindex="-1" bind:this={dialog} onkeydown={trapFocus}>
   <button class="pt-resume-close" type="button" onclick={onClose} aria-label={label("Đóng đề nghị nghe tiếp", "Close resume prompt")}>×</button>
   <p class="pt-resume-dialog-text">
     🎵 {label('Đang nghe dở:', 'Previously playing:')} <strong>{trackTitle}</strong><br />
@@ -76,5 +77,7 @@
   .pt-resume-btn-yes{border:0;background:var(--gold);color:#fff}
   .pt-resume-btn-yes:hover{background:var(--brown2)}
   @media(max-width:768px){.pt-resume-dialog{top:50%;bottom:auto;transform:translate(-50%,calc(-50% + 20px))}.pt-resume-dialog.show{transform:translate(-50%,-50%)}}
+  .pt-resume-dialog.inline{position:relative;inset:auto;z-index:auto;box-sizing:border-box;align-self:center;flex-shrink:0;width:calc(100% - var(--space-page) * 2);min-width:0;max-width:var(--dialog-compact-width);margin:calc(var(--space-page) / 2) var(--space-page);transform:translateY(var(--space-page))}
+  .pt-resume-dialog.inline.show{transform:none}
   @media(prefers-reduced-motion:reduce){.pt-resume-dialog{transition:none}}
 </style>

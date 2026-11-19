@@ -28,6 +28,7 @@
   import { formatVietnamDate } from '$lib/utils/vietnam-date-format';
   import AudioResumePrompt from './AudioResumePrompt.svelte';
   import ContentExperienceNotice from '$lib/components/shared/ContentExperienceNotice.svelte';
+  import { hasContentExperienceNotice } from '$lib/i18n/content-experience-notice';
   import TalkVideoViewer from './TalkVideoViewer.svelte';
   import { localizeTalkTopic, talkVideoText } from '$lib/i18n/talk-video';
   import {
@@ -104,6 +105,7 @@
 
   let selected = $state<TalkAlbum | null>(null);
   let offlineNoticeVisible = $state(false);
+  const hasStoryNotice = $derived(!!selected && hasContentExperienceNotice(selected.id));
 
   $effect(() => {
     const albumId = selected?.id;
@@ -198,6 +200,11 @@
   const collectionBusyLookup = $derived(new Set(collectionBusyKeys));
   const offlineLookup = $derived(new Set(offlineAlbumIds));
   const selectedArtwork = $derived(parseAudioArtwork(normalizeCoverSrc(selected?.anh_dai_dien)));
+  let loadedPoster = $state<{ artwork: string; src: string }>();
+  const videoPoster = $derived.by(() => {
+    if (loadedPoster?.artwork === selectedArtwork.src) return loadedPoster.src;
+    if (selectedArtwork.src.startsWith('/covers/')) return selectedArtwork.src;
+  });
   const isSelectedOnlineOnly = $derived(Boolean(selected && isOnlineOnlyAudioAlbum(selected.tieu_de, selected.dien_gia)));
 
   const TOPIC_ICONS: Record<string, string> = {
@@ -997,6 +1004,7 @@
         </div>
       </header>
 
+      <div class="album-body" class:album-body-scroll={hasStoryNotice && !videoIsFull}>
       {#if offlineNoticeVisible && offlineStateReady && !isSelectedOnlineOnly && albumStatuses[selected.id] !== 'downloaded' && !offlineLookup.has(selected.id) && !busyModes[selected.id]}
         <aside class="album-offline-notice" aria-label={t.talks.offlineRecommendationTitle}>
           <span class="album-offline-hand" aria-hidden="true">👆</span>
@@ -1004,8 +1012,11 @@
         </aside>
       {/if}
 
-      {#if offlineNoticeVisible}
+      {#if offlineNoticeVisible && hasStoryNotice}
         <ContentExperienceNotice contentId={selected.id} class="album-story-notice" />
+      {/if}
+      {#if pendingResume && hasStoryNotice}
+        {@render resumePrompt(pendingResume, true)}
       {/if}
 
       <div class="pt-as-album-banner" inert={videoIsFull}>
@@ -1037,11 +1048,13 @@
       <div class="pt-as-video-layout">
       {#if selectedVideoTrack}
         {#key selectedVideoTrack.url}
-          <TalkVideoViewer url={selectedVideoTrack.url} title={selectedVideoTrack.title} landscape={selectedLandscapeVideo} bind:expanded={videoExpanded} onBack={closeAlbum} />
+          <TalkVideoViewer url={selectedVideoTrack.url} title={selectedVideoTrack.title} poster={videoPoster}
+            landscape={selectedLandscapeVideo} bind:expanded={videoExpanded} onBack={closeAlbum} />
         {/key}
       {:else if selectedLandscapeVideo}
         <button class="pt-as-video-poster" type="button" onclick={() => play(selected!, 0)} aria-label={`${mediaText.play} ${selected.tracks[0]?.title ?? selected.tieu_de}`}>
-          {#if selectedArtwork.src}<img use:sessionCover={selectedArtwork.src} decoding="async" alt="" />{/if}
+          {#if selectedArtwork.src}<img use:sessionCover={selectedArtwork.src} decoding="async" alt=""
+            onload={(event) => { loadedPoster = { artwork: selectedArtwork.src, src: (event.currentTarget as HTMLImageElement).currentSrc }; }} />{/if}
           <span>{mediaText.play}</span>
         </button>
       {/if}
@@ -1077,19 +1090,25 @@
         {/if}
       </div>
       </div>
+      </div>
     </div>
   </div>
 {/if}
 
-{#if pendingResume}
+{#snippet resumePrompt(resume: PendingResume, inline: boolean)}
   <AudioResumePrompt
-    trackTitle={pendingResume.trackTitle}
-    positionSeconds={pendingResume.positionSeconds}
+    trackTitle={resume.trackTitle}
+    positionSeconds={resume.positionSeconds}
     visible={resumePromptVisible}
+    {inline}
     onStartOver={() => void resolveResume(false)}
     onResume={() => void resolveResume(true)}
     onClose={() => void resolveResume(null)}
   />
+{/snippet}
+
+{#if pendingResume && !hasStoryNotice}
+  {@render resumePrompt(pendingResume, false)}
 {/if}
 
 {#if shareToast}
@@ -1223,6 +1242,9 @@
   .pt-video-badge{display:inline-flex;padding:1px 6px;border-radius:var(--radius-control);background:var(--gold-muted);color:var(--brown);font-size:var(--font-size-meta);font-weight:700;white-space:nowrap}
   @media(max-width:600px){.has-video .pt-as-album-banner{display:none}}
   .album-dialog{display:flex;width:100%;height:100dvh;overflow:hidden;flex-direction:column;outline:0;background:var(--bg);animation:album-enter .32s cubic-bezier(.4,0,.2,1)}
+  .album-body{display:contents}
+  .album-body-scroll{display:flex;flex:1;min-height:0;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
+  .album-body-scroll :is(.pt-as-video-layout,.pt-as-track-list-wrap){flex:none;overflow:visible}
   .pt-as-video-layout{display:contents}
   .landscape-album .pt-as-video-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);min-height:0;flex:1;gap:var(--space-page);padding:var(--space-page);overflow-y:auto;align-items:start}
   .landscape-album .pt-as-album-banner{display:none}

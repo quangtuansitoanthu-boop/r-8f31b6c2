@@ -182,6 +182,20 @@ describe('talk catalog session visibility', () => {
     expect(albums.some(album => album.id === rows[0].id)).toBe(true);
     expect(offlineFetcher).not.toHaveBeenCalled();
   });
+
+  it('shows the bundled Niệm Phật Thập Yếu cover for an older native catalog without refetching it', async () => {
+    adminCatalogSession().set(GUEST_SESSION);
+    const scope = captureTalkCatalogScope(null, 'guest');
+    const album = { ...rows[0], id: 'pt_1781800562343',
+      anh_dai_dien: 'https://i0.wp.com/tinhtan.org/wp-content/uploads/2019/08/HT.-Th%C3%ADch-H%E1%BA%A3i-Quang.jpg?ssl=1#pos=53%25%2014%25' };
+    await saveCachedTalkAlbums([album], scope);
+    vi.stubGlobal('Capacitor', { isNativePlatform: () => true, getPlatform: () => 'ios' });
+    const offlineFetcher = vi.fn(async () => { throw new Error('offline'); });
+    const albums = await fetchTalkAlbums(offlineFetcher as typeof fetch);
+    expect(albums.find(item => item.id === album.id)?.anh_dai_dien)
+      .toBe('covers/niem-phat-thap-yeu-phap-thoai.webp#pos=53%25%2014%25');
+    expect(offlineFetcher).not.toHaveBeenCalled();
+  });
 });
 
 describe('client content catalogs', () => {
@@ -228,6 +242,26 @@ describe('client content catalogs', () => {
     expect(albums.filter((album) => matchesTalkMetadataFilters(album, 'Thầy A', 'short')).map((album) => album.id)).toEqual(['short']);
     expect(albums.filter((album) => matchesTalkMetadataFilters(album, 'Chưa xác định', 'unknown')).map((album) => album.id)).toEqual(['legacy']);
     expect(String(fetcher.mock.calls[0][0])).toContain('dien_gia');
+  });
+
+  it('combines the format filter with other filters and includes mixed albums in both formats', async () => {
+    const audio = { title: 'Bài nghe', url: '/audio.mp3', duration_sec: 60 };
+    const video = { title: 'Bài xem', url: '/video.mp4', duration_sec: 60, media_type: 'video' };
+    const fetcher = vi.fn(async () => jsonResponse([
+      { id: 'audio', tieu_de: 'Chỉ nghe', dien_gia: 'Thầy A', tracks: [audio] },
+      { id: 'video', tieu_de: 'Chỉ xem', dien_gia: 'Thầy B', tracks: [video] },
+      { id: 'mixed', tieu_de: 'Nghe và xem', dien_gia: 'Thầy A', tracks: [audio, video] },
+    ]));
+    const albums = await fetchTalkAlbums(fetcher as typeof fetch);
+
+    expect(albums.filter(album => matchesTalkMetadataFilters(album, 'all', 'all', 'all'))).toHaveLength(3);
+    expect(albums.filter(album => matchesTalkMetadataFilters(album, 'all', 'all', 'video')).map(album => album.id).sort())
+      .toEqual(['mixed', 'video']);
+    expect(albums.filter(album => matchesTalkMetadataFilters(album, 'all', 'all', 'audio')).map(album => album.id).sort())
+      .toEqual(['audio', 'mixed']);
+    expect(albums.filter(album => matchesTalkMetadataFilters(album, 'Thầy A', 'short', 'video')).map(album => album.id))
+      .toEqual(['mixed']);
+    expect(fetcher).toHaveBeenCalledOnce();
   });
 
   it('keeps empty talk albums for the admin catalog while the public catalog hides them', async () => {

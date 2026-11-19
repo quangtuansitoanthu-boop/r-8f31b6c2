@@ -101,3 +101,49 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     }
   });
 }
+
+for (const platform of ['ios', 'android'] as const) {
+  test(`${platform} lifts the picker from the bottom in landscape and respects reduced motion`, async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.addInitScript(platform => {
+      const shell = window as unknown as Record<string, unknown>;
+      shell.CapacitorCustomPlatform = { name: platform };
+      shell.Capacitor = { isNativePlatform: () => true, getPlatform: () => platform, Plugins: {} };
+    }, platform);
+    await page.goto('/tu-tap');
+    await settleClient(page);
+    await expect(page.locator('html')).toHaveAttribute('data-native-app', 'true');
+    await page.locator('.tt-mode-card--chuoi').click();
+    await page.getByRole('button', { name: 'Bắt đầu 🙏', exact: true }).click();
+    await page.locator('.tt-rosary__options-bar button').click();
+
+    const trigger = page.getByRole('combobox', { name: 'Số hạt trong chuỗi' });
+    const picker = page.getByRole('dialog', { name: 'Chuỗi', exact: true });
+    const panel = picker.locator('.rosary-select__panel');
+    const bottomGap = () => panel.evaluate(element => {
+      const viewportBottom = window.visualViewport
+        ? window.visualViewport.offsetTop + window.visualViewport.height : window.innerHeight;
+      return Math.abs(viewportBottom - element.getBoundingClientRect().bottom);
+    });
+    await trigger.click();
+    await expect(panel).not.toHaveCSS('animation-name', 'none');
+    await expect.poll(bottomGap).toBeLessThanOrEqual(1);
+    await expect(panel).toHaveCSS('backdrop-filter', 'none');
+    expect(await panel.evaluate(element => {
+      const style = getComputedStyle(element);
+      return style.getPropertyValue('--dialog-surface-background').trim() === style.getPropertyValue('--card').trim();
+    })).toBe(true);
+    await picker.getByRole('button', { name: '54 hạt', exact: true }).click();
+    await expect(picker).toHaveCount(0);
+    await expect(trigger).toContainText('54 hạt');
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await trigger.click();
+    await expect(panel).toHaveCSS('animation-name', 'none');
+    await expect.poll(bottomGap).toBeLessThanOrEqual(1);
+    await page.keyboard.press('Escape');
+    await expect(picker).toHaveCount(0);
+    await expect(trigger).toContainText('54 hạt');
+  });
+}

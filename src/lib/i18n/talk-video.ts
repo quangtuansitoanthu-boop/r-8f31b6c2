@@ -41,7 +41,7 @@ export const talkVideoText = {
     controlError: 'Chưa thực hiện được thao tác. Vui lòng thử lại.',
     searchTracks: 'Tìm bài trong album',
     noTracks: 'Không có bài phù hợp. Thử từ khóa khác.',
-    unavailable: 'Chưa hiển thị được video. Bạn vẫn có thể nghe âm thanh.',
+    unavailable: 'Chưa hiển thị được video. Khóa màn hình hoặc đóng album để tiếp tục nghe.',
   },
   en: {
     video: 'Video',
@@ -68,6 +68,6 @@ export const talkVideoText = {
     controlError: 'Unable to complete the action. Please try again.',
     searchTracks: 'Find a track in this album',
     noTracks: 'No matching tracks. Try another search.',
-    unavailable: 'Video is unavailable. Audio playback can continue.',
+    unavailable: 'Video is unavailable. Lock the screen or close the album to keep listening.',
   },
 };

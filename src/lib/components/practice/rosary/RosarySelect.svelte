@@ -121,11 +121,21 @@
   .rosary-select__trigger span{min-width:0;overflow-wrap:anywhere}.rosary-select__trigger :global(svg){flex-shrink:0}.bold{font-weight:700}
   .rosary-select__option:disabled{opacity:.5;cursor:not-allowed}
   .rosary-select__dialog{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:var(--text);font-family:var(--font-app)}
-  .rosary-select__dialog::backdrop{background:transparent}
-  .rosary-select__panel{position:absolute;box-sizing:border-box;left:var(--select-x);top:var(--select-y);width:var(--select-width);max-height:var(--select-available);display:flex;flex-direction:column;overflow:hidden;background:var(--dialog-surface-background,var(--card));border:1px solid var(--dialog-surface-border,var(--border));border-radius:var(--radius-card);box-shadow:var(--dialog-surface-shadow,var(--shadow-xl));font-weight:700}
-  header{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space-page)*.5);padding:calc(var(--space-page)*.6) calc(var(--space-page)*.8)}header h2{margin:0;font-size:var(--font-size-card-title);font-weight:700}header p{margin:calc(var(--space-page)*.2) 0 0;color:var(--text2);font-size:var(--font-size-meta)}
+  .rosary-select__dialog::backdrop{background:var(--practice-dialog-backdrop)}
+  .rosary-select__panel{
+    position:absolute;box-sizing:border-box;left:0;right:0;bottom:calc(100% - var(--select-bottom,100%));
+    width:min(100%,680px);margin-inline:auto;max-height:calc(var(--select-viewport,100%) - max(var(--space-page),var(--app-safe-top)));
+    padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;overflow:hidden;
+    background:var(--dialog-surface-background,var(--card));border-radius:var(--radius-feature) var(--radius-feature) 0 0;
+    box-shadow:var(--dialog-surface-shadow,var(--shadow-xl));font-weight:700
+  }
+  :global(html[data-native-app='true']) .rosary-select__panel{
+    --dialog-surface-background:var(--card);
+    --dialog-surface-filter:none;
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space-page)*.5);padding:calc(var(--space-page)*.4) calc(var(--space-page)*.8) calc(var(--space-page)*.6)}header h2{margin:0;font-size:var(--font-size-card-title);font-weight:700}header p{margin:calc(var(--space-page)*.2) 0 0;color:var(--text2);font-size:var(--font-size-meta)}
   .rosary-select__close{display:grid;place-items:center;flex-shrink:0;width:44px;min-height:44px;border:0;background:transparent;color:var(--text2);border-radius:var(--radius-control)}
-  .rosary-select__handle{display:none}
+  .rosary-select__handle{flex-shrink:0;width:calc(var(--space-page)*1.8);height:4px;margin:calc(var(--space-page)*.5) auto 0;background:var(--border);border-radius:var(--radius-sm)}
   .rosary-select__options{overflow-y:auto;overscroll-behavior:contain;min-height:0;max-height:340px;padding:0 calc(var(--space-page)*.4) calc(var(--space-page)*.4);scroll-padding:calc(var(--space-page)*.4)}
   .rosary-select__options--custom{display:flex;flex-direction:column}
   .rosary-select__option{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space-page)*.7);width:100%;min-height:52px;padding:calc(var(--space-page)*.6);border:0;border-radius:var(--radius);background:transparent;color:var(--text);font-size:var(--font-size-body);line-height:1.6;text-align:left}
@@ -134,5 +144,21 @@
   footer{padding:calc(var(--space-page)*.5) calc(var(--space-page)*.8);border-top:1px solid var(--border2)}
   .rosary-select__add{display:flex;align-items:center;gap:calc(var(--space-page)*.4);min-height:44px;width:100%;padding:calc(var(--space-page)*.4);border:0;border-radius:var(--radius);background:transparent;color:var(--brown);font-size:var(--font-size-label);font-weight:700;text-align:left}
   header,footer{flex-shrink:0}@media(hover:hover){.rosary-select__option:hover,.rosary-select__add:hover{background:var(--gold-light)}}
-  @media(max-width:680px){.rosary-select-field.recitation{grid-column:1/-1}.rosary-select__dialog::backdrop{background:var(--practice-dialog-backdrop)}.rosary-select__panel{left:0;top:auto;bottom:calc(100% - var(--select-bottom));width:100%;max-height:calc(var(--select-viewport) - max(var(--space-page),var(--app-safe-top)));padding-bottom:env(safe-area-inset-bottom,0px);border:0;border-radius:var(--radius-feature) var(--radius-feature) 0 0}.rosary-select__handle{display:block;flex-shrink:0;width:calc(var(--space-page)*1.8);height:4px;margin:calc(var(--space-page)*.5) auto 0;background:var(--border);border-radius:var(--radius-sm)}header{padding-top:calc(var(--space-page)*.4)}.rosary-select__options{max-height:340px}}
+  @media(max-width:680px){.rosary-select-field.recitation{grid-column:1/-1}}
+  /* Keep the sheet on both native platforms after rotation. Desktop web follows the trigger. */
+  @media(min-width:681px){
+    :global(html:not([data-native-app='true'])) .rosary-select__dialog::backdrop{background:transparent}
+    :global(html:not([data-native-app='true'])) .rosary-select__panel{
+      left:var(--select-x);top:var(--select-y);right:auto;bottom:auto;width:var(--select-width);max-height:var(--select-available);
+      margin:0;padding-bottom:0;border:1px solid var(--dialog-surface-border,var(--border));border-radius:var(--radius-card)
+    }
+    :global(html:not([data-native-app='true'])) .rosary-select__handle{display:none}
+    :global(html:not([data-native-app='true'])) header{padding-top:calc(var(--space-page)*.6)}
+  }
+  @media(prefers-reduced-motion:no-preference){
+    :global(html[data-native-app='true']:not([data-ui-motion='off'])) .rosary-select__dialog[open] .rosary-select__panel{
+      animation:select-sheet-enter var(--motion-enter) var(--ease-standard)
+    }
+  }
+  @keyframes select-sheet-enter{from{transform:translateY(100%)}to{transform:none}}
 </style>

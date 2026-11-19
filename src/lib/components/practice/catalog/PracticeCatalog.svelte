@@ -99,6 +99,8 @@
     tracker
   }: Props = $props();
 
+  let searchInput = $state<HTMLInputElement>();
+
   const sectionConfigs = $derived<Record<PracticeSection, {
     title: string;
     badge: string;
@@ -535,11 +537,12 @@
             type="search"
             placeholder={currentSection === 'KINH PHẬT' ? localizeUi("Tìm kiếm kinh Phật…") : currentSection === 'TRÌ CHÚ' ? localizeUi("Tìm kiếm thần chú…") : localizeUi("Tìm kiếm nghi thức…")}
             aria-label={activeConfig?.searchPlaceholder.replace(/^🔍\s*/u, '') ?? localizeUi("Tìm kiếm bài tu tập")}
+            bind:this={searchInput}
             value={query}
             oninput={(event) => onQueryChange((event.currentTarget as HTMLInputElement).value)}
           />
           {#if query}
-            <button class="tt-search-clear" type="button" aria-label={localizeUi("Xóa tìm kiếm")} onclick={() => onQueryChange('')}>✕</button>
+            <button class="tt-search-clear" type="button" aria-label={localizeUi("Xóa tìm kiếm")} onclick={() => { onQueryChange(''); searchInput?.focus(); }}>✕</button>
           {/if}
         </div>
       </div>

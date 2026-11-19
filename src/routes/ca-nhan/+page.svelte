@@ -11,7 +11,6 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { Award } from '@lucide/svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { getGuideNavigationCopy } from '$lib/i18n/guide-navigation';
   import { getSessionContext, clearLocalSession, clearBrowserSession, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
@@ -29,7 +28,8 @@
   import { fetchWithSessionRefresh, requireBrowserCsrf } from '$lib/browser/session-csrf';
   import { fetchPracticeProgress, PRACTICE_PROGRESS_QUERY_POLICY } from '$lib/browser/practice-community';
   import { serverStateKeys } from '$lib/browser/server-state';
-  import { getBadgeTitle, getPracticeIdentity } from '$lib/domain/practice/progress-achievements';
+  import { getPracticeIdentity } from '$lib/domain/practice/progress-achievements';
+  import PracticeBadgeIcon from '$lib/components/practice/community/PracticeBadgeIcon.svelte';
   import '$lib/components/practice/community/avatar-rings.css';
   import { resolveApiUrl } from '$lib/browser/native-api';
   import { triggerHaptic } from '$lib/utils/haptics';
@@ -857,9 +857,9 @@
               {:else}
                 <div class="cn-avatar-placeholder">👤</div>
               {/if}
-              {#if avatarBadge}
-                <span class="cn-avatar-award" role="img" aria-label={getBadgeTitle(avatarBadge, localeStore.current === 'en')}>
-                  <Award aria-hidden="true" size={23} strokeWidth={2.2} />
+              {#if rank}
+                <span class="cn-avatar-award" role="img" aria-label={rank}>
+                  <PracticeBadgeIcon badgeId={avatarBadge?.id} />
                 </span>
               {/if}
             </div>
@@ -887,7 +887,10 @@
                   </p>
                 {/if}
                 {#if rank}
-                  <p class="cn-practice-rank" class:earned={Boolean(highestBadge)}>{rank}</p>
+                  <div class="cn-practice-rank-row">
+                    <span class="cn-practice-rank-label">{t.profile.practiceRankLabel}:</span>
+                    <p class="cn-practice-rank" class:earned={Boolean(highestBadge)}>{rank}</p>
+                  </div>
                 {/if}
               {:else}
                 <h2 class="cn-user-name">{t.profile.welcome}</h2>
@@ -2161,20 +2164,11 @@
   }
 
   .cn-avatar-award {
+    --practice-badge-size: 38px;
     position: absolute;
     right: -6px;
     bottom: -4px;
     z-index: 3;
-    display: grid;
-    place-items: center;
-    box-sizing: border-box;
-    width: 38px;
-    height: 38px;
-    border: 2px solid var(--card);
-    border-radius: 50%;
-    background: var(--ring-paper);
-    color: var(--ring-ink);
-    box-shadow: inset 0 0 0 1px var(--ring-metal);
   }
 
   .cn-avatar-placeholder {
@@ -2237,11 +2231,25 @@
     font-weight: 600;
   }
 
+  .cn-practice-rank-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(var(--space-page) * .2) calc(var(--space-page) * .4);
+    margin-top: calc(var(--space-page) * .2);
+  }
+
+  .cn-practice-rank-label {
+    font-size: var(--font-size-label);
+    color: var(--text2);
+    overflow-wrap: anywhere;
+  }
+
   .cn-practice-rank {
     box-sizing: border-box;
     align-self: flex-start;
     max-width: 100%;
-    margin: 4px 0 0;
+    margin: 0;
     padding: 4px 8px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);

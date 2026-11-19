@@ -125,13 +125,13 @@
             {:else if eventInfo?.isThapTrai}
               {isEn ? 'Fasting & Practice Reminders' : localizeUi("Nhắc nhở ngày Thập Trai & Tu tập")}
             {:else if eventInfo?.kiengDam}
-              {isEn ? 'Tho Khang Bao Giam Calendar' : localizeUi("Lịch Thọ Khang Bảo Giám")}
+              {isEn ? 'Abstinence day according to the book Tho Khang Bao Giam' : 'Ngày kiêng theo sách Thọ Khang Bảo Giám'}
             {:else}
               {isEn ? 'Today’s Practice Reminders' : localizeUi("Lịch nhắc nhở tu tập hôm nay")}
             {/if}
           </strong>
           {#if eventInfo?.kiengDam && (!compact || !collapsed)}
-            <span class="banner-kiengdam-chip" title={isEn ? 'A day of sexual abstinence according to Tho Khang Bao Giam' : localizeUi("Hôm nay là ngày kiêng hành dâm theo Thọ Khang Bảo Giám")}>{isEn ? 'Abstinence' : localizeUi("Kiêng hành dâm")}</span>
+            <span class="banner-kiengdam-chip" title={isEn ? 'A day of sexual abstinence according to the book Tho Khang Bao Giam' : 'Hôm nay là ngày kiêng hành dâm theo sách Thọ Khang Bảo Giám'}>{isEn ? 'Abstinence' : localizeUi("Kiêng hành dâm")}</span>
           {/if}
           {#if !compact || !collapsed}<span class="banner-sub-text">
             {#if isEn}

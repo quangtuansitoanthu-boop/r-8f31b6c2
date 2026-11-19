@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { expect, test, type Locator } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 const media = readFileSync(new URL('./fixtures/talk-video.mp4', import.meta.url));
 
@@ -111,7 +111,7 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   await page.route('**/api/talks?**', route => {
     catalogs += 1;
     return route.fulfill({ json: [
-      { id: 'landscape-video', tieu_de: albumTitle, dien_gia: 'Vũ Tiến Dũng', visibility: 'public', tracks: [
+      { id: 'landscape-video', tieu_de: albumTitle, dien_gia: 'Vũ Tiến Dũng', anh_dai_dien: 'covers/kinh-dia-tang-vu-tien-dung.webp', visibility: 'public', tracks: [
         { title: 'PHẨM 1 (PHẦN 1)', url: '/__landscape-video.mp4?track=1', media_type: 'video', aspect_ratio: '16:9' },
         { title: 'PHẨM 1 (PHẦN 2)', url: '/__landscape-video.mp4?track=2', media_type: 'video', aspect_ratio: '16:9' },
       ] },
@@ -135,8 +135,12 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   await expect(album.locator('.pt-as-album-desc')).toContainText('Vũ Tiến Dũng');
   await expect(album).not.toContainText(/Tiến Dũng AI|youtube\.com|Kênh nguồn/);
   await expect(album.locator('.pt-as-video-poster')).toBeVisible();
+  const artwork = album.locator('.pt-as-video-poster img');
+  await expect.poll(() => artwork.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  const poster = await artwork.evaluate(image => (image as HTMLImageElement).currentSrc);
   await album.locator('.pt-as-track-list').getByRole('button', { name: 'Phát PHẨM 1 (PHẦN 1)', exact: true }).click();
   const viewer = album.locator('figure.talk-video');
+  await expect(viewer.locator('video')).toHaveAttribute('poster', poster);
   await expect(viewer).toHaveClass(/landscape/);
   await expect(viewer).not.toHaveClass(/expanded/);
   await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThan(.1);
@@ -148,8 +152,48 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   await expect(viewer.getByRole('status').filter({ hasText: 'Bạn có thể khóa màn hình' })).toHaveCount(0);
   const layout = album.locator('.pt-as-video-layout');
   expect(await layout.evaluate(element => getComputedStyle(element).display)).toBe(page.viewportSize()!.width <= 799 ? 'block' : 'grid');
+  const originalVideo = await viewer.locator('video').elementHandle();
+  const originalSource = await viewer.locator('video').evaluate(element => (element as HTMLVideoElement).currentSrc);
+  // Sample actual browser frames while the same stream is sought in both directions.
+  const samples = viewer.evaluate(async element => {
+    const video = element.querySelector('video')!;
+    const caption = element.querySelector<HTMLElement>('.video-caption')!;
+    const source = video.currentSrc;
+    const frames: { sameVideo: boolean; sameSource: boolean; poster: boolean; loading: boolean; videoHeight: number; captionHeight: number }[] = [];
+    const until = performance.now() + 1500;
+    await new Promise<void>(resolve => {
+      const sample = () => {
+        frames.push({ sameVideo: element.querySelector('video') === video, sameSource: video.currentSrc === source,
+          poster: Boolean(element.parentElement?.querySelector('.pt-as-video-poster')),
+          loading: Boolean(caption.querySelector(':scope > p')),
+          videoHeight: video.getBoundingClientRect().height, captionHeight: caption.getBoundingClientRect().height });
+        if (performance.now() < until) requestAnimationFrame(sample); else resolve();
+      };
+      requestAnimationFrame(sample);
+    });
+    return frames;
+  });
+  for (const target of [8, 2, 9, 1, 7, 3]) {
+    await viewer.getByRole('slider').fill(String(target));
+    await expect.poll(() => viewer.locator('video').evaluate((element, seconds) => {
+      const video = element as HTMLVideoElement;
+      return !video.seeking && video.readyState >= 2 && Math.abs(video.currentTime - seconds) < 1;
+    }, target)).toBe(true);
+  }
+  const frames = await samples;
+  expect(frames.length).toBeGreaterThan(5);
+  expect(frames.every(frame => frame.sameVideo && frame.sameSource && !frame.poster && !frame.loading)).toBe(true);
+  expect(Math.max(...frames.map(frame => frame.videoHeight)) - Math.min(...frames.map(frame => frame.videoHeight))).toBeLessThan(1);
+  expect(Math.max(...frames.map(frame => frame.captionHeight)) - Math.min(...frames.map(frame => frame.captionHeight))).toBeLessThan(1);
+  expect(await viewer.locator('video').evaluate((element, original) => element === original, originalVideo)).toBe(true);
+  expect(await viewer.locator('video').evaluate(element => (element as HTMLVideoElement).currentSrc)).toBe(originalSource);
+  await expectDecodedFrame(viewer);
   await viewer.getByRole('button', { name: 'Tạm dừng', exact: true }).click();
   await viewer.getByRole('slider').fill('5');
+  await viewer.getByRole('slider').press('ArrowRight');
+  await expect.poll(() => viewer.locator('video').evaluate(video => Math.abs((video as HTMLVideoElement).currentTime - 5.1))).toBeLessThan(.15);
+  await viewer.getByRole('slider').press('ArrowLeft');
+  await expect.poll(() => viewer.locator('video').evaluate(video => Math.abs((video as HTMLVideoElement).currentTime - 5))).toBeLessThan(.15);
   await expect.poll(() => viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(4.5);
   await page.screenshot({ path: testInfo.outputPath('landscape-video-inline.png') });
   await viewer.getByRole('button', { name: 'Toàn màn hình', exact: true }).click();
@@ -180,4 +224,170 @@ test('landscape talk video keeps 16:9 inline, exits fullscreen to its list and p
   await expect(legacyAudio.locator('video')).toHaveCount(0);
   await expect(legacyAudio.locator('.pt-as-btn-offline')).toBeVisible();
   expect(catalogs).toBe(1);
+});
+
+type GateAudioSnapshot = { time: number; paused: boolean; ended: boolean; source: string; count: number };
+async function actualGateAudio(page: Page): Promise<GateAudioSnapshot> {
+  return page.evaluate(() => {
+    const audios = (window as unknown as { __gateAudios: HTMLAudioElement[] }).__gateAudios;
+    const audio = audios[0];
+    return { time: audio?.currentTime ?? 0, paused: audio?.paused ?? true, ended: audio?.ended ?? false, source: audio?.currentSrc ?? '', count: audios.length };
+  });
+}
+
+async function delayedVideoAlbum(page: Page, testInfo: TestInfo, preloadNone = false) {
+  let releaseInitial!: () => void;
+  let releaseTail!: () => void;
+  const initial = new Promise<void>(resolve => { releaseInitial = resolve; });
+  const tail = new Promise<void>(resolve => { releaseTail = resolve; });
+  // ffprobe: first video packet starts at byte 44176; the 28-second reference packet begins at byte 51494.
+  const videoCut = 51494;
+  const requests: { destination: string; resourceType: string; range: string | undefined; start: number; bytes: number }[] = [];
+  const snapshots: { phase: string; audio: GateAudioSnapshot; video: unknown }[] = [];
+  const title = 'VIDEO CHỜ KHUNG HÌNH';
+  if (preloadNone) await page.addInitScript(() => {
+    const applied: { sourceBefore: string | null }[] = [];
+    Object.assign(window, { __fixturePreloadNone: applied });
+    new MutationObserver(() => document.querySelectorAll<HTMLVideoElement>('figure.talk-video video').forEach(video => {
+      if (video.getAttribute('preload') === 'none') return;
+      applied.push({ sourceBefore: video.getAttribute('src') });
+      video.preload = 'none';
+    })).observe(document, { childList: true, subtree: true });
+  });
+  await page.addInitScript(() => {
+    const audios: HTMLAudioElement[] = [];
+    Object.defineProperty(window, '__gateAudios', { value: audios });
+    window.Audio = new Proxy(window.Audio, { construct(target, args, newTarget) {
+      const audio = Reflect.construct(target, args, newTarget) as HTMLAudioElement;
+      // Tag only the detached HTMLAudio owner's fixture URL; the video element and its URL remain untouched.
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src')!;
+      Object.defineProperty(audio, 'src', { configurable: true,
+        get: () => descriptor.get!.call(audio),
+        set: (source: string) => {
+          const url = new URL(source, location.href);
+          if (url.pathname === '/__gated-real-album.mp4') url.searchParams.set('__fixture_owner', 'audio');
+          descriptor.set!.call(audio, url.href);
+        },
+      });
+      audios.push(audio); return audio;
+    } });
+  });
+  await page.route('**/api/talks?**', route => route.fulfill({ json: [{ id: 'wait-for-frame', tieu_de: title, visibility: 'public', tracks: [
+    { title: 'BÀI VIDEO CHẬM', url: '/__gated-real-album.mp4', media_type: 'video', aspect_ratio: '16:9' },
+  ] }] }));
+  await page.route('**/api/album-plays', route => route.fulfill({ json: [] }));
+  await page.route('**/__gated-real-album.mp4*', async route => {
+    const request = route.request();
+    const destination = new URL(request.url()).searchParams.get('__fixture_owner') === 'audio' ? 'audio' : 'video';
+    const range = request.headers().range;
+    const match = range?.match(/^bytes=(\d+)-(\d*)$/);
+    const start = match ? Number(match[1]) : 0;
+    const requestedEnd = match?.[2] ? Math.min(Number(match[2]), media.length - 1) : media.length - 1;
+    // Both requests are media; the constructor-scoped fixture tag identifies the actual audio owner.
+    const end = destination === 'video' && start < videoCut ? Math.min(requestedEnd, videoCut - 1) : requestedEnd;
+    requests.push({ destination, resourceType: request.resourceType(), range, start, bytes: end - start + 1 });
+    if (destination === 'video') { await initial; if (start >= videoCut) await tail; }
+    await route.fulfill({ status: 206, contentType: 'video/mp4', body: media.subarray(start, end + 1), headers: {
+      'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${media.length}`, 'cache-control': 'no-store',
+    } }).catch(() => {});
+  });
+  await page.goto('/phap-thoai');
+  await page.getByRole('button', { name: 'Mở album ' + title, exact: true }).click();
+  const album = page.getByRole('dialog', { name: title, exact: true });
+  await album.locator('.pt-as-track-list').getByRole('button', { name: 'Phát BÀI VIDEO CHẬM', exact: true }).click();
+  const viewer = album.locator('figure.talk-video');
+  await expect(viewer).toBeVisible();
+  await expect.poll(() => requests.some(request => request.destination === 'audio') && (preloadNone || requests.some(request => request.destination === 'video'))).toBe(true);
+  const sample = async (phase: string) => {
+    const audio = await actualGateAudio(page);
+    const video = await viewer.locator('video').count() ? await viewer.locator('video').evaluate(element => {
+      const video = element as HTMLVideoElement;
+      return { time: video.currentTime, paused: video.paused, seeking: video.seeking, readyState: video.readyState,
+        width: video.videoWidth, height: video.videoHeight, source: video.currentSrc, preload: video.preload,
+        decodedFrames: typeof video.getVideoPlaybackQuality === 'function' ? video.getVideoPlaybackQuality().totalVideoFrames : null };
+    }) : null;
+    snapshots.push({ phase, audio, video }); return audio;
+  };
+  const finish = async () => {
+    await sample('final-before-release');
+    releaseInitial(); releaseTail();
+    const evidencePath = testInfo.outputPath('real-album-frame-gate.json');
+    writeFileSync(evidencePath, JSON.stringify({ preloadNone, requests, snapshots }, null, 2));
+    await testInfo.attach('real-album-frame-gate.json', { contentType: 'application/json', path: evidencePath });
+  };
+  return { album, viewer, requests, videoCut, sample, releaseInitial, releaseTail, finish };
+}
+
+test('real video album waits for its first decoded frame before audio and video run together', async ({ page }, testInfo) => {
+  const gate = await delayedVideoAlbum(page, testInfo);
+  try {
+    const before = await gate.sample('initial-video-request-blocked');
+    await expect.poll(() => gate.viewer.locator('video').evaluate(video => (video as HTMLVideoElement).readyState)).toBeLessThan(2);
+    await page.waitForTimeout(1000);
+    const waiting = await gate.sample('initial-still-no-decoded-frame');
+    expect(waiting.count).toBe(1);
+    expect(before.time).toBeLessThanOrEqual(.15);
+    expect(waiting.time).toBeLessThanOrEqual(.15);
+    expect(waiting.time - before.time).toBeLessThanOrEqual(.15);
+    gate.releaseInitial(); gate.releaseTail();
+    await expectDecodedFrame(gate.viewer);
+    await expect.poll(async () => (await actualGateAudio(page)).time).toBeGreaterThan(before.time + .15);
+    await expect.poll(() => gate.viewer.locator('video').evaluate(video => !(video as HTMLVideoElement).paused)).toBe(true);
+    await expect.poll(async () => {
+      const audio = await actualGateAudio(page);
+      const videoTime = await gate.viewer.locator('video').evaluate(element => (element as HTMLVideoElement).currentTime);
+      return Math.abs(audio.time - videoTime);
+    }).toBeLessThan(.5);
+    await gate.sample('first-frame-audio-and-video-playing');
+  } finally { await gate.finish(); }
+});
+
+for (const leave of ['close-viewer', 'visibility-event'] as const) test(`real video album releases a pending frame wait for background audio on ${leave}`, async ({ page }, testInfo) => {
+  const gate = await delayedVideoAlbum(page, testInfo);
+  try {
+    const before = await gate.sample('video-pending-before-background');
+    await page.waitForTimeout(500);
+    const foreground = await gate.sample('foreground-wait');
+    expect(before.time).toBeLessThanOrEqual(.15);
+    expect(foreground.time).toBeLessThanOrEqual(.15);
+    expect(foreground.time - before.time).toBeLessThanOrEqual(.15);
+    if (leave === 'close-viewer') {
+      await gate.album.locator('.pt-as-back').click();
+      await expect(gate.viewer).toHaveCount(0);
+    } else {
+      // Deterministic lifecycle contract simulation; this does not claim native lock-screen validation.
+      await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    }
+    await expect.poll(async () => (await actualGateAudio(page)).time).toBeGreaterThan(before.time + .2);
+    const background = await gate.sample('background-audio-runs-while-video-response-still-blocked');
+    expect(background.paused).toBe(false);
+    expect(background.count).toBe(1);
+  } finally { await gate.finish(); }
+});
+
+test('real video album primes a browser-deferred preload before its first frame and after mini-player reopening', async ({ page }, testInfo) => {
+  const gate = await delayedVideoAlbum(page, testInfo, true);
+  try {
+    await expect(gate.viewer.locator('video')).toHaveAttribute('preload', 'none');
+    const applied = await page.evaluate(() => (window as unknown as { __fixturePreloadNone: { sourceBefore: string | null }[] }).__fixturePreloadNone);
+    expect(applied.length).toBeGreaterThan(0);
+    expect(applied.every(entry => entry.sourceBefore === null)).toBe(true);
+    await page.waitForTimeout(500);
+    expect((await gate.sample('preload-none-before-first-frame')).time).toBeLessThanOrEqual(.15);
+    gate.releaseInitial(); gate.releaseTail();
+    await expectDecodedFrame(gate.viewer);
+    await expect.poll(async () => (await actualGateAudio(page)).time).toBeGreaterThan(.15);
+    await gate.viewer.getByRole('slider').fill('8');
+    await expect.poll(async () => (await actualGateAudio(page)).time).toBeGreaterThanOrEqual(7.9);
+    await gate.album.locator('.pt-as-back').click();
+    await expect(gate.viewer).toHaveCount(0);
+    await page.locator('.pt-mp-info-touch').click();
+    await expect(gate.viewer.locator('video')).toHaveAttribute('preload', 'none');
+    await expect.poll(() => gate.viewer.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(7);
+    await expectDecodedFrame(gate.viewer);
+    await gate.sample('preload-none-mini-reopened-at-owner-position');
+  } finally { await gate.finish(); }
 });

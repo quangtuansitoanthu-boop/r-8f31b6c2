@@ -1,5 +1,29 @@
 import { expect, test } from '@playwright/test';
 
+for (const [route, catalog] of [['/phap-thoai', 'talks'], ['/kinh-sach', 'books'], ['/tu-tap', 'practice']] as const) {
+  test(`${catalog} search clears from a full touch target and returns focus to the input`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(() => localStorage.setItem('tutam_locale', 'vi'));
+      await page.goto(route);
+      if (catalog === 'practice') await page.locator('.tt-mode-card--tri-chu').click();
+      const search = page.getByRole('searchbox');
+      await search.fill('Kinh');
+      const clear = page.getByRole('button', { name: 'Xóa tìm kiếm', exact: true });
+      await expect(clear).toBeVisible();
+      const size = await clear.evaluate((button: HTMLElement) => Math.min(button.offsetWidth, button.offsetHeight));
+      expect(size).toBeGreaterThanOrEqual(44);
+      await clear.tap({ position: { x: 4, y: 22 } });
+      await expect(search).toHaveValue('');
+      await expect(search).toBeFocused();
+      await expect(clear).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test('bundled native catalog paths and navigation survive unavailable APIs in the browser harness', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors: string[] = [];

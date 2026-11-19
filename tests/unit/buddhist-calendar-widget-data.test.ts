@@ -11,6 +11,15 @@ const pad = (value: number) => String(value).padStart(2, '0');
 const dateKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 describe('Buddhist calendar widget timeline', () => {
+  it('attributes abstinence notes to the book in Vietnamese and English', () => {
+    const newYear = new Date(2026, 1, 17, 12);
+    for (const [locale, citation] of [['vi', 'theo sách Thọ Khang Bảo Giám'], ['en', 'the book Tho Khang Bao Giam']]) {
+      const event = getLunarEvent(newYear, locale);
+      const note = buildBuddhistCalendarTimeline(newYear, 1, undefined, locale).days[0].thoKhangNote;
+      expect(note).toContain(citation);
+      expect(note).toContain(event.kiengDam!.reason);
+    }
+  });
   it('uses English calendar copy while retaining personal names and the legacy Vietnamese default', () => {
     const date = new Date(2026, 10, 6, 12);
     const english = buildBuddhistCalendarTimeline(date, 1, undefined, 'en');

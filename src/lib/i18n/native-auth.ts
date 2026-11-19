@@ -12,6 +12,11 @@ export const SESSION_VERIFICATION_UNAVAILABLE = {
   en: 'Could not verify your session. Please try again.',
 } as const;
 
+export const APPLE_SIGN_IN_UNAVAILABLE = {
+  vi: 'Chưa thể đăng nhập bằng Apple. Vui lòng thử lại hoặc chọn đăng nhập bằng Google.',
+  en: 'Could not sign in with Apple. Please try again or sign in with Google.',
+} as const;
+
 export const NATIVE_SESSION_RECOVERY = {
   vi: {
     action: 'Đăng nhập lại',

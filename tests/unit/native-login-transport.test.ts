@@ -156,6 +156,19 @@ describe('native login transport and session validation', () => {
     expect(mocks.apply).not.toHaveBeenCalled();
     expect(isNativeAuthMutationActive()).toBe(false);
   });
+  it.each([
+    ['vi', 'Chưa thể đăng nhập bằng Apple. Vui lòng thử lại hoặc chọn đăng nhập bằng Google.'],
+    ['en', 'Could not sign in with Apple. Please try again or sign in with Google.'],
+  ])('explains the Apple system error in %s and allows a fresh attempt', async (locale, message) => {
+    vi.stubGlobal('localStorage', { getItem: () => locale, setItem: vi.fn() });
+    const apple = (window as any).Capacitor.Plugins.SignInWithApple;
+    apple.authorize.mockRejectedValueOnce(new Error('The operation couldn’t be completed. (com.apple.AuthenticationServices.AuthorizationError error 1000.)'));
+    expect(await loginWithAppleNative()).toEqual({ success: false, error: message });
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
+    expect(isNativeAuthMutationActive()).toBe(false);
+    expect(await loginWithAppleNative()).toEqual({ success: true });
+  });
   it('keeps Apple deletion reauthorization cancellation friendly without returning credentials or replacing the session', async () => {
     (window as any).Capacitor.Plugins.SignInWithApple.authorize.mockRejectedValueOnce(
       new Error('The operation couldn’t be completed. (com.apple.AuthenticationServices.AuthorizationError error 1001.)'));

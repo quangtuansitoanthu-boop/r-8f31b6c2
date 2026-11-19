@@ -33,41 +33,47 @@ for (const { days, badges, selectedBadge, title, avatarBadge } of variations) {
     await expect.poll(() => progressReads).toBe(1);
 
     const rank = page.locator('.cn-practice-rank');
+    const rankLabel = page.locator('.cn-practice-rank-label');
     const award = page.locator('.cn-avatar-award');
-    if (title) await expect(rank).toHaveText(title);
-    else await expect(rank).toHaveCount(0);
     if (avatarBadge) {
-      const ring = page.locator(`.cn-avatar-col.avatar-ring--${avatarBadge}`);
-      await expect(ring.locator('.cn-avatar-award')).toBeVisible();
-      await expect(award).toHaveAccessibleName(avatarBadge === 'streak-7' ? 'Sơ Tâm Kiên Cố' : 'Nguyệt Luân Tịnh Hạnh');
+      await expect(page.locator(`.cn-avatar-col.avatar-ring--${avatarBadge}`).locator('.cn-avatar-award')).toBeVisible();
+    }
+    if (title) {
+      await expect(award).toHaveAccessibleName(title);
       await expect(award).toHaveText('');
+      const icon = award.locator('.practice-badge-icon');
+      await expect(icon).toBeVisible();
+      if (avatarBadge) await expect(icon).toHaveAttribute('data-milestone', avatarBadge);
+      else await expect(icon).toHaveClass(/practice-badge-icon--starter/);
+      await expect(icon).toHaveCSS('width', '38px');
+      const image = await icon.evaluate(element => getComputedStyle(element, '::before').backgroundImage);
+      expect(image).toContain(avatarBadge ? 'home-milestones.webp' : 'home-new-practitioner.webp');
+      await expect(rankLabel).toHaveText('Danh hiệu tu tập:');
+      await expect(rank).toHaveText(title);
       for (const { width, theme } of [{ width: 375, theme: 'light' }, { width: 375, theme: 'dark' }, { width: 900, theme: 'light' }]) {
         await page.setViewportSize({ width, height: 844 });
         await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
-        const geometry = await award.evaluate(element => {
-          const style = getComputedStyle(element);
-          const sample = document.createElement('span');
-          sample.className = 'avatar-ring__core';
-          sample.hidden = true;
-          element.parentElement!.append(sample);
-          const statsStyle = getComputedStyle(sample);
-          const badgeHasOwnColor = style.backgroundColor === statsStyle.backgroundColor && style.color === statsStyle.color;
-          sample.remove();
-          const rank = document.querySelector('.cn-practice-rank')!;
-          const email = rank.previousElementSibling!;
+        const geometry = await rank.evaluate(element => {
+          const label = element.previousElementSibling!;
+          const email = element.parentElement!.previousElementSibling!;
+          const rankBounds = element.getBoundingClientRect();
+          const labelBounds = label.getBoundingClientRect();
           return {
-            width: Math.round(element.getBoundingClientRect().width),
-            badgeHasOwnColor,
-            rankBelowEmail: rank.getBoundingClientRect().top >= email.getBoundingClientRect().bottom,
+            rankAfterLabel: rankBounds.top >= labelBounds.bottom || rankBounds.left >= labelBounds.right,
+            labelBelowEmail: labelBounds.top >= email.getBoundingClientRect().bottom,
             pageOverflow: document.documentElement.scrollWidth > innerWidth,
           };
         });
-        expect(geometry).toEqual({ width: 38, badgeHasOwnColor: true, rankBelowEmail: true, pageOverflow: false });
+        expect(geometry).toEqual({ rankAfterLabel: true, labelBelowEmail: true, pageOverflow: false });
         if (days === 7 && width === 375) {
           await page.locator('.cn-profile-header').screenshot({ path: testInfo.outputPath(`rank-${theme}.png`) });
         }
       }
-    } else await expect(award).toHaveCount(0);
+    } else {
+      await expect(rankLabel).toHaveCount(0);
+      await expect(rank).toHaveCount(0);
+      await expect(award).toHaveCount(0);
+    }
     await page.locator('.cn-subpage-back-btn').click();
     await account.click();
     await expect(page.getByText('e2e-member@example.com', { exact: false })).toBeVisible();

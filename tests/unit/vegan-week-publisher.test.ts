@@ -1,8 +1,30 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { prepareVeganWeek, publishVeganWeek } from '../../src/jobs/vegan-week';
 import { isVeganWeek, matchesVeganRegion, veganMealPlan, VEGAN_GROUPS, VEGAN_MEAL_REGIONS, VEGAN_PACKAGE_MAX_BYTES, VEGAN_REGIONS } from '../../src/lib/contracts/vegan-week';
 
 describe('automatic vegan week publisher', () => {
+  it('ships the current cooking instructions and schedules in every bundled week', () => {
+    for (const date of ['2026-11-09', '2026-11-16', '2026-11-23']) {
+      const file = new URL('../../static/vegan/weeks/v5/' + date + '.json', import.meta.url);
+      const week = prepareVeganWeek(date, 5);
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(week);
+      // Previously installed v5 clients interpret these tokens as a stale download.
+      expect(week.recipes.flatMap(recipe => recipe.steps).some(step => /\{\d+\}/u.test(step))).toBe(false);
+    }
+  });
+
+  it('explains how to make the chả before braising and the dough before steaming bánh bao', () => {
+    for (const version of [1, 2, 4, 5] as const) {
+      const { recipes } = prepareVeganWeek('2026-11-23', version);
+      const cha = recipes.find(recipe => recipe.id === 'dish_234')!;
+      expect(cha.ingredients.some(item => /^chả lụa chay/iu.test(item.name))).toBe(false);
+      expect(cha.steps.join(' ')).toMatch(/tàu hũ ky.*lá chuối.*hấp.*nguội.*kho/iu);
+      const bao = recipes.find(recipe => recipe.id === 'dish_210')!;
+      expect(bao.steps.join(' ')).toMatch(/men.*ủ.*hấp/iu);
+    }
+  });
+
   it('serves three dishes per meal with no repeats in any rolling 21 days', () => {
     const weeks = ['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14'];
     const packages = weeks.map(date => prepareVeganWeek(date, 5));

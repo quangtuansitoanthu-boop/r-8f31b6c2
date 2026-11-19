@@ -8,6 +8,8 @@ import { createNameCopyingDraft, readNameCopyingDraft } from '$lib/browser/name-
 import { createPrincipalStorage } from '$lib/browser/principal-storage';
 import { clonePracticeReminderSettings, loadReminderSettings } from '$lib/browser/practice-reminder-service';
 import { cloneDailyRoutine, type DailyRoutine } from '$lib/domain/practice/personal-practice';
+import { isVeganWeek, veganMealPlan } from '$lib/contracts/vegan-week';
+import { isRoutineReadingMode } from '$lib/domain/practice/routine-activities';
 
 vi.mock('$app/environment', () => ({ browser: true }));
 afterEach(() => vi.unstubAllGlobals());
@@ -25,6 +27,23 @@ function memory() {
 }
 
 describe('iOS 15.0–15.3 and older WebView builtins', () => {
+  it('shows the same regional vegan meals when Array.at is unavailable', () => {
+    const date = '2026-11-16';
+    const week: unknown = JSON.parse(readFileSync('static/vegan/weeks/v5/' + date + '.json', 'utf8'));
+    if (!isVeganWeek(week, date)) throw new Error('Invalid bundled vegan menu');
+    const readMenu = () => veganMealPlan(week, 'north').flat(2).map(dish => dish.id);
+    const expected = readMenu();
+    expect(expected).toHaveLength(63);
+    expect(withoutProperty(Array.prototype, 'at', readMenu)).toEqual(expected);
+  });
+
+  it('recognizes routine reading activities without Object.hasOwn', () => {
+    const readingModes = withoutProperty(Object, 'hasOwn', () => [
+      isRoutineReadingMode('ritual'), isRoutineReadingMode('meditation'),
+    ]);
+    expect(readingModes).toEqual([true, false]);
+  });
+
   it('copies routine steps while preserving optional fields and draft independence', () => {
     const routine: DailyRoutine = { id: 'routine', name: 'Daily', updatedAt: '2026-11-08T00:00:00Z', steps: [
       { id: 'one', kind: 'meditation', minutes: 5, cue: undefined },
@@ -88,12 +107,12 @@ describe('iOS 15.0–15.3 and older WebView builtins', () => {
 
   it('does not ship unguarded newer builtins in native reader, routine and synchronization owners', () => {
     const paths = [
-      'src/lib/browser/mission-book-images.ts', 'src/lib/browser/cloud-sync-coordinator.ts',
+      'src/routes/+layout.svelte', 'src/lib/browser/mission-book-images.ts', 'src/lib/browser/cloud-sync-coordinator.ts',
       'src/lib/components/reader/reader-text-to-speech.ts', 'src/lib/browser/personal-events-sync.ts',
       'src/lib/components/practice/personal/DailyRoutineEditor.svelte', 'src/routes/tu-tap/+page.svelte',
     ];
     for (const path of paths) {
-      expect(readFileSync(path, 'utf8'), path).not.toMatch(/\.at\s*\(|\bstructuredClone\s*\(|crypto\.randomUUID\s*\(/u);
+      expect(readFileSync(path, 'utf8'), path).not.toMatch(/\.at\s*\(|\bstructuredClone\s*\(|crypto\.randomUUID\s*\(|Object\.hasOwn\s*\(/u);
     }
   });
 });

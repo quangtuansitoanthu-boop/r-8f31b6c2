@@ -7,6 +7,7 @@ import {
   type OfflineAudioAccess,
 } from './offline-audio-database';
 import { buildZipBlob } from './audio-zip';
+import { assertMediaDownload } from './download-integrity';
 import { fetchWithSessionRefresh } from './session-csrf';
 import { isOnlineOnlyAudioAlbum } from '$lib/domain/online-only-policy';
 import { isContentAvailable } from './ios-content-policy';
@@ -303,6 +304,7 @@ async function downloadAlbum(
           : await response.blob();
         if (blob.size > budget) throw new Error('offline_audio_quota_exceeded');
       }
+      await assertMediaDownload(response, blob);
       throwIfAborted(options.signal);
       assertDownloadAccess(access);
       bytesDownloaded += blob.size;
@@ -461,6 +463,7 @@ export async function downloadSingleTrackFile(
     blob = await response.blob();
   }
 
+  await assertMediaDownload(response, blob);
   options.onProgress?.({
     completed: 1,
     total: 1,
@@ -522,6 +525,7 @@ export async function downloadAlbumAsZip(
       throw new Error('zip_album_too_large');
     }
     const bytes = await readResponseWithinBudget(response, remainingBytes, options.signal);
+    await assertMediaDownload(response, bytes);
     assertDownloadAccess(access);
     bytesDownloaded += bytes.byteLength;
     const ext = inferAudioExtension(response, track.url);

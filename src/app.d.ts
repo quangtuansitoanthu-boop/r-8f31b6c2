@@ -48,6 +48,7 @@ declare global {
         MEDIA: WorkerR2Binding;
         MEDIA_PUBLIC_BASE_URL: string;
         MIGRATION_SEAL_REQUIRED?: string;
+        NATIVE_APP_UPDATES?: string;
         PRESENCE_ENABLED?: string;
         PRESENCE_RATE_LIMITER?: WorkerRateLimiter;
         RATE_LIMIT_SALT?: string;

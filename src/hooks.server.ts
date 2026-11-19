@@ -1,4 +1,5 @@
 import { readPublicMedia } from './lib/server/http/public-media';
+import { APP_VERSION_PATH } from './lib/contracts/native-app-update';
 import { VEGAN_WEEK_PATH } from './lib/contracts/vegan-week';
 import { loadSession } from './lib/server/auth/sessions';
 import { corsPreflight, withCors } from './lib/server/http/cors';
@@ -43,6 +44,11 @@ export const handle = async ({ event, resolve }: {
   }
   if (pathname === VEGAN_WEEK_PATH && event.request.method === 'GET') {
     return withCors(await resolve(event), event.request);
+  }
+  if (pathname === APP_VERSION_PATH && event.request.method === 'GET') {
+    const response = await resolve(event);
+    response.headers.set('X-Request-Id', String(event.locals.requestId));
+    return withCors(response, event.request);
   }
 
   // These handlers return the same public aggregate for every role. Other

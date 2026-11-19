@@ -108,6 +108,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(vn.quangtu.tutam.widgets.PracticeWidgetPlugin.class);
         super.onCreate(savedInstanceState);
         showStartupScreen();
+        HomeScreenShortcuts.publish(this);
 
         try {
             android.webkit.CookieManager cookieManager = android.webkit.CookieManager.getInstance();

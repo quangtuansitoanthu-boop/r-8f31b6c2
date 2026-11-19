@@ -11,6 +11,7 @@
  */
 
 import { browser } from '$app/environment';
+import { getBrowserSessionSnapshot, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
 import { getLunarEvent, getLunarEventForLunarDay } from '$lib/components/lunar/lunar-events';
 import { nativePlatform } from './native-platform';
 import { replaceDurableReminderPlan, clearDurablePersonalReminders, sendDurableTestNotification, type DurableReminderPlan } from './durable-reminders';
@@ -664,10 +665,18 @@ export function syncRemindersWithSystem(customSettings?: PracticeReminderSetting
 /** Refresh after edits, account switches, locale changes and return from background. */
 export function startReminderSystemSync(getLocale: () => string): () => void {
   let disposed = false;
+  const getOwner = () => {
+    const session = getBrowserSessionSnapshot();
+    return session.authenticated ? session.user?.id ?? null : null;
+  };
+  let owner = getOwner();
   const refresh = () => {
     if (!disposed) void syncRemindersWithSystem(undefined, getLocale()).catch(() => undefined);
   };
   const accountChanged = () => {
+    const nextOwner = getOwner();
+    if (nextOwner === owner) return;
+    owner = nextOwner;
     principalCleanupRevision += 1;
     publishSyncResult(null);
     refresh();
@@ -675,13 +684,13 @@ export function startReminderSystemSync(getLocale: () => string): () => void {
   const visible = () => { if (document.visibilityState === 'visible') refresh(); };
   const events = ['quangtu:personal-events-changed', 'quangtu:personal-events-notify-toggled', 'quangtu:locale-changed'];
   events.forEach(event => window.addEventListener(event, refresh));
-  window.addEventListener('quangtu:session-changed', accountChanged);
+  window.addEventListener(SESSION_CHANGE_EVENT, accountChanged);
   document.addEventListener('visibilitychange', visible);
   refresh();
   return () => {
     disposed = true;
     events.forEach(event => window.removeEventListener(event, refresh));
-    window.removeEventListener('quangtu:session-changed', accountChanged);
+    window.removeEventListener(SESSION_CHANGE_EVENT, accountChanged);
     document.removeEventListener('visibilitychange', visible);
   };
 }

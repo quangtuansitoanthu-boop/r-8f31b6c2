@@ -128,7 +128,8 @@ export function startPracticeWidgetSync(
       pending = null;
       return;
     }
-    if (signature === pending?.signature || (!pending && signature === appliedSignature)) return;
+    // Bản đang ghi có thể thay thế bản đã áp dụng, kể cả khi người dùng vừa quay lại tài khoản cũ.
+    if (signature === pending?.signature || (!running && signature === appliedSignature)) return;
     // Chỉ giữ yêu cầu mới nhất trong khi bridge đang ghi, kể cả đổi tài khoản.
     pending = { snapshot, signature, owner };
     void drain();
@@ -150,7 +151,7 @@ export function startPracticeWidgetSync(
     disposed = true;
     // Chuyển tài khoản có thể điều hướng ngay; vẫn xóa metric cũ sau bridge write đang chạy.
     // Chỉ cho phép bản rỗng này chạy sau unmount, không xuất bản dữ liệu riêng của owner mới.
-    pending = ownerChanged && appliedOwner !== observedOwner
+    pending = pending !== null || (ownerChanged && (running || appliedOwner !== observedOwner))
       ? { snapshot: buildPracticeWidgetSnapshot(undefined, new Date(), getLocale()), signature: 'disposed:clear', owner: null, cleanup: true }
       : null;
     void drain();

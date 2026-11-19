@@ -99,7 +99,8 @@ export function startBuddhistCalendarWidgetSync(getLocale: () => string = () => 
     const input = `${generation}:${locale}:${today.getFullYear()}-${today.getMonth()}-${today.getDate()}:${source}`;
     // Cache hit không dựng lại 400 ngày chỉ vì foreground hoặc owner phát trùng sự kiện.
     if (input === writingInput) { pending = null; return; }
-    if (input === pending?.input || (!pending && input === appliedInput)) return;
+    // Bản đang ghi có thể thêm lại một sự kiện đã xóa sau lần xuất bản trước.
+    if (input === pending?.input || (!running && input === appliedInput)) return;
     let snapshot: Timeline;
     try {
       snapshot = owner && events ? buildBuddhistCalendarTimeline(today, 400, { owner, events }, locale)
@@ -112,7 +113,7 @@ export function startBuddhistCalendarWidgetSync(getLocale: () => string = () => 
     const signature = `${generation}:${JSON.stringify(content)}`;
     if (signature === writingSignature) { pending = null; return; }
     if (signature === pending?.signature) { pending.input = input; return; }
-    if (!pending && signature === appliedSignature) { appliedInput = input; return; }
+    if (!running && signature === appliedSignature) { appliedInput = input; return; }
     pending = { snapshot, signature, input, generation, barrier };
     void drain();
   }
@@ -126,7 +127,7 @@ export function startBuddhistCalendarWidgetSync(getLocale: () => string = () => 
   refresh();
   return () => {
     disposed = true;
-    pending = appliedOwner !== observedOwner
+    pending = pending !== null || appliedOwner !== observedOwner
       ? { snapshot: { ...buildBuddhistCalendarTimeline(getVietnamNow(), 400, undefined, getLocale()), personalOwner: observedOwner },
         signature: `disposed:${generation}`, input: `disposed:${generation}`, generation, barrier, cleanup: true }
       : null;

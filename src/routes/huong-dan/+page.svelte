@@ -1,13 +1,14 @@
 <script lang="ts">
   import { uiScrollBehavior } from '$lib/browser/ui-motion';
   import { browser } from '$app/environment';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
   import { getGuideNavigationCopy } from '$lib/i18n/guide-navigation';
   import { onMount, tick } from 'svelte';
   import GuideInstallSection from '$lib/components/guide/GuideInstallSection.svelte';
   import GuideSection from '$lib/components/guide/GuideSection.svelte';
   import GuideConfirmModal from '$lib/components/guide/GuideConfirmModal.svelte';
+  import { WIDGET_GUIDE_OPEN_EVENT } from '$lib/browser/native-app-links';
   import { isNativeApp } from '$lib/browser/native-platform';
   import {
     createGuideSearchTargets,
@@ -113,23 +114,33 @@
     return searchTargets.find((target) => target.id === id);
   }
 
+  function openHash(): void {
+    let id: string;
+    try {
+      id = decodeURIComponent(window.location.hash.replace(/^#/u, ''));
+    } catch {
+      return;
+    }
+    const target = targetForId(id);
+    if (target) void navigateToTarget(target, false);
+  }
+
+  afterNavigate(({ from, to, type }) => {
+    // goto trong cùng trang không phát hashchange.
+    if (type === 'goto' && from?.route.id === '/huong-dan' && to?.url.hash === '#widget-man-hinh-chinh') openHash();
+  });
+
   onMount(() => {
     if (isNativeApp()) {
       openSectionIds = new Set(['dung-web']);
     }
-    const openHash = () => {
-      let id: string;
-      try {
-        id = decodeURIComponent(window.location.hash.replace(/^#/u, ''));
-      } catch {
-        return;
-      }
-      const target = targetForId(id);
-      if (target) void navigateToTarget(target, false);
-    };
     openHash();
     window.addEventListener('hashchange', openHash);
-    return () => window.removeEventListener('hashchange', openHash);
+    window.addEventListener(WIDGET_GUIDE_OPEN_EVENT, openHash);
+    return () => {
+      window.removeEventListener('hashchange', openHash);
+      window.removeEventListener(WIDGET_GUIDE_OPEN_EVENT, openHash);
+    };
   });
 </script>
 

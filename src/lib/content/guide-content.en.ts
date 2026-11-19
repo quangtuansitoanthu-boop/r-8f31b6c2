@@ -2,40 +2,50 @@ import type { GuideSection } from './guide-content';
 
 export const enSoftwareGuideSections: GuideSection[] = [
   {
-    id: 'dung-web',
-    icon: '📱',
-    title: 'General Guide',
-    shortTitle: 'General Guide',
-    keywords: ['home', 'search', 'dark mode', 'night mode', 'epub', 'practice', 'reading'],
-    editorialStatus: 'verified-software',
-    introduction: [
-      'Use Home, Books, Practice, Dharma Talks and Personal to get around. Some actions need an internet connection or an account.',
+    "id": "dung-web",
+    "icon": "📱",
+    "title": "General Guide",
+    "shortTitle": "General Guide",
+    "keywords": [
+      "home",
+      "search",
+      "dark mode",
+      "night mode",
+      "epub",
+      "practice",
+      "reading"
     ],
-    topics: [
+    "editorialStatus": "verified-software",
+    "introduction": [
+      "Use Home, Scriptures, Practice, Talks and Profile to navigate. The steps below describe the current interface; some actions appear only for supported content or accounts."
+    ],
+    "topics": [
       {
         "id": "giao-dien-va-chuyen-dong",
-        "title": "Appearance, Language & Motion",
+        "title": "Appearance, language and text size",
         "keywords": [
           "motion effects",
           "water ripples",
           "reduced motion",
-          "font size"
+          "font size",
+          "Giao diện, ngôn ngữ và cỡ chữ",
+          "Appearance, language and text size"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Open display settings",
-                "text": "Go to Personal > Application settings > Appearance & language to adjust the theme, language, text size and motion effects."
+                "title": "Open settings",
+                "text": "Go to Profile → App Settings → Appearance & language. Choose Auto, White, Light beige, Gray, Light purple or Dark, and adjust interface text size."
               },
               {
-                "title": "Turn motion on or off",
-                "text": "Motion effects are enabled by default. Turning them off stops water ripples in the mala and meditation screens; counters, timers and audio keep their own controls. This preference stays on the device."
+                "title": "Change language",
+                "text": "Select Tiếng Việt or English. When switching to English, let the English books finish downloading. If interrupted, check connection and storage, then choose Retry. Interface language does not mean every recording, cover or recipe is translated."
               },
               {
-                "title": "Respect system preferences",
-                "text": "System Reduce Motion takes precedence even if effects are enabled in the application."
+                "title": "Separate interface and reading sizes",
+                "text": "Reading font size is independent of interface size. Use reading settings or the reader tools for font, size and paper background. Motion effects can be disabled; system Reduce Motion is respected."
               }
             ]
           }
@@ -43,29 +53,31 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "widget-man-hinh-chinh",
-        "title": "Home-screen Widgets",
+        "title": "Add a home-screen widget",
         "keywords": [
           "widget",
           "calendar",
           "Dharma audio",
           "practice",
-          "home screen"
+          "home screen",
+          "Thêm widget lên màn hình chính",
+          "Add a home-screen widget"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Add a widget",
-                "text": "On Android or iOS, open the home-screen widget picker, find the application and choose a suitable size. Types appear as Calendar, Dharma Audio and Practice; the launcher or operating system controls the picker layout."
+                "title": "Choose a widget",
+                "text": "On Android, long-press a blank home-screen area and open Widgets. On iPhone/iPad, enter home-screen editing and open the widget picker. Find Tu Tap and select an available Calendar, Practice or Dharma Audio widget and size."
               },
               {
-                "title": "Open the intended content",
-                "text": "Calendar opens the selected date. Dharma Audio uses the shared player. Practice opens the displayed tool or content; opening a tool does not mark practice completed."
+                "title": "Open the relevant screen",
+                "text": "Tap the widget content or action to open the corresponding app screen. Widgets use available data; open the app to set up or practise when data is missing. Opening a tool does not mark it complete."
               },
               {
-                "title": "When content is unavailable",
-                "text": "Open the application to choose content, update data or finish offline downloads. Audio requires a network unless downloaded. System widget refresh may be delayed and is not guaranteed every minute."
+                "title": "Understand refresh timing",
+                "text": "The operating system schedules refreshes. A widget may not immediately reflect changes while the app is closed; it is not an alarm or proof that synchronization has finished."
               }
             ]
           }
@@ -73,31 +85,29 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "cap-nhat-noi-dung",
-        "title": "Manual Content Update",
+        "title": "Check and download content updates",
         "keywords": [
           "manual content update",
           "new books",
-          "download size"
+          "download size",
+          "Kiểm tra và tải cập nhật nội dung",
+          "Check and download content updates"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Check when needed",
-                "text": "At the bottom of Home, choose Update content. Checking starts only after you press the button; opening this guide does not check or download content."
+                "title": "Open from Home",
+                "text": "Find Content updates on Home and choose the check action. A connection is required; review the available content and download size before downloading."
               },
               {
-                "title": "Review size and confirm",
-                "text": "Review the estimated MB and choose Download content. Regular books, sutras and rituals download in full; PDFs and Dharma albums include only covers and lists. Download PDF files in the reader and audio in the album."
+                "title": "Watch the download status",
+                "text": "Choose the desired updates and wait for completion. If the connection fails or storage is insufficient, resolve it and retry. Starting a download does not mean the content is available offline."
               },
               {
-                "title": "Retry incomplete items",
-                "text": "Failed items retain previously saved copies. Check again to retry missing items; unchanged completed versions are skipped."
-              },
-              {
-                "title": "Content versus application version",
-                "text": "This updates supported content rather than application code. New interfaces or tools may require an application update from the store or an appropriate installer."
+                "title": "Content is separate from the app version",
+                "text": "Content updates do not replace App Store or Google Play updates. New features and fixes require the relevant app version."
               }
             ]
           }
@@ -105,33 +115,31 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "trang-chu-va-tim-kiem",
-        "title": "Home and Books",
+        "title": "Home and the reading library",
         "keywords": [
           "search articles",
           "categories",
           "karma",
           "buddhist sutras",
-          "epub"
+          "epub",
+          "Trang chủ và tìm kinh sách",
+          "Home and the reading library"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Find articles quickly",
-                "text": "Open Books, enter a book title or keyword in the search field, and choose a category if needed. Home also offers reading material and practice shortcuts."
+                "title": "Use the navigation bar",
+                "text": "Open Home, Scriptures, Practice, Talks or Profile. Home contains the lunar calendar, daily reminders, personal observances and a shortcut to the vegan meal calendar."
               },
               {
-                "title": "Open the article and read comfortably",
-                "text": "Select a book or article card. For books with chapters, choose a chapter in the table of contents. Text books and PDFs have tools suited to their respective formats."
+                "title": "Find a book",
+                "text": "In Scriptures, search by title or open Filter. Select a book, open its contents and choose a chapter. Your library helps you return to reading and saved items."
               },
               {
-                "title": "Continue reading from where you left off",
-                "text": "Use Continue Reading to return to material you have opened. Check the restored position when a book opens; bookmarks you save help you return to a specific passage or page."
-              },
-              {
-                "title": "Appearance and reading",
-                "text": "Open Personal → App Settings → Appearance & language to set your theme, language and interface text size. Use the reader tools to set the reading font size or paper color."
+                "title": "Continue reading",
+                "text": "Open a recent book or bookmark to return to its saved chapter and position. The catalogue can differ between iOS, Android and the web; some content is only in Vietnamese."
               }
             ]
           }
@@ -139,41 +147,31 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "tu-tap-tren-web",
-        "title": "Practice Page — Daily recitation & practice",
+        "title": "Find a practice tool",
         "keywords": [
           "start practice",
           "floating button",
           "wooden fish",
           "meditation music",
-          "auto scroll"
+          "auto scroll",
+          "Tìm công cụ trong trang Tu tập",
+          "Find a practice tool"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose the appropriate group and tool",
-                "text": "Open Practice. Daily practice includes Meditation, Rosary Beads, and Prostrations & Repentance. Copying includes separate sutra and sacred-name tools. Sutras & rituals contains Recite Sutras, Chant Mantras and Other Rituals."
+                "title": "Choose an activity",
+                "text": "Practice contains Continue Practice, the balanced vegan meal calendar, Practice routines, My Practice Journal, daily reflection and community access."
               },
               {
-                "title": "Choose a practice ritual",
-                "text": "Open Practice → Chant Mantras and choose the Great Compassion Mantra ritual. For a sutra, open Recite Sutras and choose a text and chapter."
+                "title": "Open the practice tools",
+                "text": "Scroll to meditation, rosary beads, prostrations, sutra or sacred-name copying, precepts, Eight Precepts, restraint, sutras, mantras and rituals. Read the tool instructions before starting."
               },
               {
-                "title": "Start a practice session",
-                "text": "Read the preparation instructions on the preview screen, then select Start Cultivation. When viewing a chapter, use Cultivate if that button is available. Reading, sound and counting tools depend on the selected text and mode."
-              },
-              {
-                "title": "Sutra and Name Copying",
-                "text": "Go to Practice → Sutra Copying, choose a sutra and chapter or volume, read Read the guide and continue, then confirm I have read the guide, continue copying. Typed drafts save on this device; to save to your account, sign in and select Save to account. Name Copying is a separate tool in the same Mindful copying group."
-              },
-              {
-                "title": "Wooden-fish sound and meditation music",
-                "text": "Open the current screen’s Tools or Options to choose the wooden-fish sound, background music or other settings. Enable sound after opening the text; audio, vibration and keeping the screen awake also depend on the device, browser and permissions."
-              },
-              {
-                "title": "Finish the session",
-                "text": "Use the finish or exit action and check the summary before saving your practice."
+                "title": "Choose a text",
+                "text": "In Recite Sutras, Chant Mantras or Other Rituals, choose a text and chapter. Read any guidance notice shown. Audio and translations are not available for every item."
               }
             ]
           }
@@ -181,33 +179,27 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "dong-bo-nut-quay-lai-android",
-        "title": "Back on Android and iOS",
+        "title": "Back navigation and closing panels",
         "keywords": [
           "back button",
           "android gestures",
           "swipe edge",
           "exit book",
-          "table of contents"
+          "table of contents",
+          "Quay lại và đóng bảng đang mở",
+          "Back navigation and closing panels"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Use Back, Close or Exit on the current screen. Android Back and the iOS back gesture may close an open panel or return to the previous screen. Read any confirmation before leaving a practice session."
-          },
-          {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "When reading books & PDFs",
-                "text": "Close open Tools, bookmark lists or images with their respective controls. Use Back to return to the table of contents or book list as appropriate, and check your bookmark and reading position before closing."
+                "title": "Close the current layer first",
+                "text": "Use Close or Back to dismiss a picker, tools panel or dialog before leaving a screen. Android Back participates in this flow; use the in-app back controls on iOS."
               },
               {
-                "title": "When practicing Cultivation",
-                "text": "To save a rosary session, tap End session, then Save and leave. In other practice sessions, check the count or elapsed time before confirming."
-              },
-              {
-                "title": "When listening to Dharma talk",
-                "text": "Use the back control in album details to return to the album list. The mini player can continue across pages; select Pause if you want playback to stop."
+                "title": "End sessions deliberately",
+                "text": "In beads, meditation, prostrations or routines, distinguish pausing from ending. Read confirmations and save status. Resolve save errors before clearing data or uninstalling."
               }
             ]
           }
@@ -215,93 +207,83 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "doc-offline-khong-can-mang",
-        "title": "Read Offline — No need for Internet",
+        "title": "What works offline?",
         "keywords": [
           "offline",
           "no internet",
           "offline reading",
           "airplane mode",
-          "cached"
+          "cached",
+          "Nội dung nào dùng được khi ngoại tuyến?",
+          "What works offline?"
         ],
         "blocks": [
-          {
-            "type": "paragraph",
-            "text": "The installed app includes supported text content. PDF and audio files may require a separate download. Open saved content with the connection off to check it before you travel."
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Read anytime, anywhere",
-                "text": "For PDFs, use Download for Offline Reading and wait for confirmation. For talks that allow downloads, wait for completion and open the offline collection. Test saved content before travelling; browsers may still reclaim storage when space is low."
+                "title": "Bundled books and rituals",
+                "text": "Content included in the app can open without a connection. Availability depends on platform and version; not every book, image, PDF, translation or video is bundled."
               },
               {
-                "title": "Automatically save location",
-                "text": "Reading position and preferences are saved by the relevant tool. Device-only data, downloaded PDFs and offline audio may be lost if you clear app/browser data or uninstall the app."
+                "title": "Download what you need first",
+                "text": "While online, use the supported document or album download action, wait for completion and reopen it to check. Unfinished PDF, audio or video downloads still need a connection. English books download separately apart from bundled rituals."
               },
               {
-                "title": "Synchronize when there is a network",
-                "text": "When online, sign in and check sync status for supported personal data. Comments require a connection; sutra drafts are saved to your account only when you select Save to account. Offline PDF and audio files do not automatically transfer to another device."
-              },
-              {
-                "title": "Built-in content and separate downloads",
-                "text": "Supported text content includes the Vimalakirti Sutra (14 chapters) and the Buddha Recitation Paramita Sutra (7 chapters). A PDF book or album may initially show only its cover and contents. Download the PDF, audio or video where available."
-              },
-              {
-                "title": "English content",
-                "text": "After switching to English, wait for the book download to finish before reading offline. If it stops, reconnect, check device storage and retry."
+                "title": "Keep on-device data",
+                "text": "Do not clear app data to fix a download. Unsynced copies, notes or practice records may exist only on that device; uninstalling or clearing browser data can remove them."
               }
             ]
           }
         ]
-      },
-    ],
+      }
+    ]
   },
   {
-    id: 'doc-sach',
-    icon: '📖',
-    title: 'Reading Books, PDFs & Quotations',
-    shortTitle: 'Read Books',
-    keywords: ['pdf', 'two page', 'thumbnail', 'table of contents', 'sepia', 'highlight', 'notes', 'tts', 'offline'],
-    editorialStatus: 'verified-software',
-    introduction: [
-      'Smart reading features: auto-remembering pages, dynamic font scaling, audio text-to-speech, and personal quote highlights.',
+    "id": "doc-sach",
+    "icon": "📖",
+    "title": "Reading Books, PDFs & Quotations",
+    "shortTitle": "Read Books",
+    "keywords": [
+      "pdf",
+      "two page",
+      "thumbnail",
+      "table of contents",
+      "sepia",
+      "highlight",
+      "notes",
+      "tts",
+      "offline"
     ],
-    topics: [
+    "editorialStatus": "verified-software",
+    "introduction": [
+      "Use the appropriate tools for text books, PDFs and recordings. Bundled content works offline; files not yet on the device must be downloaded first."
+    ],
+    "topics": [
       {
         "id": "doc-pdf",
-        "title": "Read text books and PDF documents",
+        "title": "Open text books and PDFs",
         "keywords": [
           "two page",
           "outline",
           "thumbnail",
           "zoom",
           "fit screen",
-          "sepia"
+          "sepia",
+          "Mở sách văn bản và PDF",
+          "Open text books and PDFs"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "One or two page mode",
-                "text": "For PDFs, use the layout tools to choose one or two pages when available, and use zoom or fit-to-screen for readability. On small screens, a single page is usually easier to read."
+                "title": "Text books",
+                "text": "Select a book in Scriptures, open its contents and choose a chapter. Use Tools to adjust reading. Returning from recent reading or a bookmark restores the saved position when that data is available."
               },
               {
-                "title": "Table of Contents & Quick Jump",
-                "text": "For multi-chapter books, open the table of contents to choose a chapter. In PDFs, use page navigation, thumbnails or the outline if the file provides one; not every PDF has an internal outline."
-              },
-              {
-                "title": "Automatically hide the toolbar",
-                "text": "The top bar may collapse while scrolling to leave more room for the text. Scroll back slightly or use the visible tools control to access the controls again."
-              },
-              {
-                "title": "Bookmarks & Bookmarks List (PDF)",
-                "text": "In a PDF, save a bookmark for the current page and use the bookmark list to return. PDF bookmarks refer to page numbers, while text-book bookmarks refer to a position in the text."
-              },
-              {
-                "title": "Change font size & background color",
-                "text": "In text books, use A−/A+, fonts and paper background. For PDFs, zoom the page instead; changing text-book font size does not alter the PDF’s original layout."
+                "title": "PDF documents",
+                "text": "Open an item marked PDF and wait for it to load. Use page and zoom controls. Text-book font and size settings do not change the printed lettering inside a PDF page."
               }
             ]
           }
@@ -309,7 +291,7 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "chi-tiet-thanh-cong-cu-doc",
-        "title": "Reading tools and where they apply",
+        "title": "Use the reading tools",
         "keywords": [
           "reader tools",
           "font size",
@@ -321,51 +303,25 @@ export const enSoftwareGuideSections: GuideSection[] = [
           "listen",
           "share",
           "download",
-          "auto scroll"
+          "auto scroll",
+          "Tùy chỉnh công cụ đọc",
+          "Use the reading tools"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "1. Font size (A− / A+)",
-                "text": "In text books, select A− or A+ to adjust text size from 13px to 45px. For PDFs, use the PDF zoom controls."
+                "title": "Text and background",
+                "text": "Open Reading Tools for A−/A+, font, bold text, line spacing and available paper backgrounds. These apply to text content; PDFs have separate controls."
               },
               {
-                "title": "2. Font",
-                "text": "For text books, choose Bookerly, Merriweather, Literata or San Francisco. This does not replace fonts embedded in a PDF."
+                "title": "Navigate and save positions",
+                "text": "Use the contents to change chapters and bookmarks to save and return to positions. Where the practice floating menu is available, ↑ Top and ↓ Bottom jump within the current text."
               },
               {
-                "title": "3. Layout (Bold B & Line Spacing)",
-                "text": "For text books, toggle bold text and choose comfortable line spacing. These reader preferences change presentation without editing the text."
-              },
-              {
-                "title": "4. Reading paper background",
-                "text": "Choose Auto, White, Light Beige, Gray, Dark or Light Purple in the text reader. The app interface follows the paper color. PDF page colors have their own controls where available."
-              },
-              {
-                "title": "5. Save (Bookmark 🔖)",
-                "text": "Save a bookmark where you want to return. In text books, the bookmark ribbon can take you to the saved position; PDFs have a separate bookmark list."
-              },
-              {
-                "title": "6. Listen to the song (🔊 AI voice)",
-                "text": "Select Read Aloud when speech is available. Voices, languages and speed depend on the browser/device. PDFs need extractable text; image-only PDFs may not support speech."
-              },
-              {
-                "title": "7. Share (📤)",
-                "text": "Select Share to use the device share sheet or copy a link where supported. Check the link before sending it."
-              },
-              {
-                "title": "8. Download (Download EPUB book file)",
-                "text": "If a book offers EPUB export or PDF download, use the corresponding control and wait for completion. Exporting a file and saving for offline reading are separate actions."
-              },
-              {
-                "title": "9. Automatic scrolling (⬇️)",
-                "text": "Enable Auto Scroll when available, choose a comfortable speed and turn it off to examine a passage. You remain in control; auto-scrolling is not required to record reading progress."
-              },
-              {
-                "title": "10. Close (✕) & Return",
-                "text": "Use Close or Back to return to the previous screen. Close any open dialog or tools panel first; Back behavior depends on the screen and platform."
+                "title": "Listen, scroll and share",
+                "text": "Use text-to-speech or auto-scroll where supported. Speech depends on the device, language and text; it is separate from recorded Dharma talks. Share a link or export EPUB when the relevant action is available."
               }
             ]
           }
@@ -373,156 +329,133 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "ghi-chu-va-trich-dan",
-        "title": "Highlight good sentences & my Quotes section",
+        "title": "Notes and saved quotes",
         "keywords": [
           "highlight",
           "annotation",
           "personal notes",
           "my quotes",
-          "save quote"
-        ],
-        "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Touch and hold a word, then drag the selection handles in a text book or a PDF with selectable text. Use the quote or note action when it appears. Scanned PDFs may have no selectable text."
-          },
-          {
-            "type": "bullets",
-            "items": [
-              "Save Quote: review the selected passage and confirm saving; wait for success before closing.",
-              "Note: enter your own reflection and choose a highlight colour if available, then select Save Quote.",
-              "PDF: saved quotations are associated with the document and the corresponding page.",
-              "Open Personal → Saved quotes to review saved passages and notes."
-            ]
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "Private, secure storage",
-            "text": "Sign in when the tool requests it to save and sync to your account. Check save/sync status; data that has not saved successfully or exists only on this device is not guaranteed to appear elsewhere."
-          }
-        ]
-      },
-      {
-        "id": "pdf-nghe-va-offline",
-        "title": "Listen and read automatically (TTS) & Read offline",
-        "keywords": [
-          "tts",
-          "read aloud",
-          "offline save",
-          "indexeddb"
+          "save quote",
+          "Ghi chú và trích dẫn đã lưu",
+          "Notes and saved quotes"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Listen to read aloud",
-                "text": "Text books offer speech tools. In PDFs, use speech when text can be extracted; if a suitable voice or text is unavailable, continue reading directly."
+                "title": "Select a passage",
+                "text": "In text content that supports selection, select a passage and use the available highlight, note or quote action. Check the saved text and destination before leaving."
               },
               {
-                "title": "Automatically scroll the screen",
-                "text": "Use Auto Scroll when available, adjust its speed, and turn it off before selecting text or taking notes."
-              },
-              {
-                "title": "Download for Offline Reading",
-                "text": "In a PDF, select Download for Offline Reading on the toolbar when supported. Wait for completion, check whether the saved copy needs updating, and reopen it to test. Storage is associated with the current device and account; clearing app/browser storage can remove the file."
+                "title": "Return and share",
+                "text": "Open Profile → Saved quotes. For quote images, preview the result before saving or sharing. On-device saving and account synchronization are different states; check the app status."
               }
             ]
           }
         ]
       },
-    ],
+      {
+        "id": "pdf-nghe-va-offline",
+        "title": "PDF downloads and text-to-speech",
+        "keywords": [
+          "tts",
+          "read aloud",
+          "offline save",
+          "indexeddb",
+          "Tải PDF và dùng đọc thành tiếng",
+          "PDF downloads and text-to-speech"
+        ],
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Save an offline PDF",
+                "text": "For supported PDFs, start the download and wait until it completes. Reopen without a connection to check. Retry interrupted downloads instead of clearing app data."
+              },
+              {
+                "title": "Understand speech limits",
+                "text": "Text-to-speech needs readable text and a suitable device voice. Scanned image-only PDFs may not contain text to speak. Recorded Dharma audio is played or downloaded in Talks."
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
-    id: 'cong-cu-tu-tap',
-    icon: '📿',
-    title: 'Cultivation Tools & Practice Tracking',
-    shortTitle: 'Practice',
-    keywords: ['rosary', 'mala beads', 'meditation', 'timer', 'goals', 'heatmap', 'group practice'],
-    editorialStatus: 'verified-software',
-    introduction: [
-      'Comprehensive toolkit for dedicated practitioners: virtual rosary mala, meditation bell timer, lunar observance calendar, and daily practice streaks.',
+    "id": "cong-cu-tu-tap",
+    "icon": "📿",
+    "title": "Cultivation Tools & Practice Tracking",
+    "shortTitle": "Practice",
+    "keywords": [
+      "rosary",
+      "mala beads",
+      "meditation",
+      "timer",
+      "goals",
+      "heatmap",
+      "group practice"
     ],
-    topics: [
+    "editorialStatus": "verified-software",
+    "introduction": [
+      "Choose a suitable tool, read its instructions and record the actual practice. Routines combine activities, while vegan menus help plan meals."
+    ],
+    "topics": [
       {
         "id": "che-do-le-phat",
-        "title": "Buddha Ceremony & Repentance Mode (Smart Worship & Counting Prostrations)",
+        "title": "Prostrations and counting",
         "keywords": [
           "prostrations",
           "repentance",
           "Buddha statues",
           "108 bows",
           "21 bows",
-          "practice journal"
+          "practice journal",
+          "Lễ Phật và ghi nhận số lạy",
+          "Prostrations and counting"
         ],
         "blocks": [
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "The supreme meaning of Buddha's Repentance Ceremony",
-            "text": "Buddha taught that bowing to the Buddhas is a method of subduing ego, eliminating arrogance, generating humility and sincerity, purifying many lifetimes of karma and accumulating countless blessings. The Buddha Ceremony mode on the application helps friends, whether at home, in a boarding house, on a business trip or in a place where it is not possible to set up a solemn altar, to be able to worship and repent in front of the Buddha statues every day."
-          },
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose a statue and goal",
-                "text": "Open Prostrations & Repentance in Practice. Swipe or use arrows to select one of 14 statues; open its information for the six-part profile, currently in Vietnamese. Choose the target and audio; the target is not a completed count."
+                "title": "Set up",
+                "text": "Open Practice → Prostrations & Repentance. Choose the sacred image, target and available options, read the guidance and begin when ready."
               },
               {
-                "title": "2. Set a goal for the number of bows according to the schedule",
-                "text": "Choose a bowing target or free practice according to your ability. Review the selected name, target and sound options before starting; do not force yourself to reach an unsuitable target."
-              },
-              {
-                "title": "3. Join the Sound of Bells, Martial Arts & Meditation Music",
-                "text": "Choose a bell, wooden-fish sound or background music using the available options. Test the sound and set a comfortable volume; audio permission and vibration depend on the device/browser."
-              },
-              {
-                "title": "Begin and count bows",
-                "text": "Tap START PROSTRATIONS. After each bow, tap the count button at the bottom of the screen. Each tap records one prostration, with a bell or wooden fish if enabled. The app does not detect the movement automatically."
-              },
-              {
-                "title": "Review before saving",
-                "text": "Press Finish to review the count. Adjust the actual number, continue without resetting the count, or leave without saving."
-              },
-              {
-                "title": "Record in the practice journal",
-                "text": "Confirm to save the bows and chosen Buddha. A new session starts at zero. Keeping the screen awake depends on device support and state."
+                "title": "Practise and finish",
+                "text": "Use the counting input shown and check the recorded count. Pause or finish as needed and record actual prostrations. In a routine, finishing a step continues the routine without filling an unmet target."
               }
             ]
-          },
-          {
-            "type": "link",
-            "href": "/tu-tap?mode=le-phat",
-            "label": "Open Buddha Ceremony & Repentance Mode now",
-            "text": "Start the session of worshiping the Buddha statue, set the number of bows and the sound of the bell to pay homage and repent to purify the body and mind.",
-            "buttonLabel": "On Buddha's Day"
           }
         ]
       },
       {
         "id": "che-do-thanh-tinh",
-        "title": "Self-restraint & Wellbeing",
+        "title": "Restraint practice and private journal",
         "keywords": [
           "self restraint",
           "Thanh Tinh",
           "Buddha recitation",
           "mantra",
           "wooden fish",
-          "bell"
+          "bell",
+          "Tiết dục bảo thân và nhật ký riêng",
+          "Restraint practice and private journal"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose a practice",
-                "text": "Open Self-restraint & Wellbeing, review progress and select the supported tool you need. Read the instructions and use its check-in, mantra, pause or finish controls."
+                "title": "Open the tool",
+                "text": "Choose Practice → Sexual Restraint & Well-being, read the guidance and choose what to track. It supports reflection and habits; seek professional help when health support is needed."
               },
               {
-                "title": "Vows and community practice",
-                "text": "Before joining a shared vow, review its content, duration and goal. Check personal status and sharing settings; public community figures are not a copy of offline data on your device."
+                "title": "Understand storage",
+                "text": "Use the visible controls for streaks, resisted urges and writing. The private journal stays on the device and is not automatically synchronized like progress counters. Check sharing options before submitting content."
               }
             ]
           }
@@ -530,34 +463,32 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "cai-dat-nhac-nho-tu-tap",
-        "title": "Practice & Lunar Observance Reminders",
+        "title": "Set reminders and personal observances",
         "keywords": [
           "practice reminders",
           "lunar calendar",
           "vegetarian days",
           "Buddhist observances",
           "morning practice",
-          "evening practice"
+          "evening practice",
+          "Cài lời nhắc và ngày lễ cá nhân",
+          "Set reminders and personal observances"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Open reminders",
-                "text": "Go to Personal > Application settings > Practice reminders. Enable the lunar or practice reminder groups you need, then choose times and repeating days."
+                "title": "Open reminder settings",
+                "text": "In Profile → App Settings, open Lunar calendar & observances for fasting days, Tho Khang Bao Giam and Buddhist observances. Set reminder times and available advance/on-day options."
               },
               {
-                "title": "Name each practice period",
-                "text": "Name morning, evening or custom practice reminders and check their time and enabled state after saving. On iOS, allow notifications when prompted if you wish to receive reminders; review permissions in system Settings > Notifications."
+                "title": "Add a personal date",
+                "text": "Use Personal observances on Home or in Settings. Enter a name, choose lunar/Gregorian dates and reminder options. Check the current-year conversion, especially lunar dates and leap months."
               },
               {
-                "title": "Android notification permission",
-                "text": "Grant notification permission when you want reminders. If prompted, enable Alarms & reminders in system settings to reduce delays while the device sleeps."
-              },
-              {
-                "title": "After installation or force stop",
-                "text": "Open the application at least once after installation or update to restore reminders. After Force stop, reopen it. Battery-saving and background restrictions can delay notifications."
+                "title": "Check system permissions",
+                "text": "Grant notification permission when needed. Review iOS Settings → Notifications; Android may also ask for Alarms & reminders. Battery restrictions, Focus and system settings can delay or hide notifications; exact delivery is not guaranteed in every situation."
               }
             ]
           }
@@ -565,27 +496,29 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "chep-kinh-tren-app",
-        "title": "Sutra Copying in the Application",
+        "title": "Sutra copying: choose, type and save",
         "keywords": [
           "sutra copying",
           "type scripture",
-          "draft"
+          "draft",
+          "Chép kinh: chọn nguồn, tự gõ và lưu",
+          "Sutra copying: choose, type and save"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose scripture and prepare",
-                "text": "Open Sutra Copying in Practice, choose a supported sutra and chapter, read the preparation guide and begin. Sign in if requested."
+                "title": "Choose a sutra",
+                "text": "Open Practice → Sutra copying, choose Ksitigarbha, Lotus or Surangama and a chapter/volume. Open the guide, read it and continue to the copying screen."
               },
               {
-                "title": "Type each passage yourself",
-                "text": "Type the model passage including Vietnamese accents. Ghost Text shows the model inside the input; otherwise compare with the Scripture Model panel. It follows the active passage and can be collapsed. Ordinary accounts cannot paste or drag text; parenthetical directions need not be copied."
+                "title": "Use the reference",
+                "text": "Select a passage in Reference text and use previous/next, text-size options or collapsed controls. The reference follows typing where supported. Enable Faded Text if desired and type in Your copy."
               },
               {
                 "title": "Review and save",
-                "text": "Review the passage and correct errors. Move on when accepted and check completion messages. Drafts save locally; upload only with Save to system and a successful receipt. Check saving before changing devices or clearing data."
+                "text": "Use Review to inspect possible issues; it is a reference check, not an automatic rewrite. Drafts are saved on the device. To save in the account, sign in, choose Save to system and check the result. Uninstalling or clearing data can remove local-only copies."
               }
             ]
           }
@@ -593,7 +526,7 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "trang-hat-ao",
-        "title": "Virtual Rosary (Reciting the Buddha's Rosary)",
+        "title": "Rosary beads: manual and automatic counting",
         "keywords": [
           "digital rosary",
           "mala",
@@ -603,77 +536,53 @@ export const enSoftwareGuideSections: GuideSection[] = [
           "30 bpm",
           "40 bpm",
           "60 bpm",
-          "80 bpm"
+          "80 bpm",
+          "Lần tràng hạt: đếm tay và nhịp tự động",
+          "Rosary beads: manual and automatic counting"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Select rosary & chant",
-                "text": "Open Practice → Rosary Beads → Options. To add a recitation, open Recitation → Add a custom recitation..., enter a sacred name or mantra, choose its type and save it to the list. The Great Compassion Mantra is not a preset."
+                "title": "Open a session",
+                "text": "Choose Practice → Rosary Beads, read the introduction and select Begin. In Options, choose a recitation, bead count, target and available sound settings."
               },
               {
-                "title": "Choose how to count",
-                "text": "Open the mala and use the existing pickers to choose your phrase, beads and goal. In manual mode, tap or swipe after each recitation. In automatic mode, choose a session target and press Start; each audible beat advances one bead."
+                "title": "Count manually",
+                "text": "Tap or swipe the beads, or choose Count one bead. On a keyboard, use the indicated key. Review the current count, beads in the strand and completed strands."
               },
               {
-                "title": "Choose the rhythm",
-                "text": "Very slow: 2 seconds per beat (30 bpm); Slow: 1.5 seconds (40 bpm); Moderate: 1 second (60 bpm); Diligent: 0.75 seconds (80 bpm). Choose a comfortable pace for your breathing and recitation."
-              },
-              {
-                "title": "Pause and finish",
-                "text": "Choose the session recitation target, with presets up to 10,800 recitations. Press Pause to rest and Resume to continue. At the chosen target, the rhythm stops, three closing bells sound, and the session moves to completion and dedication. Repeated taps do not add extra completed beads."
-              },
-              {
-                "title": "How to pray the rosary on the phone",
-                "text": "Choose the appropriate mode, then tap or swipe as instructed to move the beads. Check the recitation/cycle count on screen; sound and vibration are optional and depend on the device."
-              },
-              {
-                "title": "Keep a steady pace and check the count",
-                "text": "Move the beads at your recitation pace rather than tapping repeatedly to increase the count. Taps made too close together may not count; check the counter instead of expecting a pacing warning."
-              },
-              {
-                "title": "Save Merit & Complete Objective",
-                "text": "Tap End session, check the summary and choose Save and leave to record it. If you go back, check the confirmation before leaving."
+                "title": "Use automatic rhythm",
+                "text": "Open the automatic-rhythm options, set the pace and start it when needed. Distinguish pause, stop, reset and end-session actions; read the confirmation before resetting. Finish with actual counts, not an assumed completed target."
               }
             ]
-          },
-          {
-            "type": "paragraph",
-            "text": "The advanced automatic rhythm invites you to stay deeply attentive to your Buddha name, mantra or chosen sacred phrase. Gently return to the phrase whenever the mind wanders."
-          },
-          {
-            "type": "paragraph",
-            "text": "Background audio and haptics depend on device, browser and system audio interruptions. Counting follows actual playback, without adding beads for time spent paused."
           }
         ]
       },
       {
         "id": "so-quan-chieu-ca-nhan",
-        "title": "Personal Reflection Journal",
+        "title": "Daily reflection and private writing",
         "keywords": [
           "reflection journal",
           "private diary",
           "good deeds",
           "nickname",
-          "body speech mind"
+          "body speech mind",
+          "Quán chiếu và ghi chép riêng tư",
+          "Daily reflection and private writing"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Reflect at the end of the day",
-                "text": "Write separately about mistakes you wish to transform and good deeds you have done. Review body, speech and mind sincerely, without judging yourself harshly."
+                "title": "Open reflection",
+                "text": "In Practice, choose Reflect on today’s good and unwholesome deeds. Read the guide and reflect on actions, areas to improve and the next practice."
               },
               {
-                "title": "Keep it private on this device",
-                "text": "Private local storage is the default. Private journal entries are excluded from server synchronization. If saving fails, keep the text and retry before leaving the screen."
-              },
-              {
-                "title": "Choose a community nickname",
-                "text": "You can change your nickname. Public posts display this nickname rather than your account name, email or personal avatar. Only the repentance or good-deed section you explicitly choose and confirm is sent."
+                "title": "Choose the destination",
+                "text": "Private saving and community sharing are different choices. Share only when you intend to disclose that content. Avoid other people’s sensitive information; a private journal is not automatically a public post."
               }
             ]
           }
@@ -681,64 +590,60 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "cong-dong-sam-hoi-tuy-hy",
-        "title": "Community Repentance & Rejoicing in Merit",
+        "title": "Community and privacy",
         "keywords": [
           "community",
           "repentance",
           "rejoicing",
           "prayer",
           "encouragement",
-          "my posts"
+          "my posts",
+          "Cộng đồng và quyền riêng tư",
+          "Community and privacy"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose the feed",
-                "text": "Repentance shows shared confessions; Good Deeds shows wholesome actions. My Posts lists your own posts and the prayers or rejoicing they have received. Load more to see the next page."
+                "title": "Choose to participate",
+                "text": "Open Join Community or the community practice area, read a goal’s conditions and join if desired. Use the relevant tool. Only eligible sessions contribute under that goal’s rules."
               },
               {
-                "title": "Send one prepared message",
-                "text": "Choose a prayer or praise template, then confirm. Free-text comments are not available. Each account can encourage or rejoice once per post, including across nickname changes or devices. The submitted state shows that your interaction has been recorded."
-              },
-              {
-                "title": "Share or remove your post",
-                "text": "Read the confirmation before sharing. Posts are public, so avoid including your own or anyone else’s identifying details. You can confirm removal of your own post from My Posts; the remaining private journal is not shared."
+                "title": "Manage visibility",
+                "text": "Check sharing, leaderboard and active-practice privacy choices. Pending comments or profiles may not yet be public. Use content or member menus to report or block."
               }
             ]
-          },
-          {
-            "type": "paragraph",
-            "text": "Joyfully praising the good deeds of others brings a full and equal share of their great merit."
           }
         ]
       },
       {
         "id": "khoa-le-hang-ngay",
-        "title": "Daily Practice Routines",
+        "title": "Create and follow a practice routine",
         "keywords": [
           "daily routine",
           "prostrations",
           "meditation",
           "mala",
-          "custom dedication"
+          "custom dedication",
+          "Tạo và thực hành thời khóa",
+          "Create and follow a practice routine"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Create your routine",
-                "text": "On the main Practice screen, open Suggested routine → My routines to create a Morning or Evening Routine, or choose your own name. Add, remove and reorder prostration, meditation, mala and dedication steps; set counts, duration and recitation phrase."
+                "title": "Create a routine",
+                "text": "Open Practice → Practice routines → Create a routine. Name it and use Add step; at least two steps are required. Available activities include vows and repentance, meditation, beads, prostrations, both copying tools, precepts, Eight Precepts, restraint, sutras, mantras, rituals and dedication."
               },
               {
-                "title": "Choose and edit a dedication",
-                "text": "Templates come from the application’s bundled Great Compassion Mantra ritual, Shurangama Mantra ritual and Ksitigarbha Bodhisattva Sutra. Edit your own copy, add the names of loved ones, or write a new dedication. The original scripture remains unchanged."
+                "title": "Configure the steps",
+                "text": "Expand a step to choose its content and target. Move it up/down or remove it. Select the required text for readings and copying, then save the routine."
               },
               {
-                "title": "Follow the steps",
-                "text": "Start the routine to use the existing practice tools in order. Follow the step indicator, pause when necessary or choose to move on. Confirm after reading the dedication. Skipping a step does not mean its target was completed."
+                "title": "Follow the sequence",
+                "text": "Open the saved routine and start. Pause as needed. Finishing a step continues to the next even if its target was not met. Records keep actual counts and duration; targets are not filled automatically. Check save status before leaving."
               }
             ]
           }
@@ -746,62 +651,61 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "dong-bo-ca-nhan-48-gio",
-        "title": "Personal Saving & 48-hour Synchronization",
+        "title": "Understand practice saving and synchronization",
         "keywords": [
           "48 hours",
           "personal sync",
           "dedication",
           "restore routines",
-          "data savings"
-        ],
-        "blocks": [
-          {
-            "type": "paragraph",
-            "text": "Routines, custom dedications and your nickname save immediately on this device. Syncable personal changes are uploaded only after 48 hours since the last successful upload; the first window starts with the first local change. No changes means no synchronization request."
-          },
-          {
-            "type": "paragraph",
-            "text": "If the application is closed or offline, uploading waits until it is active and online again. Network failures preserve local data. Private journal entries stay on the device. Explicit community posts and prayers are sent immediately rather than waiting 48 hours."
-          },
-          {
-            "type": "callout",
-            "tone": "note",
-            "title": "When changing devices",
-            "text": "Recent edits within the 48-hour window may not yet be on the server. Restore explicitly and review which version to keep; unsynchronized changes are not silently overwritten when a conflict occurs."
-          }
-        ]
-      },
-      {
-        "id": "toa-thien-hen-gio",
-        "title": "Meditation & Calm bell timer",
-        "keywords": [
-          "meditation timer",
-          "mindfulness bell",
-          "sitting practice"
+          "data savings",
+          "Hiểu trạng thái lưu và đồng bộ công phu",
+          "Understand practice saving and synchronization"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Choose meditation duration",
-                "text": "Open Practice → Meditation. Under Duration, choose 15, 30, 45 or 60 minutes, or enter your own duration. Set background sound and other options before tapping Start Meditation."
+                "title": "On-device saving",
+                "text": "The app stores practice data according to each tool. Check My Practice Journal or progress. Copies, private journals, downloaded files and practice records do not all use the same saving mechanism."
               },
               {
-                "title": "Preparation buffer time (30 seconds)",
-                "text": "Select Start Meditation. A 30-second preparation countdown gives you time to settle before the meditation timer starts."
+                "title": "Account synchronization",
+                "text": "Sign in with the same account and connect to synchronize supported data. Some updates are grouped or queued; a 48-hour interval is not proof that everything reached the server. Check status and retry reported failures."
               },
               {
-                "title": "Opening & ending bell sound",
-                "text": "Set the bell and music before starting and test the volume. Do not rely entirely on the bell, since the operating system or browser may restrict sound."
+                "title": "Before changing devices",
+                "text": "Use Save to system for copies you want stored in the account. Keep the old device data until required records are confirmed saved; offline files and private journals may not be restored on a new device."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "toa-thien-hen-gio",
+        "title": "Guided meditation and Focus mode",
+        "keywords": [
+          "meditation timer",
+          "mindfulness bell",
+          "sitting practice",
+          "Thiền có hướng dẫn và chế độ Tập trung",
+          "Guided meditation and Focus mode"
+        ],
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Set up first",
+                "text": "Open Practice → Meditation. Choose a duration in Time and review Music, Ambient sound and Background tabs. Motion sensing is optional and is not required to record meditation."
               },
               {
-                "title": "Real-time recording",
-                "text": "When finishing or ending early, review the actual time recorded. After confirming, check your practice history rather than assuming that every timer visit has been recorded."
+                "title": "Start a session",
+                "text": "Select Start meditation. The setup describes preparation time and opening/closing bells. Check volume, silent mode and device permissions if audio is missing. Follow the session timer; bells are not guaranteed alarms when the OS restricts the app."
               },
               {
-                "title": "Motion sensor",
-                "text": "The motion sensor is optional and depends on the device and permissions. You can meditate with the timer alone."
+                "title": "Enter and leave Focus",
+                "text": "During a session, choose Focus for a lotus and breathing guidance. Use Exit Focus at the top or supported back navigation to return to controls; the session clock continues. Pausing and ending are separate actions."
               }
             ]
           }
@@ -809,137 +713,232 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "goi-y-va-tien-do",
-        "title": "Thap Trai Calendar, Progress & Heatmap (Heatmap)",
+        "title": "Calendar, practice records and titles",
         "keywords": [
           "lunar calendar",
           "vegetarian days",
           "streak",
           "heatmap",
-          "merit dedication"
+          "merit dedication",
+          "Lịch, công phu và danh hiệu tu tập",
+          "Calendar, practice records and titles"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Reminder of Thap Trai calendar & Via Day",
-                "text": "Home provides a lunar calendar and Daily Reminders, while Practice offers daily suggestions. Open the bell in the navigation bar to view reminders and notification options. Check device/browser permission if you want notifications, and enable only the reminders you need."
+                "title": "Read the calendar",
+                "text": "Home shows lunar/Gregorian dates, a week strip and a month-calendar action. Select a date for its information. Daily reminders do not mark a practice complete."
               },
               {
-                "title": "Heat Map & Date Series",
-                "text": "Go to Practice → My Practice Journal to review recorded history and progress. For Daily Precepts, Eight Precepts or Abstinence, choose the appropriate card under Purity & Precepts, read its instructions and confirm within that tool."
+                "title": "Review practice",
+                "text": "Open My Practice Journal or Profile → Practice progress for day, week, month and year views and activity details. Use manual recording for practice outside the app where available."
               },
               {
-                "title": "Group Meditation Campaign",
-                "text": "When a community campaign is available, read its goal and participation conditions before joining. Check your participation status and recorded progress; not every practice action automatically counts toward every campaign."
-              },
-              {
-                "title": "Create a merit dedication card",
-                "text": "Use the card-creation feature when offered, and check its text and counts before saving or sharing. A card presents the result; creating it does not replace confirming the practice record."
+                "title": "Badges and titles",
+                "text": "Home and Account show practice identity from the account’s practice data. Account labels the Practice title. Missing data is different from achieving a rank; check connection and account if synchronization is unfinished."
               }
             ]
           }
         ]
       },
-    ],
+      {
+        "id": "an-chay-thuc-don-cong-thuc",
+        "keywords": [
+          "Ăn chay: thực đơn, công thức và đi chợ",
+          "Vegan meals, recipes and shopping"
+        ],
+        "title": "Vegan meals, recipes and shopping",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Open a menu",
+                "text": "Open the balanced vegan meal calendar from Home or Practice. In Today, set servings and choose All, North, Central or South. Changing region can change suggested dishes."
+              },
+              {
+                "title": "Read a recipe",
+                "text": "Select View beside a dish. Check time, ingredients and cooking steps. Adjust servings or A−/A+ text size. Resting, soaking and steaming times do not necessarily scale with servings. Dish names and recipes may remain Vietnamese in the English interface."
+              },
+              {
+                "title": "Plan shopping",
+                "text": "Open Week & shopping for daily planning and shopping information. Today’s ingredients summarizes the current day. Dish menu searches beyond the suggestions. Check ingredients, allergies and household portions; nutrition information is for reference."
+              },
+              {
+                "title": "Use offline",
+                "text": "Bundled or previously downloaded menus and recipes work offline. Check and download new weekly content while connected. Not every recipe has a photo or video."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "chep-danh-hieu-tren-app",
+        "keywords": [
+          "Chép danh hiệu Phật, Bồ Tát",
+          "Copy Buddha and Bodhisattva names",
+          "chép danh hiệu",
+          "sacred names",
+          "sacred-name copying"
+        ],
+        "title": "Copy Buddha and Bodhisattva names",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Choose a name",
+                "text": "Open Copy Buddha and Bodhisattva Names in Practice. Choose the name, read the guide and type in the copying area, following the actual count."
+              },
+              {
+                "title": "Save and return",
+                "text": "Check save status and use account saving where offered or required. If opened from a routine, use that flow’s return controls to continue. A target of 108 names is not a completed count."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "giu-gioi-va-bat-quan-trai",
+        "keywords": [
+          "Giữ giới và Thọ Bát quan trai",
+          "Precept Practice and Eight Precepts"
+        ],
+        "title": "Precept Practice and Eight Precepts",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              {
+                "title": "Precept Practice",
+                "text": "Open Practice → Precept Practice to read and reflect on the Five Precepts and Ten Wholesome Actions. Follow the recording controls; entries are personal reflections, not certification by a teacher."
+              },
+              {
+                "title": "Eight Precepts",
+                "text": "Open Eight Precepts, read the guidance and rite, check the period and make a personal commitment when ready. Follow the day-and-night practice instructions; the app does not replace guidance from the Sangha or a responsible teacher."
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
-    id: 'phap-thoai',
-    icon: '🎧',
-    title: 'Dharma Talks & Audio Lectures',
-    shortTitle: 'Dharma Talks',
-    keywords: ['audio', 'persistent player', 'favorites', 'listen later', 'speaker', 'duration'],
-    editorialStatus: 'verified-software',
-    introduction: [
-      'Rich repository of recorded Dharma lectures by venerable masters, supporting persistent background playback and offline audio.',
+    "id": "phap-thoai",
+    "icon": "🎧",
+    "title": "Dharma Talks & Audio Lectures",
+    "shortTitle": "Dharma Talks",
+    "keywords": [
+      "audio",
+      "persistent player",
+      "favorites",
+      "listen later",
+      "speaker",
+      "duration"
     ],
-    topics: [
+    "editorialStatus": "verified-software",
+    "introduction": [
+      "Find an album, choose a track and use the existing player. Video and offline downloads are available only for supported content; recording language varies."
+    ],
+    "topics": [
       {
         "id": "dieu-khien-phap-thoai",
-        "title": "Audio Player & Convenient Controls",
+        "title": "Listen to talks and watch video",
         "keywords": [
           "mini player",
           "rewind 10s",
           "forward 30s",
           "media session",
-          "lockscreen"
+          "lockscreen",
+          "Nghe pháp thoại và xem video",
+          "Listen to talks and watch video"
         ],
         "blocks": [
           {
-            "type": "bullets",
+            "type": "steps",
             "items": [
-              "Open Dharma Talks, choose an album and select a track. When moving to Books, Practice or Home, use the mini player to pause or reopen the controls.",
-              "When you reopen a talk, check the saved position and tap Play to continue.",
-              "Use the seek, speed and track controls on the player. For albums with video, choose an available playback mode.",
-              "Bluetooth-headset and lock-screen controls work when supported by the device/browser. If controls are missing or background playback stops, reopen the app and use the on-screen player."
+              {
+                "title": "Choose an album and track",
+                "text": "Open Talks, search or use Search and filters; use Top 10 for the corresponding list. Open an album and choose a track. Supported video albums carry a Video label."
+              },
+              {
+                "title": "Control playback",
+                "text": "Use play/pause, seeking and track selection in the player. Resume Listening restores available saved progress. The mini-player returns to the current track across screens without starting a second track."
+              },
+              {
+                "title": "Use full screen",
+                "text": "For supported video, open full screen. Controls hide during playback and reappear on a tap, staying visible while paused, loading or interacting. After seeking, allow audio/video to reload; streaming requires a connection."
+              }
             ]
           }
         ]
       },
       {
         "id": "luu-va-loc-phap-thoai",
-        "title": "Personal collection & Download for offline listening",
+        "title": "Find and download talks for offline use",
         "keywords": [
           "favorites",
           "listen later",
           "recent",
           "speaker",
-          "duration"
+          "duration",
+          "Tìm lại và tải pháp thoại ngoại tuyến",
+          "Find and download talks for offline use"
         ],
         "blocks": [
           {
-            "type": "cards",
+            "type": "steps",
             "items": [
               {
-                "title": "Favorite (❤️)",
-                "text": "Select an album’s heart to add it to Favorites, then open the Favorites tab to find it again. Check the icon’s state after selecting it."
+                "title": "Find content again",
+                "text": "Use search, filters, sorting and available recent/favourite lists. Titles, catalogue and language depend on the album; selecting English does not translate a Vietnamese recording."
               },
               {
-                "title": "Listen Later (🔖)",
-                "text": "Use the bookmark icon to add an album to Listen Later, then open that list to find it again."
+                "title": "Download supported tracks",
+                "text": "Use the download action, sign in if requested and wait for completion. Check the status and reopen offline. Interrupted downloads, missing files or insufficient space can prevent offline playback."
               },
               {
-                "title": "Find albums and tracks again",
-                "text": "Use search to find an album, track or speaker. Open the album, check the track title and select the track you want to hear."
+                "title": "Background playback",
+                "text": "Background and lock-screen controls depend on platform, content type and device settings. Video and embedded sources may have separate limits; not every source supports downloading or background playback."
               },
               {
-                "title": "Recently played",
-                "text": "Open Recently played to find an album you have played and resume an unfinished track; check the resume position before playing."
-              },
-              {
-                "title": "Universal filter",
-                "text": "Open the filter options and choose Topic, Speaker or Duration as needed. Use Clear Filters to return to the full list if an album is missing."
-              },
-              {
-                "title": "Download to listen to Offline",
-                "text": "For content that allows downloads, use the track/album download control and wait for completion, then open Offline Listening when saved content is available. Online-only albums cannot be downloaded. Downloaded files remain on the device and may be removed when storage is cleared. Updating covers and track lists does not download audio or video."
+                "title": "Listen later",
+                "text": "Use the album bookmark icon to add or remove it from Listen Later. Open Listen Later to find selected albums. Bookmarking does not download audio files."
               }
             ]
           }
         ]
-      },
-    ],
+      }
+    ]
   },
   {
-    id: 'tai-khoan-dong-bo',
-    icon: '☁️',
-    title: 'Account Sync & Cloud Storage',
-    shortTitle: 'Cloud Sync',
-    keywords: ['google login', 'cloud sync', 'backup'],
-    editorialStatus: 'verified-software',
-    introduction: [
-      'Signing in preserves your practice history, notes, and bookmarks across multiple devices.',
+    "id": "tai-khoan-dong-bo",
+    "icon": "☁️",
+    "title": "Account Sync & Cloud Storage",
+    "shortTitle": "Cloud Sync",
+    "keywords": [
+      "google login",
+      "cloud sync",
+      "backup"
     ],
-    topics: [
+    "editorialStatus": "verified-software",
+    "introduction": [
+      "Sign in for supported account and synchronization features. Distinguish device-only data, account-saved data and public content."
+    ],
+    "topics": [
       {
         "id": "an-toan-cong-dong",
-        "title": "Report, Block & Unblock",
+        "title": "Report, block and manage community content",
         "keywords": [
           "report",
           "block",
           "unblock",
           "community",
-          "moderation"
+          "moderation",
+          "Báo cáo, chặn và quản lý nội dung cộng đồng",
+          "Report, block and manage community content"
         ],
         "blocks": [
           {
@@ -947,15 +946,11 @@ export const enSoftwareGuideSections: GuideSection[] = [
             "items": [
               {
                 "title": "Report content",
-                "text": "Where a comment or community profile has an action menu, choose Report, select a reason and submit. Sign-in and a network are required; only a success confirmation means the report was received. Pending content may not be public yet."
+                "text": "Open a comment, reply or member menu, choose Report and provide the reason. Identify the relevant content without publicly exposing another person’s private information."
               },
               {
-                "title": "Block or unblock",
-                "text": "Choose Block user to hide that person’s content for your account. In Personal, open Blocked users and confirm Unblock to see it again. This does not delete their comments."
-              },
-              {
-                "title": "Moderation permissions",
-                "text": "Users submit reports and manage their own block lists. Moderation queues and approve/hide decisions belong to administrators, not automatically to contributors. If the service fails, preserve the action and try again later."
+                "title": "Block and review privacy",
+                "text": "Use Block to limit a member in supported community areas. Review blocked accounts and sharing choices in Settings. Pending and rejected content have separate statuses and are not equivalent to public posts."
               }
             ]
           }
@@ -963,28 +958,26 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "xoa-tai-khoan",
-        "title": "Delete an Account",
+        "title": "Sign out and delete an account",
         "keywords": [
           "delete account",
           "Apple",
           "confirmation code",
-          "data"
+          "data",
+          "Đăng xuất và xóa tài khoản",
+          "Sign out and delete an account"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Confirm the account",
-                "text": "Sign in to the account you want to delete and open Personal > Delete account. Read the warning and enter the displayed confirmation code. This is not ordinary sign-out."
+                "title": "Find account actions",
+                "text": "Open Profile → Account while signed in. Choose Sign out to end the device session. Choose Delete account only when you intend the deletion described in the app confirmation."
               },
               {
-                "title": "Complete the request",
-                "text": "A network is required. An Apple-linked account may require Apple reauthentication. Wait for successful confirmation; an error or cancelled authentication does not mean deletion succeeded."
-              },
-              {
-                "title": "Check device data",
-                "text": "Server account deletion does not replace clearing downloads, exports or copies on other devices. If you cannot access the account, contact support for verification; never send passwords or login codes."
+                "title": "Read before confirming",
+                "text": "Account deletion can remove account-linked data under the policy. Signing out, uninstalling or deleting a downloaded file is not account deletion. If an error occurs, check the status rather than assuming completion."
               }
             ]
           }
@@ -992,65 +985,66 @@ export const enSoftwareGuideSections: GuideSection[] = [
       },
       {
         "id": "ket-noi-facebook-quan-tri",
-        "title": "Connect and import Facebook posts for administrators",
+        "title": "Facebook connection for administrators",
         "keywords": [
           "Facebook connect",
           "Meta app review",
           "user_posts",
           "import source",
           "ledger",
-          "reconnect"
+          "reconnect",
+          "Kết nối Facebook dành cho quản trị",
+          "Facebook connection for administrators"
         ],
         "blocks": [
           {
             "type": "steps",
             "items": [
               {
-                "title": "Connect to the correct account",
-                "text": "This section is only for administrators. If assigned to manage a Facebook source, open its connection settings in the administration area and follow the displayed status and permissions; ordinary users do not need this step."
+                "title": "Separate it from sign-in",
+                "text": "Facebook connection or content import is an administrative tool where authorized. It is not a Facebook sign-in instruction for the native app. Regular users do not need it."
               },
               {
-                "title": "Monitor import log",
-                "text": "After connecting, check the import log for imported items, review requirements or errors. Connecting a source does not mean every post has been published in the library."
-              },
-              {
-                "title": "Reconnect when needed",
-                "text": "If reconnection or additional permission is requested, follow the instructions in the administration area. Do not use another account or an alternative extraction method to bypass permissions."
+                "title": "Use the authorized interface",
+                "text": "Follow the actions and permissions actually shown in administration. Do not paste tokens or login details into comments or community support. Contact the administrator if the tool is unavailable."
               }
             ]
-          },
-          {
-            "type": "callout",
-            "tone": "warning",
-            "title": "Only perform these steps with administrator access",
-            "text": "Connection and import depend on account permissions, the configured source and service availability. If unavailable, leave the data unchanged and contact the administrator."
           }
         ]
       },
       {
         "id": "dang-nhap-va-dong-bo",
-        "title": "Login and sync",
+        "title": "Sign in and keep supported data across devices",
         "keywords": [
           "google login",
           "practice history",
           "notes",
-          "reading progress"
+          "reading progress",
+          "Đăng nhập và giữ dữ liệu giữa các thiết bị",
+          "Sign in and keep supported data across devices"
         ],
         "blocks": [
           {
-            "type": "paragraph",
-            "text": "Open Personal → Account & Login and sign in with Google. iOS also supports Sign in with Apple. Eligible practice data, reading progress and saved quotes can sync. Providers are not automatically linked by email."
-          },
-          {
-            "type": "callout",
-            "tone": "warning",
-            "title": "Data only on device",
-            "text": "Before changing devices or clearing data, connect to the network and check save/sync status. Sutra drafts require Save to account; PDFs, offline audio and unsuccessfully saved data may still exist only on the device. Signing in elsewhere does not automatically download offline files again."
+            "type": "steps",
+            "items": [
+              {
+                "title": "Sign in when needed",
+                "text": "Public reading, listening and many practice tools are available as a guest. Open Profile → Account and use an available provider. Native apps offer Google or Apple as applicable; do not expect a Facebook button where none is shown."
+              },
+              {
+                "title": "Use the same account",
+                "text": "On another device, choose the same provider and account. Check the profile and synchronization status. Signing in does not prove every local draft, private journal or downloaded file from the old device was uploaded."
+              },
+              {
+                "title": "If reauthentication is needed",
+                "text": "Restore the connection and retry as instructed. Preserve unfinished local data before clearing anything. Signing out and deleting an account are different actions; read their confirmations."
+              }
+            ]
           }
         ]
-      },
-    ],
-  },
+      }
+    ]
+  }
 ];
 
 export const enDoctrinalGuideSections: GuideSection[] = [

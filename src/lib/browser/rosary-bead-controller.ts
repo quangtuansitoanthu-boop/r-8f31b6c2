@@ -145,17 +145,17 @@ export function createRosaryBeadController(
   }
 
   function onKeyDown(event: KeyboardEvent): void {
-    if (animating) return;
     if (event.target instanceof Element && event.target !== element && event.target.closest('button,input,select,textarea')) return;
-    if ((event.key === 'Enter' || event.key === ' ') && event.target === element) {
+    const tap = (event.key === 'Enter' || event.key === ' ') && event.target === element;
+    if (!tap && event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    if (event.repeat || animating) return;
+    if (tap) {
       animateResolution(resolveRosaryGesture(options.getDirection(), 0, 0, BEAD_GAP, true));
-      event.preventDefault();
       return;
     }
-    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
     const offset = event.key === 'ArrowDown' ? BEAD_GAP : -BEAD_GAP;
     animateResolution(resolveRosaryGesture(options.getDirection(), offset, 0, BEAD_GAP, false));
-    event.preventDefault();
   }
 
   // Native HTML dragging cancels the pointer stream before a bead can be released.

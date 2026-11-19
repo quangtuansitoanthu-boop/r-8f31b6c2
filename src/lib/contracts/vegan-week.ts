@@ -255,7 +255,8 @@ export function rotatingVeganDays(catalog: OfflineRecipe[], week: string, region
       if (slot[day].minutes <= limit) continue;
       const candidates = pool.filter(item => (item.group === 'noodles' || item.group === 'rice') && item.minutes <= limit);
       // Keep the fastest substitutes for days that still need a 20-minute option.
-      const replacement = candidates.sort(byPreparationTime).at(-1);
+      candidates.sort(byPreparationTime);
+      const replacement = candidates[candidates.length - 1];
       if (replacement) {
         pool[pool.indexOf(replacement)] = slot[day];
         slot[day] = replacement;

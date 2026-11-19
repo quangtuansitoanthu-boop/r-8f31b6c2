@@ -148,6 +148,36 @@ describe('browser session store', () => {
     expect(store.value.authenticated).toBe(false);
     expect(fetcher).toHaveBeenCalledOnce();
   });
+  it.each(['headers', 'body'] as const)('releases a native cold start when the session %s stalls', async phase => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(isNativeApp).mockReturnValue(true);
+      vi.stubGlobal('navigator', { onLine: true });
+      const remembered = phase === 'body' ? JSON.stringify(authenticatedSession) : null;
+      vi.stubGlobal('localStorage', {
+        getItem: (key: string) => key === 'tutam_native_session' ? remembered : null,
+        setItem: vi.fn(), removeItem: vi.fn(),
+      });
+      const fetcher = vi.fn().mockImplementationOnce((_input: RequestInfo, init: RequestInit) => {
+        const waitForAbort = () => new Promise<never>((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+        });
+        if (phase === 'headers') return waitForAbort();
+        return Promise.resolve({ ok: true, status: 200, headers: new Headers(), json: waitForAbort });
+      }).mockResolvedValueOnce(Response.json(authenticatedSession));
+      vi.stubGlobal('fetch', fetcher);
+      const store = createSessionStore({ authenticated: false, user: null, csrfToken: null, expiresAt: null });
+      const first = store.refresh();
+      await vi.advanceTimersByTimeAsync(12_001);
+      expect(store.initialResolutionComplete).toBe(true);
+      expect((await first).authenticated).toBe(phase === 'body');
+      expect(store.verification).toBe(phase === 'body' ? 'cached' : 'anonymous');
+      await store.refresh();
+      expect(store.verification).toBe('verified');
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    } finally { vi.useRealTimers(); }
+  });
+
   it('applies native login reactively and announces the new principal', () => {
     vi.mocked(isNativeApp).mockReturnValue(true);
     const setItem = vi.fn();

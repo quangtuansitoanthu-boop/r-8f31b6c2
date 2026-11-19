@@ -140,6 +140,7 @@
   let readingClient:ReturnType<typeof createReadingActivityClient>|null=null;
   let activitySession=$state<ReadingActivitySession>(untrack(()=>normalizeActivitySession(session)));
   let progressRevision=0;
+  let returnedToContentsGeneration: number | null = null;
   let progressLoadSettled=false;
   let progressReadyForPrincipal=false;
   const principalGuard=createPrivateReadingPrincipalGuard(untrack(()=>normalizeActivitySession(session)));
@@ -661,6 +662,7 @@
     stopAutoScroll();
     if(!keepSpeechRequest)stopTts();
     const prevIdx = chapterIndex;
+    if (index === null && prevIdx !== null) returnedToContentsGeneration = generation;
     chapterIndex=index;
     if(index!==null){
       lastReadChapterIndex=index;
@@ -707,7 +709,7 @@
     }
     if(lightboxSource){closeLightbox();return}
     if(chapterIndex!==null){
-      void openChapter(null,0,articleGeneration,true,false);
+      void openChapter(null);
       return;
     }
     close();
@@ -740,7 +742,7 @@
       quoteNavigationState = 'fallback';
       notify(target.status === 'missing' ? copy.targetMissing : target.status === 'orphaned' ? copy.targetOrphaned : copy.targetInvalid);
     }
-    if(chapters.length > 0 && chapterIndex !== null){
+    if(chapters.length > 0 && (chapterIndex !== null || returnedToContentsGeneration === generation)){
       if(generation===articleGeneration)progressReadyForPrincipal=true;
       return;
     }

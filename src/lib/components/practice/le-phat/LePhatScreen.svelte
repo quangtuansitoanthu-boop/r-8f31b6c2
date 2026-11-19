@@ -429,7 +429,14 @@
   }
 
   function handleKey(e: KeyboardEvent) {
-    if (!open || e.repeat || profileBuddha) return;
+    if (!open || profileBuddha) return;
+    if (e.repeat) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target instanceof Element
+        && e.target.closest('.lp-fullscreen-portrait-wrap, .lp-fullscreen-counter')) {
+        e.preventDefault();
+      }
+      return;
+    }
     if (showConfirmModal) {
       if (e.key === 'Escape') handleCancelConfirm();
       // Enter trên nút phải giữ hành động của nút đang được chọn.
@@ -446,11 +453,9 @@
       return;
     }
 
-    if (e.repeat && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); return; }
     const tag = (e.target as HTMLElement)?.tagName;
     if (['SELECT', 'BUTTON', 'INPUT', 'TEXTAREA'].includes(tag)) return;
 
-    if (e.repeat) return;
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (isPracticing) handleProstrate();

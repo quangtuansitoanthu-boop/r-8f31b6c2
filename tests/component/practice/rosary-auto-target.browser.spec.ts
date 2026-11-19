@@ -5,7 +5,6 @@ import RosaryScreen from '$lib/components/practice/rosary/RosaryScreen.svelte';
 
 vi.mock('$lib/stores/locale.svelte', () => ({ getLocaleContext: () => ({ current: 'vi' }) }));
 vi.mock('$lib/browser/rosary-water', () => ({ createRosaryWater: () => ({ destroy() {}, setEnabled() {}, pulse() {}, invalidate() {} }) }));
-vi.mock('$lib/browser/rosary-bead-controller', () => ({ createRosaryBeadController: () => ({ destroy() {}, roll() {} }) }));
 vi.mock('$lib/browser/modal-dialog', () => ({ modalDialog: (node: HTMLDialogElement) => { node.open = true; return { destroy() { node.open = false; } }; } }));
 
 let component: ReturnType<typeof RosaryScreen> | undefined;
@@ -38,6 +37,26 @@ async function mountScreen(initialAuto?: { count: number; target: number; playin
   await settle();
   return { state, onAutoStart, onAutoPause, onAutoResume, onAutoStop, onDelta };
 }
+
+it.each([
+  ['.tt-rosary__swipe', 'ArrowDown'],
+  ['.tt-rosary__swipe', 'Enter'],
+  ['.tt-rosary__count-button', 'Enter'],
+])('counts one manual recitation for a held key on %s (%s)', async (selector, key) => {
+  vi.useFakeTimers();
+  try {
+    const { onDelta } = await mountScreen();
+    const target = document.querySelector<HTMLElement>(selector)!;
+    target.focus();
+    for (const repeat of [false, true, true]) {
+      const down = new KeyboardEvent('keydown', { key, repeat, bubbles: true, cancelable: true });
+      // jsdom requires an explicit click for the browser's uncancelled button activation.
+      if (target.dispatchEvent(down) && target instanceof HTMLButtonElement) target.click();
+      vi.advanceTimersByTime(500);
+    }
+    expect(onDelta).toHaveBeenCalledExactlyOnceWith(1);
+  } finally { vi.useRealTimers(); }
+});
 async function start() {
   const { onAutoStart } = await mountScreen();
   document.querySelector<HTMLButtonElement>('.tt-rosary__options-bar button')!.click(); await settle();

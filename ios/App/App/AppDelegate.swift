@@ -7,7 +7,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
+           openHomeShortcut(shortcut, in: application) {
+            // Capacitor giữ URL khởi động. UIKit không cần gửi lại cùng lối tắt.
+            return false
+        }
         return true
+    }
+
+    func application(_ application: UIApplication, performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        completionHandler(openHomeShortcut(shortcutItem, in: application))
+    }
+
+    private func openHomeShortcut(_ shortcut: UIApplicationShortcutItem, in application: UIApplication) -> Bool {
+        let path: String
+        switch shortcut.type {
+        case "widgets": path = "/huong-dan?phan=ung-dung#widget-man-hinh-chinh"
+        case "scriptures": path = "/kinh-sach"
+        case "practice": path = "/tu-tap"
+        case "talks": path = "/phap-thoai"
+        default: return false
+        }
+        guard let url = URL(string: "vn.quangtu.tutam://\(path)") else { return false }
+        return ApplicationDelegateProxy.shared.application(application, open: url)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

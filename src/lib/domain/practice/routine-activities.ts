@@ -52,7 +52,7 @@ export function routineStepActivity(step: RoutineStep): { mode: RoutineMode; art
 }
 
 export function isRoutineReadingMode(mode: RoutineMode): mode is RoutineReadingMode {
-  return Object.hasOwn(ROUTINE_READING_CATEGORIES, mode);
+  return Object.prototype.hasOwnProperty.call(ROUTINE_READING_CATEGORIES, mode);
 }
 
 export function isRoutineTextStep(mode: RoutineMode): boolean {

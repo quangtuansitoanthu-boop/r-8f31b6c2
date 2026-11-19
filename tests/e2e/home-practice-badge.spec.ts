@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsMember } from './runtime-helpers';
+import { loginAsMember, settleClient } from './runtime-helpers';
 
 const cases = [
   { name: 'guest', authenticated: false, days: 0, badges: [], title: '' },
@@ -36,6 +36,7 @@ for (const scenario of cases) {
     });
 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await settleClient(page);
     const header = page.locator('.home-greeting-header');
     await expect(header.locator('.greeting-name')).toHaveText(authenticated ? 'Thành viên E2E' : 'Quý Phật Tử');
     if (authenticated) await expect.poll(() => progressReads).toBe(1);
@@ -95,6 +96,12 @@ for (const scenario of cases) {
       const account = page.locator('.cn-big-tab-card').filter({ has: page.getByRole('heading', { name: 'Tài khoản', exact: true }) });
       await account.click();
       await expect(page.locator('.cn-practice-rank')).toHaveText(title);
+      const accountIcon = page.locator('.cn-avatar-award .practice-badge-icon');
+      await expect(accountIcon).toHaveAttribute('data-milestone', 'streak-7');
+      expect(await accountIcon.evaluate(element => {
+        const { filter, backgroundImage, backgroundPosition } = getComputedStyle(element, '::before');
+        return { filter, backgroundImage, backgroundPosition };
+      })).toEqual(image);
       expect(progressReads).toBe(1);
 
       await page.setViewportSize({ width: 375, height: 844 });

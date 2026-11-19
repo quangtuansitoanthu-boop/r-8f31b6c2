@@ -10,6 +10,7 @@ import {
 } from './offline-pdf-database';
 import { isOnlineOnlyBook } from '$lib/domain/online-only-policy';
 import { isContentAvailable } from './ios-content-policy';
+import { assertCompleteDownload } from './download-integrity';
 import { resolvePublicUpdateUrl } from './native-api';
 
 export const OFFLINE_PDF_MAX_BYTES = 80 * 1024 * 1024;
@@ -234,6 +235,7 @@ async function performDownload(
 
   throwIfAborted(options.signal);
   if (bytes.byteLength > quota.hardLimitBytes) throw new Error('offline_pdf_too_large');
+  assertCompleteDownload(response, bytes.byteLength, 'offline_pdf_invalid_content');
   assertPdfSignature(bytes);
   const contentType = 'application/pdf';
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: contentType });
@@ -319,6 +321,7 @@ export async function readPdfOfflineState(
   input: OfflinePdfDownloadInput,
   reader: typeof getOfflinePdf = getOfflinePdf,
 ): Promise<OfflinePdfRecord | null> {
+  if (!isContentAvailable({ id: input.documentId, title: input.title })) return null;
   return reader(input.principalId, input.documentId);
 }
 

@@ -7,7 +7,8 @@ export function createVeganPreferencesRepository(env: CloudflareEnvLike) {
   return {
     get(ownerId: string) {
       return env.DB.prepare(`
-        SELECT * FROM vegan_menu_preferences WHERE owner_id = ?
+        SELECT owner_id, exclude_five_pungents, difficulty_max, dietary_notes, updated_at
+        FROM vegan_menu_preferences WHERE owner_id = ?
       `).bind(ownerId).first<VeganPreferencesRow>();
     },
 
@@ -38,7 +39,8 @@ export function createVeganStreakRepository(env: CloudflareEnvLike) {
   return {
     get(ownerId: string) {
       return env.DB.prepare(`
-        SELECT * FROM vegan_streaks WHERE owner_id = ?
+        SELECT owner_id, current_streak, longest_streak, last_vegan_date, total_vegan_days, updated_at
+        FROM vegan_streaks WHERE owner_id = ?
       `).bind(ownerId).first<VeganStreakRow>();
     },
 

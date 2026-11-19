@@ -55,6 +55,16 @@ it('applies CORS to the specific public stats route without adding session work'
   expect(mocks.sealed).toHaveBeenCalledTimes(1);
 });
 
+it.each(['capacitor://localhost', 'https://localhost'])('serves the store version policy to %s without migration or session queries', async origin => {
+  const response = await handle({ event: event('/api/app-version', 'GET', origin),
+    resolve: async () => Response.json({ minVersion: '1.0.0', latestBuild: 'hash' }) });
+  expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+  expect(response.headers.get('x-request-id')).toBeTruthy();
+  expect(await response.json()).toEqual({ minVersion: '1.0.0', latestBuild: 'hash' });
+  expect(mocks.session).not.toHaveBeenCalled();
+  expect(mocks.sealed).not.toHaveBeenCalled();
+});
+
 it.each(['https://untrusted.example', 'null'])('does not grant credentialed API response access to untrusted origin %s', async origin => {
   const response = await handle({ event: event('/api/auth/native-verify', 'POST', origin),
     resolve: async () => new Response('denied', { status: 403 }) });

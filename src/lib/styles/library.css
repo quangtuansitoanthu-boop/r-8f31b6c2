@@ -24,8 +24,9 @@
 .search-input { width:100%; min-height:48px; padding:12px 118px 12px 40px; border:1.5px solid var(--border2); border-radius:22px; outline:none; background:var(--bg); color:var(--text); font-family:inherit; font-size:16px; line-height:normal; transition:.2s; }
 .search-input:focus { border-color:var(--gold); background:var(--white); }
 .search-input::placeholder { color:var(--muted); }
-.search-clear-btn { position:absolute; right:76px; top:50%; transform:translateY(-50%); z-index:2; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:0; border-radius:50%; background:var(--border2); color:var(--muted); font-size:11px; cursor:pointer; padding:0; line-height:1; }
-.search-clear-btn:hover { background:var(--gold); color:#fff; }
+.search-clear-btn { position:absolute; right:76px; top:50%; transform:translateY(-50%); z-index:2; display:grid; place-items:center; width:var(--touch-target-size); height:var(--touch-target-size); border:0; border-radius:var(--radius-feature); background:transparent; color:var(--muted); cursor:pointer; padding:0; }
+.search-clear-btn span { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:var(--border2); font-size:11px; line-height:1; }
+.search-clear-btn:is(:hover,:focus-visible) span { background:var(--gold); color:var(--on-gold); }
 .search-wrap .presence-chip { position:absolute; top:50%; right:6px; transform:translateY(-50%); pointer-events:none; }
 .count-badge { margin-left:auto; color:var(--muted); font-size:var(--font-size-meta); white-space:nowrap; }
 

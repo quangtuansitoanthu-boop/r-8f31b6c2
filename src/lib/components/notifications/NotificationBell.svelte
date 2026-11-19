@@ -289,8 +289,8 @@
         badge: isEn ? 'Abstinence Day' : 'Kiêng Hành Dâm',
         title: isEn ? '⚠️ Abstinence Day Reminder' : '⚠️ Nhắc nhở: Ngày Kiêng Hành Dâm',
         message: isEn
-          ? `Today is an abstinence day according to the Shou Kang Bao Jian calendar. Reason: "${lunarInfo.kiengDam.reason}"${lunarInfo.kiengDam.harm ? `, risk: "${lunarInfo.kiengDam.harm}"` : ''}.`
-          : `Hôm nay là ngày kiêng thủ dâm, hành dâm (kể cả vợ chồng) theo Thọ Khang Bảo Giám. Lý do: "${lunarInfo.kiengDam.reason}"${lunarInfo.kiengDam.harm ? `, tác hại: "${lunarInfo.kiengDam.harm}"` : ''}.`,
+          ? `Today is an abstinence day according to the book Shou Kang Bao Jian. Reason: "${lunarInfo.kiengDam.reason}"${lunarInfo.kiengDam.harm ? `, risk: "${lunarInfo.kiengDam.harm}"` : ''}.`
+          : `Hôm nay là ngày kiêng thủ dâm, hành dâm (kể cả vợ chồng) theo sách Thọ Khang Bảo Giám. Lý do: "${lunarInfo.kiengDam.reason}"${lunarInfo.kiengDam.harm ? `, tác hại: "${lunarInfo.kiengDam.harm}"` : ''}.`,
         timestamp: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0).toISOString(),
         level: 'warning',
         link: '/tu-tap'

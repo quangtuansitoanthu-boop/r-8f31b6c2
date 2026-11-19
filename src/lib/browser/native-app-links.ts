@@ -5,6 +5,8 @@ import { addNotificationActionListener } from './native-notifications';
 import { CALENDAR_WIDGET_DATE_EVENT, parseCalendarWidgetDate } from './calendar-widget-link';
 import { isPracticeWidgetTarget, PRACTICE_WIDGET_NAVIGATE_EVENT, PRACTICE_WIDGET_OPEN_EVENT } from './practice-widget-link';
 
+export const WIDGET_GUIDE_OPEN_EVENT = 'quangtu:widget-guide-open';
+
 export function resolveNativeAppPath(value: unknown): string | null {
   if (typeof value !== 'string' || !value || /[\u0000-\u0020\\]/u.test(value)) return null;
   try {
@@ -71,6 +73,9 @@ export function startNativeAppLinks(navigate: (path: string) => Promise<unknown>
       if (isPracticeWidgetTarget(target)) {
         // Đóng công cụ không nhất thiết đổi URL; chạm lại widget phải mở lại đúng công cụ.
         window.dispatchEvent(new CustomEvent(PRACTICE_WIDGET_OPEN_EVENT, { detail: { path } }));
+      }
+      if (target.pathname === '/huong-dan' && target.hash === '#widget-man-hinh-chinh') {
+        window.dispatchEvent(new Event(WIDGET_GUIDE_OPEN_EVENT));
       }
       return;
     }

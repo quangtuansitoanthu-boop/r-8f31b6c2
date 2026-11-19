@@ -40,15 +40,18 @@ class FakeAudio extends EventTarget {
   muted = false;
   duration = 300;
   currentTime = 0;
+  paused = true;
   error: { code: number } | null = null;
 
   async play(): Promise<void> {
+    this.paused = false;
     this.dispatchEvent(new Event('loadedmetadata'));
     this.dispatchEvent(new Event('play'));
     this.dispatchEvent(new Event('playing'));
   }
 
   pause(): void {
+    this.paused = true;
     this.dispatchEvent(new Event('pause'));
   }
 
@@ -128,6 +131,122 @@ describe('AudioPlayerController resume and retry lifecycle', () => {
     vi.clearAllMocks();
     keyboardHandler = undefined;
     installBrowserStubs();
+  });
+
+  const videoAlbum = { id: 'video', title: 'Video', description: '', tracks: [
+    { title: 'First', url: '/first.mp4', media_type: 'video' as const },
+    { title: 'Second', url: '/second.mp4', media_type: 'video' as const },
+  ] };
+
+  it('lets a visible viewer hold the first play synchronously and resumes only after the last frame hold releases', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const controller = new AudioPlayerController();
+    try {
+      await controller.load(videoAlbum);
+      const play = vi.spyOn(controller.audio, 'play');
+      const pause = vi.spyOn(controller.audio, 'pause');
+      let frame!: () => void;
+      controller.audio.addEventListener('videoplaybackintent', () => {
+        if (controller.videoPlaybackRequested) frame = controller.holdVideoPlayback('/first.mp4');
+      }, { once: true });
+      await controller.play();
+      const second = controller.holdVideoPlayback('/first.mp4');
+      expect(controller.snapshot.playing).toBe(true);
+      expect(play).not.toHaveBeenCalled();
+      expect(pause).not.toHaveBeenCalled();
+      frame(); frame();
+      expect(play).not.toHaveBeenCalled();
+      second(); second();
+      expect(play).toHaveBeenCalledTimes(1);
+    } finally { controller.destroy(); }
+  });
+
+  it('pauses actual playback during a visible stall and keeps a manual pause when the frame arrives', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const { writeStoredPlayerState } = await import('$lib/browser/audio-sync');
+    const controller = new AudioPlayerController();
+    try {
+      await controller.playTrack(videoAlbum);
+      const play = vi.spyOn(controller.audio, 'play');
+      const pause = vi.spyOn(controller.audio, 'pause');
+      vi.mocked(writeStoredPlayerState).mockClear();
+      const release = controller.holdVideoPlayback('/first.mp4');
+      expect(pause).toHaveBeenCalledTimes(1);
+      expect(controller.snapshot.playing).toBe(true);
+      expect(writeStoredPlayerState).not.toHaveBeenCalled();
+      controller.pause();
+      expect(controller.videoPlaybackRequested).toBe(false);
+      expect(controller.snapshot.playing).toBe(false);
+      release();
+      expect(play).not.toHaveBeenCalled();
+    } finally { controller.destroy(); }
+  });
+
+  it('releases foreground holds on screen lock and rejects leases from another track or principal', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const controller = new AudioPlayerController();
+    try {
+      await controller.playTrack(videoAlbum);
+      const play = vi.spyOn(controller.audio, 'play');
+      const delayed = controller.holdVideoPlayback('/first.mp4');
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(play).toHaveBeenCalledTimes(1);
+      delayed();
+      expect(play).toHaveBeenCalledTimes(1);
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+      const old = controller.holdVideoPlayback('/first.mp4');
+      await controller.load(videoAlbum, 1);
+      old();
+      expect(play).toHaveBeenCalledTimes(1);
+      const wrong = controller.holdVideoPlayback('/first.mp4');
+      await controller.play();
+      expect(play).toHaveBeenCalledTimes(2);
+      wrong();
+      const second = controller.holdVideoPlayback('/second.mp4');
+      controller.setSession({ authenticated: true, csrfToken: 'new', user: { id: 'new' } });
+      second();
+      expect(play).toHaveBeenCalledTimes(2);
+    } finally { controller.destroy(); }
+  });
+
+  it('reacquires a frame hold when the same video is selected again before its first frame', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    const controller = new AudioPlayerController();
+    try {
+      const play = vi.spyOn(controller.audio, 'play');
+      let release: (() => void) | undefined;
+      controller.audio.addEventListener('videoplaybackintent', () => {
+        if (controller.videoPlaybackRequested) release ??= controller.holdVideoPlayback('/first.mp4');
+        else { release?.(); release = undefined; }
+      });
+      await controller.playTrack(videoAlbum);
+      const old = release!;
+      await controller.playTrack(videoAlbum);
+      old();
+      expect(play).not.toHaveBeenCalled();
+      release!();
+      expect(play).toHaveBeenCalledTimes(1);
+    } finally { controller.destroy(); }
+  });
+
+  it('counts actual listening time around a stalled video and excludes its frozen picture', async () => {
+    const { AudioPlayerController } = await import('$lib/browser/audio-player-controller');
+    let now = 0;
+    const controller = new AudioPlayerController({ authenticated: true, csrfToken: 'csrf', user: { id: 'video-listener' } }, { nowMs: () => now });
+    try {
+      await controller.ready;
+      await controller.playTrack(videoAlbum);
+      now = 30_000;
+      const release = controller.holdVideoPlayback('/first.mp4');
+      controller.audio.dispatchEvent(new Event('playing'));
+      now = 90_000;
+      release();
+      now = 100_000;
+      controller.close();
+      const operations = JSON.parse(localStorage.getItem(principalStorageKey('video-listener', PRACTICE_SESSION_OUTBOX_KEY)) ?? '[]');
+      expect(operations.at(-1)?.payload.evidenceSummary).toMatchObject({ clientElapsedSeconds: 100, playedSeconds: 40 });
+    } finally { controller.destroy(); }
   });
 
   it('continues a public track from its position when the API and Archive fail', async () => {

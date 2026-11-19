@@ -13,6 +13,37 @@ const book = { kind: 'article', mode: 'full', version: 'a'.repeat(64), row: { id
 const talk = { kind: 'talk', mode: 'shell', version: 'b'.repeat(64), row: { id: 'talk', dien_gia: 'Latest speaker', tracks: [] } };
 const read = (root: string, file: string) => JSON.parse(readFileSync(path.join(root, file), 'utf8'));
 
+it('bundles the approved Địa Tạng album shell on repeated sync without fetching its video files', async () => {
+  const root = temporary();
+  const cover = 'covers/kinh-dia-tang-vu-tien-dung.webp';
+  mkdirSync(path.join(root, 'static/covers'), { recursive: true });
+  writeFileSync(path.join(root, 'static', cover), 'packaged cover');
+  const title = 'KINH ĐỊA TẠNG BỒ TÁT BỔN NGUYỆN';
+  const row = {
+    id: 'pt_drive_0cbcd85f1caa5411a50fb3edf38156d3', tieu_de: 'VIDEO AI ' + title,
+    dien_gia: 'Vũ Tiến Dũng (Made AI)', anh_dai_dien: 'https://quangtu.vn/' + cover + '#pos=49%25%2024%25',
+    tracks: [{ title: 'Phẩm 8 (Phần 2)', media_type: 'video', url: '/api/audio/drive/test-id' }],
+  };
+  const fetcher = vi.fn(async (url: URL) => {
+    expect(url.pathname).toBe('/api/content-updates');
+    return json({ items: [{ ...talk, row }], articlesNext: null, talksNext: null, chapterIndexVersion: 1 });
+  });
+  for (let build = 0; build < 2; build++) {
+    await syncOfflineContent({ root, fetcher });
+    const expected = [{ ...row, tieu_de: title, dien_gia: 'Vũ Tiến Dũng', anh_dai_dien: cover,
+      tracks: [{ ...row.tracks[0], title: 'PHẨM 8: CÁC VUA DIÊM LA KHEN NGỢI (PHẦN 2)' }] }];
+    expect(read(root, 'static/offline-data/talks.json')).toEqual(expected);
+    expect(read(root, 'src/lib/data/offline-talks.json')).toEqual(expected);
+  }
+  row.tieu_de = 'Tên đã cập nhật';
+  row.dien_gia = 'Diễn giả đã cập nhật';
+  row.anh_dai_dien = cover + '#pos=50%25%2050%25';
+  row.tracks[0].title = 'Phẩm 8: Tên phẩm đã biên tập (Phần 2)';
+  await syncOfflineContent({ root, fetcher });
+  expect(read(root, 'static/offline-data/talks.json')).toEqual([row]);
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
 it('uses a scoped index for bundled text and detects a deleted chapter without a changed book version', async () => {
   const root = temporary();
   const other = { ...chapter, id: 'c2', so_thu_tu: 1 };
@@ -33,6 +64,27 @@ it('uses a scoped index for bundled text and detects a deleted chapter without a
   rows = [chapter];
   expect((await syncOfflineContent({ root, fetcher })).requests).toBe(3);
   expect(read(root, 'static/offline-data/chapters/book.json')).toEqual([chapter]);
+});
+
+it('retains the bundled Niệm Phật Thập Yếu cover across syncs and keeps newly edited artwork', async () => {
+  const root = temporary();
+  const cover = 'covers/niem-phat-thap-yeu-phap-thoai.webp';
+  mkdirSync(path.join(root, 'static/covers'), { recursive: true });
+  writeFileSync(path.join(root, 'static', cover), 'packaged cover');
+  const row = {
+    id: 'pt_1781800562343',
+    anh_dai_dien: 'https://i0.wp.com/tinhtan.org/wp-content/uploads/2019/08/HT.-Th%C3%ADch-H%E1%BA%A3i-Quang.jpg?ssl=1#pos=53%25%2014%25',
+  };
+  const fetcher = vi.fn(async (url: URL) => {
+    expect(url.pathname).toBe('/api/content-updates');
+    return json({ items: [{ ...talk, row }], articlesNext: null, talksNext: null, chapterIndexVersion: 1 });
+  });
+  await syncOfflineContent({ root, fetcher });
+  expect(read(root, 'static/offline-data/talks.json')).toEqual([{ ...row, anh_dai_dien: cover + '#pos=53%25%2014%25' }]);
+  row.anh_dai_dien = 'https://example.test/new-artwork.webp';
+  await syncOfflineContent({ root, fetcher });
+  expect(read(root, 'static/offline-data/talks.json')).toEqual([row]);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 it('syncs complete web content, shares catalog sources and only re-reads changed chapters', async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import Harness from './pdf-book-format-harness.svelte';
+import type { ReadingProgressRecord } from '$lib/browser/reading-activity-client';
 const io = vi.hoisted(() => ({ preserved: vi.fn(), fetch: vi.fn(), progress: vi.fn(), enqueue: vi.fn(), schedule: vi.fn() }));
 vi.mock('$lib/browser/pdf-book-transition', () => ({ hasPreservedOfflinePdf: io.preserved }));
 vi.mock('$lib/components/reader/PdfCanvasReader.svelte', async () => ({ default: (await import('./pdf-book-format-placeholder.svelte')).default }));
@@ -81,6 +82,45 @@ it('does not write reading progress for notice-collapse clamping, while retainin
 it('opens the retained current-owner document without a chapter or text-progress fetch', async () => {
  component = mount(Harness, { target: document.body }); await settle(); await settle();
  expect(document.querySelector('[data-legacy-pdf]')).not.toBeNull(); expect(io.fetch.mock.calls.filter(([url]) => url.includes('/chapters'))).toHaveLength(0); expect(io.progress).not.toHaveBeenCalled();
+});
+it('stays in the table of contents after returning from a chapter and refreshing the session', async () => {
+ window.history.replaceState({ keep: true }, '', '/kinh-sach?article=converted-book');
+ io.preserved.mockResolvedValue(false);
+ component = mount(Harness, { target: document.body });
+ await settle(); await settle();
+ document.querySelectorAll<HTMLButtonElement>('.toc-item')[1].click();
+ await settle();
+ expect(new URL(window.location.href).searchParams.get('chap')).toBe('2');
+ expect(document.body.textContent).toContain('SECOND');
+
+ document.querySelector<HTMLButtonElement>('.reader-back')!.click();
+ await settle();
+ expect(document.querySelector('.toc')).not.toBeNull();
+ window.dispatchEvent(new CustomEvent('quangtu:session-changed', { detail: { authenticated: true, user: { id: 'a' } } }));
+ await settle(); await settle();
+ expect(document.querySelector('.toc')).not.toBeNull();
+ const params = new URL(window.location.href).searchParams;
+ expect(params.get('article')).toBe('converted-book');
+ expect(params.has('chap')).toBe(false);
+ expect(window.history.state.keep).toBe(true);
+});
+it('consumes the initial continue-reading request once even when progress is refreshed', async () => {
+ const progress: ReadingProgressRecord = {
+   contentId: 'converted-book', contentKind: 'book', revision: 3, epoch: 1, deviceId: 'reader-test', deviceSequence: 1,
+   percent: 50, total: 2, contentVersion: null, clientUpdatedAt: null, serverUpdatedAt: null,
+   position: { chapterId: 'c2', chapterIdx: 1, scrollTop: 0 },
+ };
+ io.preserved.mockResolvedValue(false);
+ io.progress.mockResolvedValue(progress);
+ component = mount(Harness, { target: document.body, props: { initialProgress: progress } });
+ await settle(); await settle();
+ expect(document.body.textContent).toContain('SECOND');
+ document.querySelector<HTMLButtonElement>('.reader-back')!.click();
+ await settle();
+ expect(document.querySelector('.toc')).not.toBeNull();
+ window.dispatchEvent(new CustomEvent('quangtu:session-changed', { detail: { authenticated: true, user: { id: 'a' } } }));
+ await settle(); await settle();
+ expect(document.querySelector('.toc')).not.toBeNull();
 });
 it('switches to text after acknowledged cleanup and reuses the existing reader owner', async () => {
  component = mount(Harness, { target: document.body }); await settle(); io.preserved.mockResolvedValue(false);

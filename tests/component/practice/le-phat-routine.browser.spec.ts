@@ -77,3 +77,23 @@ it('keeps standalone prostrations manual and does not trigger routine completion
   expect(document.querySelector('.lp-fullscreen-counter')?.textContent).toContain('1');
   expect(complete).not.toHaveBeenCalled();
 });
+
+it('blocks held Enter from repeatedly activating the focused bow counter', async () => {
+  component = mount(LePhatScreen, { target: document.body, props: {
+    open: true, onExitRequest: vi.fn(),
+  } });
+  await settle();
+  const start = [...document.querySelectorAll<HTMLButtonElement>('button')]
+    .find(button => button.textContent?.includes(translations.vi.practice.startBowing))!;
+  start.click();
+  await settle();
+  const counter = document.querySelector<HTMLButtonElement>('.lp-fullscreen-counter')!;
+  counter.focus();
+  // jsdom does not synthesize a button's native click after an uncancelled Enter keydown.
+  for (const repeat of [false, true, true]) {
+    const key = new KeyboardEvent('keydown', { key: 'Enter', repeat, bubbles: true, cancelable: true });
+    if (counter.dispatchEvent(key)) counter.click();
+  }
+  await settle();
+  expect(counter.querySelector('[aria-live]')?.textContent).toBe(`1 ${translations.vi.practice.bowsUnit}`);
+});

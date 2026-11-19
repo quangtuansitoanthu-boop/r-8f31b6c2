@@ -51,6 +51,41 @@
     </array>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>UIApplicationShortcutItems</key>
+    <array>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>widgets</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Widgets</string>
+        <key>UIApplicationShortcutItemIconFile</key>
+        <string>ShortcutWidgets</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>scriptures</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Scriptures</string>
+        <key>UIApplicationShortcutItemIconFile</key>
+        <string>ShortcutScriptures</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>practice</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Practice</string>
+        <key>UIApplicationShortcutItemIconFile</key>
+        <string>ShortcutPractice</string>
+      </dict>
+      <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>talks</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Dharma Talks</string>
+        <key>UIApplicationShortcutItemIconFile</key>
+        <string>ShortcutTalks</string>
+      </dict>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
       <dict>

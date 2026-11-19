@@ -3,6 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import missionImages from '../src/lib/data/mission-book-images.json' with { type: 'json' };
+import { completeDiaTangVideoTrackTitle, DIA_TANG_VIDEO_ALBUM_ID } from '../src/lib/domain/dia-tang-video-metadata.ts';
+import { bundledTalkCover } from '../src/lib/domain/talk-cover-overrides.ts';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const safeId = id => typeof id === 'string' && /^[\w.-]+$/u.test(id);
@@ -156,6 +158,15 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
   for (const [rows, field] of [[articles, 'anh_url'], [talks, 'anh_dai_dien']]) {
     for (const row of rows.values()) {
       if (!row[field]) continue;
+      if (field === 'anh_dai_dien') {
+        const cover = bundledTalkCover(row.id, row[field]);
+        if (cover !== row[field]) {
+          const file = cover.split('#')[0];
+          if (!fs.existsSync(path.join(root, 'static', file))) throw new Error(`Missing bundled talk cover: ${file}`);
+          row[field] = cover;
+          continue;
+        }
+      }
       if (row.id === 'tt_1783429280091_jcrra' || (typeof row[field] === 'string' && row[field].includes('tho-khang-bao-giam.jpg'))) {
         const hash = row[field].includes('#') ? '#' + row[field].split('#').slice(1).join('#') : '';
         row[field] = 'covers/tho-khang-bao-giam.jpg' + (hash || '#pos=54%25%206%25');
@@ -174,6 +185,21 @@ export async function syncOfflineContent({ root = process.cwd(), fetcher = fetch
         staged.set(`static/${relative}`, image);
       }
       row[field] = relative + new URL(row[field], 'https://media.quangtu.vn/').hash;
+    }
+  }
+  // The live catalog can still return the older labels and crop for this album.
+  // Match those exact values so a later editorial update survives the sync.
+  const diaTangVideo = talks.get(DIA_TANG_VIDEO_ALBUM_ID);
+  if (diaTangVideo) {
+    const title = 'KINH ĐỊA TẠNG BỒ TÁT BỔN NGUYỆN';
+    const cover = 'covers/kinh-dia-tang-vu-tien-dung.webp';
+    if (diaTangVideo.tieu_de === 'VIDEO AI ' + title) diaTangVideo.tieu_de = title;
+    if (diaTangVideo.dien_gia === 'Vũ Tiến Dũng (Made AI)') diaTangVideo.dien_gia = 'Vũ Tiến Dũng';
+    if (diaTangVideo.anh_dai_dien === cover + '#pos=49%25%2024%25') diaTangVideo.anh_dai_dien = cover;
+    if (Array.isArray(diaTangVideo.tracks)) {
+      diaTangVideo.tracks = diaTangVideo.tracks.map(track => typeof track?.title === 'string'
+        ? { ...track, title: completeDiaTangVideoTrackTitle(DIA_TANG_VIDEO_ALBUM_ID, track.title) }
+        : track);
     }
   }
   // Converted books ship their original illustrations with their complete text.

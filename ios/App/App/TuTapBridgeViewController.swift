@@ -92,6 +92,7 @@ class TuTapBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(AppSystemBarsPlugin())
         bridge?.registerPluginInstance(BuddhistCalendarWidgetPlugin())
         bridge?.registerPluginInstance(PracticeWidgetPlugin())
+        bridge?.registerPluginInstance(ExternalLinksPlugin())
 #if DEBUG
         installQAEventsIfRequested()
 #endif
@@ -201,6 +202,27 @@ class TuTapBridgeViewController: CAPBridgeViewController {
         ))
     }
 #endif
+}
+
+@objc(ExternalLinksPlugin)
+public class ExternalLinksPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "ExternalLinksPlugin"
+    public let jsName = "ExternalLinks"
+    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "openStore", returnType: CAPPluginReturnPromise)]
+
+    @objc public func openStore(_ call: CAPPluginCall) {
+        guard call.getString("url") == "https://apps.apple.com/app/id6829182305",
+              let url = URL(string: "itms-apps://apps.apple.com/app/id6829182305") else {
+            call.reject("Invalid App Store URL")
+            return
+        }
+        DispatchQueue.main.async {
+            UIApplication.shared.open(url, options: [:]) { opened in
+                if opened { call.resolve() }
+                else { call.reject("Unable to open App Store") }
+            }
+        }
+    }
 }
 
 @objc(PracticeHapticsPlugin)

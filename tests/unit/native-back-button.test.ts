@@ -53,7 +53,32 @@ it('commits one iOS Back from the edge and ignores canceled, vertical, and PDF g
     touch(page, 'touchend', 100, 10);
     touch(page, 'touchend', 100, 10);
     expect(navigateHome).toHaveBeenCalledExactlyOnceWith('/');
+    navigateHome.mockClear();
+    window.history.replaceState({ navigation: 1 }, '', '/?calendarDate=2026-11-18');
+    touch(page, 'touchstart', 5, 10);
+    touch(page, 'touchend', 100, 10);
+    expect(navigateHome).toHaveBeenCalledExactlyOnceWith('/', { replaceState: true });
+    expect(window.history.length).toBe(1);
   } finally { window.close(); }
+});
+
+it('clears the home query with one router replacement on Android Back', async () => {
+  const dom = new JSDOM('<main></main>', { url: 'https://localhost/?calendarDate=2026-11-18' });
+  let back: (event: { canGoBack: boolean }) => void = () => {};
+  Object.assign(dom.window, { Capacitor: { Plugins: { App: {
+    addListener: async (_event: string, handler: typeof back) => { back = handler; },
+  } } } });
+  vi.stubGlobal('window', dom.window);
+  vi.stubGlobal('document', dom.window.document);
+  vi.stubGlobal('CustomEvent', dom.window.CustomEvent);
+  vi.stubGlobal('PopStateEvent', dom.window.PopStateEvent);
+  try {
+    const { initializeNativeBackButton } = await import('$lib/browser/native-back-button');
+    await initializeNativeBackButton();
+    back({ canGoBack: false });
+    expect(navigateHome).toHaveBeenCalledExactlyOnceWith('/', { replaceState: true });
+    expect(dom.window.history.length).toBe(1);
+  } finally { dom.window.close(); }
 });
 
 it.each([false, true])('hardware Back closes only the visible notification popover before the practice underneath (hidden: %s)', async hidden => {

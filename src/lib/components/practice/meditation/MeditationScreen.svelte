@@ -141,7 +141,8 @@
           : t.phaseActive,
   );
   const timeLabel = $derived(
-    session.phase === 'preparing' ? preparationRemaining
+    session.phase === 'preparing' || (session.phase === 'paused' && preparationRemaining > 0)
+      ? preparationRemaining
       : session.phase === 'cancelled' ? session.activeElapsedMs / 1_000
         : activeRemaining,
   );

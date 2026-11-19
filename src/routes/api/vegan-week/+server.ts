@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
   if (week !== current && !(preload && week === next)) {
     return new Response(null, { status: 404 });
   }
-  const bucket = platform?.env.MEDIA as R2BucketLike | undefined;
+  const bucket = platform?.env?.MEDIA as R2BucketLike | undefined;
   const object = await bucket?.get(`vegan/weeks/v1/${week}.json`);
   if (!object?.body) return new Response(null, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   return new Response(object.body, {

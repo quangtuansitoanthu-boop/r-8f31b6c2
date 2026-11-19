@@ -11,9 +11,10 @@
   let commandError = $state('');
   let disposed = false;
   let commandVersion = 0;
+  let seekPreview = $state<number>();
   onDestroy(() => { disposed = true; onErrorChange(false); });
   const duration = $derived(Math.max(0, $audioPlayer.duration));
-  const position = $derived(Math.min(duration, Math.max(0, $audioPlayer.currentTime)));
+  const position = $derived(Math.min(duration, Math.max(0, seekPreview ?? $audioPlayer.currentTime)));
   const trackCount = $derived($audioPlayer.album?.tracks.length ?? 0);
 
   function time(value: number): string {
@@ -49,7 +50,14 @@
     <span>{time(position)}</span>
     <input type="range" min="0" max={duration || 1} step="0.1" value={position} disabled={!duration}
       aria-label={text.seek} aria-valuetext={`${time(position)} / ${time(duration)}`}
-      oninput={(event) => void control('seek', Number(event.currentTarget.value))} />
+      oninput={(event) => { seekPreview = event.currentTarget.valueAsNumber; }}
+      onchange={(event) => {
+        const target = event.currentTarget.valueAsNumber;
+        seekPreview = undefined;
+        void control('seek', target);
+      }}
+      onpointercancel={() => { seekPreview = undefined; }}
+      onblur={() => { seekPreview = undefined; }} />
     <span>{time(duration)}</span>
   </div>
   <div class="transport-buttons">

@@ -375,6 +375,11 @@
     margin-bottom: 1.75rem;
   }
 
+  .content p,
+  .content li {
+    text-align: justify;
+  }
+
   h2 {
     font-size: 1.25rem;
     font-weight: 700;

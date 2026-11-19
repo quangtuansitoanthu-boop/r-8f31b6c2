@@ -33,7 +33,7 @@ describe('audio catalog legacy parity', () => {
 
   it('fetches complete tracks in the initial CSR catalog without per-album requests', () => {
     expect(catalogs).toContain('created_at,tracks&order=created_at.desc');
-    expect(catalogs).toContain('tracks: normalizeTracks(row.tracks)');
+    expect(catalogs).toContain('tracks: normalizeTracks(id, row.tracks)');
     expect(page).not.toContain("fetch(`/api/talks/${encodeURIComponent(album.id)}?select=*`");
     expect(page).not.toContain('const albumRequests = new Map<string, Promise<TalkAlbum>>()');
     expect(catalog).not.toContain('loadAlbum?: (album: TalkAlbum) => Promise<TalkAlbum>');
@@ -134,9 +134,13 @@ describe('audio catalog legacy parity', () => {
   it('exposes synced personal-library tabs and combinable metadata filters', () => {
     expect(page).toContain('t.talks.tabFavorite');
     expect(page).toContain('listenLaterAlbumIds');
-    expect(page).toContain('matchesTalkMetadataFilters(album, speaker, duration)');
+    expect(page).toContain('matchesTalkMetadataFilters(album, speaker, duration, format)');
     expect(page).toContain('aria-label={t.talks.allSpeakers}');
     expect(page).toContain('aria-label={t.talks.allDurations}');
+    expect(page).toContain('bind:value={format}');
+    expect(page).toContain('t.talks.formatAll');
+    expect(page).toContain('t.talks.formatVideo');
+    expect(page).toContain('t.talks.formatAudio');
     expect(catalog).toContain("onCollectionToggle(selected!, 'favorite')");
     expect(catalog).not.toContain('pt-card-fav-btn');
     expect(catalog).toContain("listenLaterAlbumIds");

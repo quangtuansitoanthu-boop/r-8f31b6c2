@@ -3,6 +3,7 @@ import type { PageSessionDTO } from '$lib/server/auth/types';
 import { announceOfflinePdfPrincipal } from '$lib/browser/offline-pdf-resolver';
 import { resolveApiUrl } from '$lib/browser/native-api';
 import { isNativeApp } from '$lib/browser/native-platform';
+import { requestDeadline } from '$lib/browser/network-deadline';
 import { afterNativeAuthMutation, isNativeAuthMutationActive, nativeAuthMutationRevision } from '$lib/browser/native-auth-transaction';
 import { selectTalkCatalogPrincipal } from '$lib/browser/talk-catalog-cache';
 
@@ -178,8 +179,10 @@ async function fetchSession(
   if (isNativeAuthMutationActive() || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
     return retained;
   }
+  const deadline = requestDeadline();
   try {
     const response = await fetch(resolveApiUrl('/api/session'), {
+      signal: deadline.signal,
       headers: { accept: 'application/json' },
       cache: 'no-store',
       credentials: 'include',
@@ -213,6 +216,8 @@ async function fetchSession(
   } catch {
     // Mất mạng hoặc server lỗi kết nối: cho phép giữ phiên offline đã lưu để người dùng đọc sách
     return retained;
+  } finally {
+    deadline.dispose();
   }
 }
 

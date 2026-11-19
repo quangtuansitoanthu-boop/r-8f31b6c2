@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 vi.mock('$app/environment', () => ({ browser: true }));
+const account = vi.hoisted(() => ({ id: 'alice' }));
+vi.mock('$lib/stores/session.svelte', () => ({
+  getBrowserSessionSnapshot: () => ({ authenticated: Boolean(account.id), user: account.id ? { id: account.id } : null }),
+  SESSION_CHANGE_EVENT: 'quangtu:session-changed',
+}));
+function setAccount(id: string) {
+  account.id = id;
+  window.dispatchEvent(new Event('quangtu:session-changed'));
+}
 vi.mock('$lib/browser/native-platform', () => ({ isNativeApp: () => true, nativePlatform: () => 'ios' }));
 vi.mock('$lib/utils/haptics', () => ({ triggerHaptic: vi.fn() }));
 const personal = vi.hoisted(() => ({ enabled: false, events: [] as Array<import('../../src/lib/browser/personal-lunar-events').PersonalLunarEvent> }));
@@ -24,6 +33,7 @@ const settings = () => {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  account.id = 'alice';
   personal.enabled = false; personal.events = [];
   os.pending.mockResolvedValue({ notifications: [{ id: 42, extra: { type: 'lunar_eve' } }, { id: 777, extra: { type: 'another_tool' } }] });
   os.permission.mockResolvedValue({ display: 'granted' });
@@ -82,7 +92,7 @@ it.each(['read', 'remove'])('retries principal delivered-cleanup %s failure befo
     os.schedule.mockClear();
     os.delivered.mockResolvedValue({ notifications: [{ id: 51, extra: { type: 'personal_eve' } }] });
     (operation === 'read' ? os.delivered : os.removeDelivered).mockRejectedValueOnce(new Error('Notification Center unavailable'));
-    window.dispatchEvent(new Event('quangtu:session-changed'));
+    setAccount('bob');
     // Queue this explicit sync behind the event so a failure cannot be hidden by an unrelated timer.
     await new Promise<void>(resolve => setImmediate(resolve));
     expect(os.schedule).not.toHaveBeenCalled();
@@ -104,16 +114,34 @@ it('cleans a newer principal revision that arrives while delivered removal is pe
     os.schedule.mockClear(); os.delivered.mockClear(); os.removeDelivered.mockClear();
     os.delivered.mockResolvedValue({ notifications: [{ id: 51, extra: { type: 'personal_eve' } }] });
     os.removeDelivered.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
-    window.dispatchEvent(new Event('quangtu:session-changed'));
+    setAccount('bob');
     await vi.waitFor(() => expect(os.removeDelivered).toHaveBeenCalledOnce());
     expect(os.schedule).not.toHaveBeenCalled();
-    window.dispatchEvent(new Event('quangtu:session-changed'));
+    setAccount('');
     release();
     await syncRemindersWithSystem(settings());
     expect(os.delivered).toHaveBeenCalledTimes(2);
     expect(os.removeDelivered).toHaveBeenCalledTimes(2);
     expect(os.removeDelivered.mock.invocationCallOrder[1]).toBeLessThan(os.schedule.mock.invocationCallOrder[0]);
   } finally { release?.(); stop(); }
+});
+
+it('retains the current account’s delivered reminders when the session refreshes', async () => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
+  personal.enabled = true;
+  const stop = startReminderSystemSync(() => 'vi');
+  try {
+    await syncRemindersWithSystem(settings());
+    os.removeDelivered.mockClear();
+    os.delivered.mockResolvedValue({ notifications: [{ id: 51, extra: { type: 'personal_eve' } }] });
+    setAccount('alice');
+    await syncRemindersWithSystem(settings());
+    expect(os.removeDelivered).not.toHaveBeenCalled();
+    setAccount('bob');
+    await syncRemindersWithSystem(settings());
+    expect(os.removeDelivered).toHaveBeenCalledOnce();
+  } finally { stop(); }
 });
 
 it.each([0, 3])('fits dense real-calendar reminders into the iOS budget with %s foreign requests', async foreignCount => {
@@ -243,7 +271,7 @@ it('does not schedule for the next principal when old private iOS notifications 
     os.cancel.mockClear();
     os.pending.mockResolvedValue({ notifications: [{ id: 51, extra: { type: 'personal_eve' } }] });
     os.cancel.mockRejectedValueOnce(new Error('OS rejected cancellation'));
-    window.dispatchEvent(new Event('quangtu:session-changed'));
+    setAccount('bob');
     await vi.waitFor(() => expect(os.cancel).toHaveBeenCalled());
     await new Promise<void>(resolve => setImmediate(resolve));
     expect(os.schedule).not.toHaveBeenCalled();

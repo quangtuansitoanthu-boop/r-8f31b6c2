@@ -5,7 +5,8 @@ import { commitNativeLoginOrigin, selectNativeLoginOrigin } from './url-fallback
 import { applyBrowserSession, detectUserRole, getBrowserSessionSnapshot, SESSION_CHANGE_EVENT } from '$lib/stores/session.svelte';
 import { formatVietnameseFullName } from '$lib/utils/vietnamese-name';
 import type { PageSessionDTO } from '$lib/server/auth/types';
-import { GOOGLE_IOS_CONFIGURATION_REQUIRED, SESSION_VERIFICATION_UNAVAILABLE } from '$lib/i18n/native-auth';
+import { APPLE_SIGN_IN_UNAVAILABLE, GOOGLE_IOS_CONFIGURATION_REQUIRED, SESSION_VERIFICATION_UNAVAILABLE } from '$lib/i18n/native-auth';
+import { detectDeviceLocale } from '$lib/stores/locale.svelte';
 import type { SignInWithApplePlugin } from '@capacitor-community/apple-sign-in';
 
 // Web Client ID: chỉ dùng cho serverClientId/verify idToken.
@@ -267,7 +268,7 @@ async function performAppleLogin(isCurrent: () => boolean): Promise<NativeAuthRe
       });
     } catch (error) {
       if (isAppleAuthorizationCancelled(error)) return { success: false };
-      throw error;
+      return { success: false, error: APPLE_SIGN_IN_UNAVAILABLE[detectDeviceLocale()] };
     }
 
     requireCurrentLogin(isCurrent);

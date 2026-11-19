@@ -79,6 +79,7 @@ export class NativeTalkAudio extends EventTarget {
   paused = true;
   error: { code: number; message: string } | null = null;
   private position = 0;
+  private pendingSeek?: { position: number };
   private rate = 1;
   private loudness = 1;
   private silent = false;
@@ -103,14 +104,17 @@ export class NativeTalkAudio extends EventTarget {
     void this.listener.catch(() => undefined);
     document.addEventListener('visibilitychange', this.foreground);
   }
-  private command(run: () => Promise<NativeAudioState>): Promise<void> {
+  private command(run: () => Promise<NativeAudioState>, seek?: { position: number }, canRun?: () => boolean): Promise<void> {
     if (this.disposed) return Promise.resolve();
     const revision = nativeAudioPrincipalRevision();
     const work = this.chain.then(async () => {
       await this.listener;
       await waitForNativeAudioPrincipal();
-      if (revision !== nativeAudioPrincipalRevision()) return;
-      this.accept(await run());
+      if (revision !== nativeAudioPrincipalRevision() || (seek && seek !== this.pendingSeek) || (canRun && !canRun())) return;
+      const state = await run();
+      if (revision !== nativeAudioPrincipalRevision() || (seek && seek !== this.pendingSeek)) return;
+      if (seek) this.pendingSeek = undefined;
+      this.accept(state, Boolean(seek));
     });
     this.chain = work.catch(() => {});
     return work;
@@ -132,7 +136,20 @@ export class NativeTalkAudio extends EventTarget {
     try { return await work; }
     finally { if (this.refreshWork === work) this.refreshWork = undefined; }
   }
+  async refreshVideoPosition(): Promise<void> {
+    try { await this.refreshState(); }
+    finally {
+      // Phản hồi foreground có thể xếp thêm lệnh tạm dừng, và người xem vẫn có thể tua trong lúc đó.
+      let commands: Promise<unknown>;
+      do {
+        commands = this.chain;
+        await commands;
+      } while (commands !== this.chain);
+    }
+  }
   adopt(state: NativeAudioState) {
+    this.pendingSeek = undefined;
+    this.latestState = undefined;
     this.queueId = state.queueId;
     this.loudness = state.volume;
     this.tracks = state.album?.tracks.map(track => nativeTalkUrl(track.url)) ?? [];
@@ -146,10 +163,17 @@ export class NativeTalkAudio extends EventTarget {
     this.fire('error');
   }
   private send(run: () => Promise<NativeAudioState>) { void this.command(run).catch(cause => this.report(cause)); }
-  private accept(state: NativeAudioState) {
+  private accept(state: NativeAudioState, confirmedSeek = false) {
     if (this.disposed || !this.queueId || state.queueId !== this.queueId) return;
+    const last = this.latestState?.observedAtMs;
+    // Phản hồi lệnh và sự kiện native có thể đảo thứ tự. Khi đồng hồ máy lùi, chấp nhận mốc mới.
+    if (last !== undefined && state.observedAtMs !== undefined && state.observedAtMs < last && Math.floor(last) <= Date.now()) {
+      if (confirmedSeek) this.fire('timeupdate');
+      return;
+    }
     this.latestState = state;
     const trackChanged = state.trackIndex !== this.trackIndex;
+    if (trackChanged) this.pendingSeek = undefined;
     const durationChanged = state.duration !== this.duration;
     const wasPaused = this.paused;
     const wasPlaying = this.playing;
@@ -177,6 +201,8 @@ export class NativeTalkAudio extends EventTarget {
   async setQueue(album: AudioAlbum, index: number, position: number): Promise<void> {
     const artwork = album.artwork?.split('#pos=')[0]?.trim();
     this.queueId = `${album.id}:${Date.now()}:${Math.random()}`;
+    this.pendingSeek = undefined;
+    this.latestState = undefined;
     const queueId = this.queueId;
     this.trackIndex = index;
     this.tracks = album.tracks.map(track => nativeTalkUrl(track.url));
@@ -197,27 +223,44 @@ export class NativeTalkAudio extends EventTarget {
       throw cause;
     });
   }
-  get currentTime() { return this.position; }
+  get currentTime() { return this.pendingSeek?.position ?? this.position; }
   get isPracticePlayback() { return [MEDITATION_AUDIO_ALBUM_ID, ROSARY_AUDIO_ALBUM_ID].some(id => this.queueId.startsWith(`${id}:`)); }
-  set currentTime(position: number) { this.position = position; this.send(() => this.plugin.seek({ position })); }
+  set currentTime(position: number) {
+    if (this.disposed || !this.queueId) return;
+    const seek = { position };
+    this.pendingSeek = seek;
+    this.fire('seeking');
+    const finish = (cause?: unknown) => {
+      if (this.pendingSeek !== seek) return;
+      this.pendingSeek = undefined;
+      this.fire('timeupdate');
+      // iOS giữ vị trí tua để phục hồi nhưng hủy callback của player đã bị reset.
+      if (cause && (cause as { code?: string }).code !== 'AUDIO_SERVICES_RESET') this.report(cause);
+    };
+    void this.command(() => this.plugin.seek(seek), seek).then(() => finish(), finish);
+  }
   get playbackRate() { return this.rate; }
   set playbackRate(speed: number) { this.rate = speed; if (this.queueId) this.send(() => this.plugin.options({ speed })); }
   get volume() { return this.loudness; }
   set volume(volume: number) { this.loudness = volume; if (this.queueId) this.send(() => this.plugin.options({ volume: this.silent ? 0 : volume })); }
   get muted() { return this.silent; }
   set muted(muted: boolean) { this.silent = muted; if (this.queueId) this.send(() => this.plugin.options({ volume: muted ? 0 : this.loudness })); }
-  async play() { await this.command(() => this.plugin.play()); }
-  pause() { if (this.queueId) this.send(() => this.plugin.pause()); }
+  async play(canStart?: () => boolean) { await this.command(() => this.plugin.play(), undefined, canStart); }
+  async pause() {
+    if (this.queueId) await this.command(() => this.plugin.pause()).catch(cause => this.report(cause));
+  }
   setRepeat(repeat: number) { if (this.queueId) this.send(() => this.plugin.options({ repeat })); }
   setSleep(remainingMs: number, atEnd: boolean) { if (this.queueId) this.send(() => this.plugin.sleep({ remainingMs, atEnd })); }
   removeAttribute(name: string) {
     if (name !== 'src') return;
+    this.pendingSeek = undefined; this.latestState = undefined;
     this.src = ''; this.queueId = ''; this.position = 0; this.duration = 0; this.paused = true;
     this.send(() => this.plugin.stop());
   }
   load() { /* MediaController prepares the playlist in setQueue. */ }
   dispose() {
     this.disposed = true;
+    this.pendingSeek = undefined;
     document.removeEventListener('visibilitychange', this.foreground);
     void this.listener.then(listener => listener.remove()).catch(() => {
       // The bridge may already be closed; teardown must not reject globally.

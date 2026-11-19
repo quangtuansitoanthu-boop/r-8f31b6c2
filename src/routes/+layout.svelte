@@ -18,6 +18,7 @@
   import MasterShell from '$lib/components/layout/MasterShell.svelte';
   import NativeSelectPicker from '$lib/components/layout/NativeSelectPicker.svelte';
   import AppDialogHost from '$lib/components/layout/AppDialogHost.svelte';
+  import NativeUpdatePrompt from '$lib/components/layout/NativeUpdatePrompt.svelte';
   import { cancelAppDialogs } from '$lib/browser/app-dialog';
   import ReadingAdoptionPrompt from '$lib/components/reader/ReadingAdoptionPrompt.svelte';
   import GuestNoticeBanner from '$lib/components/auth/GuestNoticeBanner.svelte';
@@ -109,7 +110,8 @@
   let phapBaoModalOpen = $state(false);
   let pwaRegistration: PwaRegistrationHandle | null = null;
   const currentPath = $derived(page.url.pathname || '/');
-  const isReadingArticle = $derived(Object.hasOwn(page.state ?? {}, 'articleId')
+  const hasArticleState = $derived(Object.prototype.hasOwnProperty.call(page.state ?? {}, 'articleId'));
+  const isReadingArticle = $derived(hasArticleState
     ? Boolean(page.state.articleId)
     : page.url.searchParams.has('article'));
   $effect(() => {
@@ -126,7 +128,7 @@
         placeholderUrl: page.url.href === 'a:',
         authenticated: sessionStore.value.authenticated,
         isReadingArticle,
-        hasArticleState: Object.hasOwn(page.state ?? {}, 'articleId'),
+        hasArticleState,
         articleStateActive: Boolean(page.state?.articleId),
         hasArticleQuery: page.url.searchParams.has('article'),
       }));
@@ -445,6 +447,9 @@
     </MasterShell>
     <NativeSelectPicker route={page.url.href} principal={sessionStore.value.user?.id ?? null} />
     <AppDialogHost />
+    {#if mounted && isNativeApp()}
+      <NativeUpdatePrompt home={page.url.protocol !== 'a:' && currentPath === '/' && !page.url.search && !isReadingArticle} />
+    {/if}
   </div>
 
   {#if pdfTransitionNotice && pdfTransitionNotice.removed > 0 && !pwaUpdateAvailable}

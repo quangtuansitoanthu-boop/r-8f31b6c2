@@ -1,6 +1,37 @@
 import { expect, test } from '@playwright/test';
 import { translations } from '../../src/lib/i18n/translations';
 
+test('pausing during preparation keeps the preparation countdown frozen', async ({ page }) => {
+  await page.route('**/api/**', route => route.abort('failed'));
+  await page.addInitScript(() => localStorage.setItem('tutam_locale', 'vi'));
+  await page.goto('/tu-tap');
+  await page.locator('.tt-mode-card--thien').click();
+  const start = page.locator('.meditation-chooser').getByRole('button', { name: 'Bắt đầu thiền', exact: true });
+  await expect(start).toBeVisible();
+  await page.clock.install();
+  await start.click();
+
+  const screen = page.locator('.meditation-screen');
+  const time = screen.locator('.meditation-screen__time');
+  const pause = screen.getByRole('button', { name: 'Tạm dừng', exact: true });
+  const resume = screen.getByRole('button', { name: 'Tiếp tục', exact: true });
+  await expect(screen.locator('.meditation-screen__badge--prep')).toBeVisible();
+  await page.clock.fastForward(10_000);
+  await pause.click();
+  await expect(screen.locator('.meditation-screen__badge--paused')).toBeVisible();
+  await expect(time).toHaveText(/^00:[12]\d$/u);
+  const pausedPreparation = await time.innerText();
+  await page.clock.fastForward(45_000);
+  await expect(time).toHaveText(pausedPreparation);
+
+  await resume.click();
+  await expect(screen.locator('.meditation-screen__badge--prep')).toBeVisible();
+  await page.clock.fastForward(25_000);
+  await expect(screen.locator('.meditation-screen__badge--active')).toBeVisible();
+  await pause.click();
+  await expect(time).toHaveText(/^14:\d\d$/u);
+});
+
 test('meditation focus keeps the clock running through exit and completion', async ({ page }) => {
   await page.route('**/api/**', route => route.abort('failed'));
   await page.addInitScript(() => {

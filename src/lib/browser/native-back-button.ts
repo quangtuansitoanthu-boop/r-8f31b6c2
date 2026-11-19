@@ -122,8 +122,7 @@ export async function initializeNativeBackButton(): Promise<void> {
 
       // 5. Nếu đang ở trang chủ '/' mà có URL search params (như tìm kiếm hoặc filter)
       if (window.location.pathname === '/' && window.location.search) {
-        window.history.pushState(null, '', '/');
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        void goto('/', { replaceState: true });
         return;
       }
 

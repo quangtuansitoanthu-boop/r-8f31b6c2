@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NativeAudioState } from '../../../src/lib/browser/native-talk-audio';
+import type { NativeAudioState, NativeTalkAudio } from '../../../src/lib/browser/native-talk-audio';
 const bridge = vi.hoisted(() => ({ plugin: {} as any, platform: 'android' }));
 vi.mock('@capacitor/core', async original => ({
   ...await original<object>(),
@@ -58,6 +58,87 @@ afterEach(async () => {
   controller.destroy();
   await vi.waitFor(() => expect(bridge.plugin.stop).toHaveBeenCalled());
   vi.unstubAllGlobals();
+});
+
+it('resumes a visible video on lock only after the native pause acknowledgement and honors the next lock-screen pause', async () => {
+  await controller.ready;
+  const url = album.tracks[0].url;
+  await controller.playTrack({ ...album, tracks: [{ ...album.tracks[0], media_type: 'video' }] });
+  bridge.plugin.play.mockClear();
+  let finishPause!: () => void;
+  bridge.plugin.pause.mockImplementationOnce(() => new Promise<NativeAudioState>(resolve => {
+    finishPause = () => resolve(state = { ...state, playing: false, playWhenReady: false });
+  }));
+  const release = controller.holdVideoPlayback(url);
+  await vi.waitFor(() => expect(finishPause).toBeTypeOf('function'));
+  Object.assign(document, { visibilityState: 'hidden' });
+  document.dispatchEvent(new Event('visibilitychange'));
+  release();
+  expect(bridge.plugin.play).not.toHaveBeenCalled();
+  finishPause();
+  await vi.waitFor(() => expect(bridge.plugin.play).toHaveBeenCalledOnce());
+  expect(controller.snapshot.playing).toBe(true);
+  publish(state = { ...state, playing: false, playWhenReady: false });
+  expect(controller.videoPlaybackRequested).toBe(false);
+  expect(controller.snapshot.playing).toBe(false);
+});
+
+it('cancels a queued native resume when the user pauses before the frame hold pause is acknowledged', async () => {
+  await controller.ready;
+  const url = album.tracks[0].url;
+  await controller.playTrack({ ...album, tracks: [{ ...album.tracks[0], media_type: 'video' }] });
+  let finishPause!: () => void;
+  bridge.plugin.pause.mockImplementationOnce(() => new Promise<NativeAudioState>(resolve => {
+    finishPause = () => resolve(state = { ...state, playing: false, playWhenReady: false });
+  }));
+  bridge.plugin.play.mockClear();
+  const release = controller.holdVideoPlayback(url);
+  await vi.waitFor(() => expect(finishPause).toBeTypeOf('function'));
+  release();
+  controller.pause();
+  finishPause();
+  await vi.waitFor(() => expect(bridge.plugin.pause).toHaveBeenCalledTimes(2));
+  expect(bridge.plugin.play).not.toHaveBeenCalled();
+  expect(controller.snapshot.playing).toBe(false);
+});
+
+it('keeps a video paused when the native sleep timer expires during alignment', async () => {
+  await controller.ready;
+  const url = album.tracks[0].url;
+  await controller.playTrack({ ...album, tracks: [{ ...album.tracks[0], media_type: 'video' }] });
+  publish(state = { ...state, sleepRemainingMs: 150 });
+  const release = controller.holdVideoPlayback(url);
+  await vi.waitFor(() => expect(bridge.plugin.pause).toHaveBeenCalled());
+  publish(state = { ...state, sleepRemainingMs: 0, playing: false, playWhenReady: false });
+  bridge.plugin.play.mockClear();
+  release();
+  expect(controller.videoPlaybackRequested).toBe(false);
+  expect(controller.snapshot.playing).toBe(false);
+  expect(bridge.plugin.play).not.toHaveBeenCalled();
+});
+
+it('awaits the frame hold pause discovered by a foreground refresh of a stale paused clock', async () => {
+  await controller.ready;
+  const url = album.tracks[0].url;
+  await controller.load({ ...album, tracks: [{ ...album.tracks[0], media_type: 'video' }] });
+  const audio = controller.audio as NativeTalkAudio;
+  expect(audio.paused).toBe(true);
+  const release = controller.holdVideoPlayback(url);
+  let finishPause!: () => void;
+  bridge.plugin.pause.mockImplementationOnce(() => new Promise<NativeAudioState>(resolve => {
+    finishPause = () => resolve(state = { ...state, playing: false, playWhenReady: false, position: 52.3 });
+  }));
+  state = { ...state, playing: true, playWhenReady: true, position: 52 };
+  document.dispatchEvent(new Event('visibilitychange'));
+  const observed = vi.fn(() => audio.currentTime);
+  const ready = audio.refreshVideoPosition().then(observed);
+  await vi.waitFor(() => expect(finishPause).toBeTypeOf('function'));
+  expect(observed).not.toHaveBeenCalled();
+  finishPause();
+  expect(await ready).toBe(52.3);
+  expect(bridge.plugin.getState).toHaveBeenCalledOnce();
+  controller.pause();
+  release();
 });
 
 it('switches the native queue to Archive and Drive at the interrupted position', async () => {

@@ -38,6 +38,38 @@ const warm = (page: Page, path: string) => page.evaluate(path => {
   (window as any).qaUrlOpen({ url: 'vn.quangtu.tutam://' + path });
 }, path);
 
+test('content shortcuts route cold and warm launches to their matching sections', async ({ page }) => {
+  await nativeFixture(page, 'vn.quangtu.tutam:///kinh-sach');
+  await page.goto('/');
+  await expect(page).toHaveURL('/kinh-sach');
+  await warm(page, '/tu-tap');
+  await expect(page).toHaveURL('/tu-tap');
+  await warm(page, '/phap-thoai');
+  await expect(page).toHaveURL('/phap-thoai');
+});
+
+test('iPhone Widget shortcut focuses its guide topic on cold launch and repeated use', async ({ page }) => {
+  const path = '/huong-dan?phan=ung-dung#widget-man-hinh-chinh';
+  await nativeFixture(page, 'vn.quangtu.tutam://' + path, 'ios');
+  await page.goto('/');
+  await expect(page).toHaveURL(path);
+  const topic = page.locator('#widget-man-hinh-chinh');
+  await expect(topic).toBeFocused();
+
+  const section = page.locator('#dung-web');
+  await section.locator(':scope > summary').click();
+  await expect(section).not.toHaveAttribute('open', '');
+  await warm(page, path);
+  await expect(topic).toBeFocused();
+
+  await warm(page, '/huong-dan?phan=ung-dung');
+  await expect(page).toHaveURL('/huong-dan?phan=ung-dung');
+  await topic.evaluate(element => element.blur());
+  await expect(topic).not.toBeFocused();
+  await warm(page, path);
+  await expect(topic).toBeFocused();
+});
+
 test('retained native launch URL does not replay after a full document navigation', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 844 });
   await nativeFixture(page, 'vn.quangtu.tutam:///tu-tap?action=rosary');
