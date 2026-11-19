@@ -13,7 +13,7 @@ concurrency:
 jobs:
   ios:
     runs-on: macos-15-intel
-    timeout-minutes: 20
+    timeout-minutes: 48
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       VITE_GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
@@ -142,6 +142,42 @@ jobs:
           while IFS= read -r manifest; do plutil -lint "$manifest"; done < <(find "$app" -name PrivacyInfo.xcprivacy -print)
           grep -q 'GoogleSignIn (7.1.0)' ios/App/Podfile.lock
           cat ios/App/Podfile.lock
+      - name: Require the tested release source and all three iOS 18.5 checks
+        timeout-minutes: 24
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, subprocess, time, urllib.request, urllib.error
+          tree = subprocess.check_output(['git','-c','core.quotePath=true','ls-tree','-r','HEAD'])
+          tested_source = b''.join(line for line in tree.splitlines(keepends=True)
+                                  if not line.rstrip(b'\n').endswith(b'\t.github/workflows/ios-testflight.yml'))
+          assert hashlib.sha256(tested_source).hexdigest() == 'ad7acf07a40e8deb740aa36d8d22a5d94c9bb38f54990c188747833010d6c6fa', 'Tested application source changed'
+          jobs = {
+              135679491953: (44558077099, 'Rosary manual and automatic audio on iOS 18.5'),
+              135679492382: (44558077099, 'Rosary Back and rotation on iOS 18.5'),
+              135701169866: (44564145660, 'Copying on iOS 18.5'),
+          }
+          while jobs:
+              for job, (run, name) in list(jobs.items()):
+                  request = urllib.request.Request(
+                      f'https://api.github.com/repos/quangtuansitoanthu-boop/simulator-checks/actions/jobs/{job}',
+                      headers={'Accept':'application/vnd.github+json','User-Agent':'TuTap-AppStore-QA-Gate'})
+                  try:
+                      with urllib.request.urlopen(request, timeout=20) as response:
+                          check = json.load(response)
+                  except (urllib.error.URLError, TimeoutError) as error:
+                      print(f'Could not read {name} yet: {type(error).__name__}', flush=True)
+                      continue
+                  assert check['id'] == job and check['run_id'] == run and check['name'] == name
+                  if check['status'] != 'completed':
+                      print(f'Awaiting {name}', flush=True)
+                      continue
+                  assert check['conclusion'] == 'success', f"{name}: {check['conclusion']}"
+                  print(f'Passed: {name}', flush=True)
+                  del jobs[job]
+              if jobs:
+                  time.sleep(45)
+          PY
       - name: Export and upload the same archive to TestFlight
         env:
           API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
