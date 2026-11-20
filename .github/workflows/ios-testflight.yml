@@ -14,10 +14,10 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-15-intel
+    runs-on: xcode-27
     timeout-minutes: 20
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       VITE_GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
       BUILD_SEQUENCE: ${{ github.run_number }}
       TUTAM_BUNDLE_SYNCED: '1'
@@ -32,6 +32,12 @@ jobs:
       - name: Verify Apple toolchain
         run: |
           xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          if [[ ! "$sdk" =~ ^[0-9]+([.][0-9]+)*$ ]] || (( ${sdk%%.*} < 27 )); then
+            echo "::error::App Store builds require iOS SDK 27 or later. Selected SDK: $sdk"
+            exit 1
+          fi
+          echo "Using iOS SDK $sdk"
           pod --version
       - name: Install signing credentials and check Apple access
         env:
@@ -133,6 +139,15 @@ jobs:
           codesign --verify --deep --strict "$app"
           test -d "$app/PlugIns/CalendarWidget.appex"
           codesign --verify --strict "$app/PlugIns/CalendarWidget.appex"
+          expected_sdk="iphoneos$(xcrun --sdk iphoneos --show-sdk-version)"
+          for bundle in "$app" "$app/PlugIns/CalendarWidget.appex"; do
+            built_sdk="$(plutil -extract DTSDKName raw -o - "$bundle/Info.plist")"
+            echo "$(basename "$bundle") built with $built_sdk"
+            if [[ "$built_sdk" != "$expected_sdk" ]]; then
+              echo "::error::Expected $expected_sdk in $bundle/Info.plist"
+              exit 1
+            fi
+          done
           for bundle in GoogleSignIn.bundle GTMAppAuth_Privacy.bundle GTMSessionFetcher_Core_Privacy.bundle AppAuthCore_Privacy.bundle; do
             test -n "$(find "$app" -path "*/$bundle/PrivacyInfo.xcprivacy" -print -quit)"
           done
